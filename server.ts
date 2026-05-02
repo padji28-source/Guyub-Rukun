@@ -2,6 +2,12 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import fs from "fs";
 import path from "path";
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+
+const firebaseConfig = JSON.parse(fs.readFileSync(path.resolve('./firebase-applet-config.json'), 'utf-8'));
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
 
 const app = express();
 const PORT = 3000;
@@ -9,114 +15,103 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-const DB_FILE = path.resolve("users.json");
-const NOTIF_FILE = path.resolve("notifications.json");
-const APP_DATA_FILE = path.resolve("app_data.json");
+const DB_DOC = doc(db, 'system', 'users');
+const NOTIF_DOC = doc(db, 'system', 'notifications');
+const APP_DATA_DOC = doc(db, 'system', 'app_data');
 
-// Initialize DB if not exists
-if (!fs.existsSync(DB_FILE)) {
-  fs.writeFileSync(DB_FILE, JSON.stringify([
-    {
-      id: "admin",
-      username: "ketuart",
-      password: "123456",
-      nama: "Ketua RT",
-      role: "admin",
-      alamat: "Jl. Bahagia No. 12, Kompleks Rukun, Kota Tegal",
-      noHp: "0812-3456-7890",
-      status: "Ketua RT 04 / RW 01"
+async function initDb() {
+  const usersSnap = await getDoc(DB_DOC);
+  if (!usersSnap.exists() || !(usersSnap.data().list || []).find((u: any) => u.username === "ketuart")) {
+    const list = usersSnap.exists() ? usersSnap.data().list || [] : [];
+    if (!list.find((u: any) => u.username === "ketuart")) {
+      list.push({
+        id: "admin",
+        username: "ketuart",
+        password: "123456",
+        nama: "Ketua RT",
+        role: "admin",
+        alamat: "Jl. Bahagia No. 12, Kompleks Rukun, Kota Tegal",
+        noHp: "0812-3456-7890",
+        status: "Ketua RT 04 / RW 01"
+      });
+      await setDoc(DB_DOC, { list });
     }
-  ], null, 2));
-} else {
-  // Ensure admin exists in old db
-  const data = JSON.parse(fs.readFileSync(DB_FILE, "utf-8"));
-  if (!data.find((u: any) => u.username === "ketuart")) {
-    data.push({
-      id: "admin",
-      username: "ketuart",
-      password: "123456",
-      nama: "Ketua RT",
-      role: "admin",
-      alamat: "Jl. Bahagia No. 12, Kompleks Rukun, Kota Tegal",
-      noHp: "0812-3456-7890",
-      status: "Ketua RT 04 / RW 01"
-    });
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+  }
+
+  const notifSnap = await getDoc(NOTIF_DOC);
+  if (!notifSnap.exists()) {
+    await setDoc(NOTIF_DOC, { list: [] });
+  }
+
+  const appDataSnap = await getDoc(APP_DATA_DOC);
+  if (!appDataSnap.exists()) {
+    await setDoc(APP_DATA_DOC, { data: {
+      surat: [],
+      laporan: [],
+      acara: [],
+      umkm: [],
+      kas: [],
+      iuran: [],
+      darurat: [
+        { id: "d1", name: 'Ambulance & Gawat Darurat', tel: '118', type: 'Medis' },
+        { id: "d2", name: 'Polisi', tel: '110', type: 'Keamanan' },
+        { id: "d3", name: 'Pemadam Kebakaran', tel: '113', type: 'Kebakaran' },
+        { id: "d4", name: 'Ketua RT 04 (Bpk. Adji)', tel: '081234567890', type: 'Lingkungan' },
+        { id: "d5", name: 'Security Pos Depan', tel: '089876543210', type: 'Keamanan' }
+      ]
+    }});
   }
 }
 
-if (!fs.existsSync(NOTIF_FILE)) {
-  fs.writeFileSync(NOTIF_FILE, JSON.stringify([]));
+async function getUsers() {
+  const snap = await getDoc(DB_DOC);
+  return snap.exists() ? (snap.data().list || []) : [];
 }
 
-if (!fs.existsSync(APP_DATA_FILE)) {
-  fs.writeFileSync(APP_DATA_FILE, JSON.stringify({
-    surat: [],
-    laporan: [],
-    acara: [],
-    umkm: [],
-    kas: [],
-    iuran: [],
-    darurat: [
-      { id: "d1", name: 'Ambulance & Gawat Darurat', tel: '118', type: 'Medis' },
-      { id: "d2", name: 'Polisi', tel: '110', type: 'Keamanan' },
-      { id: "d3", name: 'Pemadam Kebakaran', tel: '113', type: 'Kebakaran' },
-      { id: "d4", name: 'Ketua RT 04 (Bpk. Adji)', tel: '081234567890', type: 'Lingkungan' },
-      { id: "d5", name: 'Security Pos Depan', tel: '089876543210', type: 'Keamanan' }
-    ]
-  }, null, 2));
+async function saveUsers(users: any) {
+  await setDoc(DB_DOC, { list: users });
 }
 
-function getUsers() {
-  const data = fs.readFileSync(DB_FILE, "utf-8");
-  return JSON.parse(data);
+async function getNotifications() {
+  const snap = await getDoc(NOTIF_DOC);
+  return snap.exists() ? (snap.data().list || []) : [];
 }
 
-function saveUsers(users: any) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
+async function saveNotifications(notifs: any) {
+  await setDoc(NOTIF_DOC, { list: notifs });
 }
 
-function getNotifications() {
-  const data = fs.readFileSync(NOTIF_FILE, "utf-8");
-  return JSON.parse(data);
-}
-
-function saveNotifications(notifs: any) {
-  fs.writeFileSync(NOTIF_FILE, JSON.stringify(notifs, null, 2));
-}
-
-function getAppData() {
-  const data = JSON.parse(fs.readFileSync(APP_DATA_FILE, "utf-8"));
+async function getAppData() {
+  const snap = await getDoc(APP_DATA_DOC);
+  const data = snap.exists() ? (snap.data().data || {}) : {};
   if (!data.media) {
     data.media = [
       { id: '1', imageUrl: 'https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=300&q=80', title: 'Kerja Bakti 2024', uploaderName: 'Admin', createdAt: new Date().toISOString() }
     ];
-    saveAppData(data);
+    await saveAppData(data);
   }
   return data;
 }
 
-function saveAppData(data: any) {
-  fs.writeFileSync(APP_DATA_FILE, JSON.stringify(data, null, 2));
+async function saveAppData(data: any) {
+  await setDoc(APP_DATA_DOC, { data });
 }
 
-export function addNotification(title: string, message: string) {
-  const notifs = getNotifications();
+export async function addNotification(title: string, message: string) {
+  const notifs = await getNotifications();
   notifs.unshift({ id: Date.now().toString(), title, message, time: new Date().toISOString(), read: false });
-  // Keep only latest 100
   if (notifs.length > 100) notifs.length = 100;
-  saveNotifications(notifs);
+  await saveNotifications(notifs);
 }
 
-// API Routes
-app.post("/api/register", (req, res) => {
+app.post("/api/register", async (req, res) => {
   const { username, nama, password, alamat, noHp, status, umur } = req.body;
   
   if (!username || !nama || !password) {
     return res.status(400).json({ error: "Username, nama dan password wajib diisi" });
   }
 
-  const users = getUsers();
+  const users = await getUsers();
   if (users.find((u: any) => u.username === username)) {
     return res.status(400).json({ error: "Username sudah terdaftar" });
   }
@@ -134,17 +129,17 @@ app.post("/api/register", (req, res) => {
   };
 
   users.push(newUser);
-  saveUsers(users);
+  await saveUsers(users);
 
-  addNotification("Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan.`);
+  await addNotification("Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan.`);
 
   res.json({ message: "Registrasi berhasil", user: { ...newUser, role: "warga" } });
 });
 
-app.post("/api/login", (req, res) => {
+app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
 
-  const users = getUsers();
+  const users = await getUsers();
   const user = users.find((u: any) => u.username === username && u.password === password);
 
   if (user) {
@@ -154,10 +149,10 @@ app.post("/api/login", (req, res) => {
   }
 });
 
-app.put("/api/profile", (req, res) => {
+app.put("/api/profile", async (req, res) => {
   const { id, username, nama, alamat, noHp, status, photo } = req.body;
 
-  const users = getUsers();
+  const users = await getUsers();
   const userIndex = users.findIndex((u: any) => u.id === id);
 
   if (userIndex !== -1) {
@@ -169,56 +164,52 @@ app.put("/api/profile", (req, res) => {
       status: status || users[userIndex].status,
       photo: photo || users[userIndex].photo
     };
-    saveUsers(users);
+    await saveUsers(users);
     res.json({ message: "Profile updated successfully", user: users[userIndex] });
   } else {
     res.status(404).json({ error: "User not found" });
   }
 });
 
-app.get("/api/warga", (req, res) => {
-  const users = getUsers();
-  // Filter out admin, or keep it depending on usage. Let's keep all.
+app.get("/api/warga", async (req, res) => {
+  const users = await getUsers();
   res.json({ users: users.filter((u: any) => u.id !== "admin") });
 });
 
-// Admin API to delete a user
-app.delete("/api/warga/:id", (req, res) => {
-  const users = getUsers();
+app.delete("/api/warga/:id", async (req, res) => {
+  const users = await getUsers();
   const user = users.find((u: any) => u.id === req.params.id);
   const newUsers = users.filter((u: any) => u.id !== req.params.id);
-  saveUsers(newUsers);
-  if (user) addNotification("Warga Dihapus", `Data warga ${user.nama} telah dihapus.`);
+  await saveUsers(newUsers);
+  if (user) await addNotification("Warga Dihapus", `Data warga ${user.nama} telah dihapus.`);
   res.json({ message: "User deleted" });
 });
 
-// Admin or Self API to add family member
-app.post("/api/warga/:id/members", (req, res) => {
+app.post("/api/warga/:id/members", async (req, res) => {
   const { name, role, age } = req.body;
-  const users = getUsers();
+  const users = await getUsers();
   const user = users.find((u: any) => u.id === req.params.id);
   if (user) {
     if (!user.members) user.members = [];
     const newMember = { id: Date.now().toString(), name, role, age };
     user.members.push(newMember);
-    saveUsers(users);
-    addNotification("Anggota Keluarga Bertambah", `Anggota baru ${name} ditambahkan ke KK ${user.nama}.`);
+    await saveUsers(users);
+    await addNotification("Anggota Keluarga Bertambah", `Anggota baru ${name} ditambahkan ke KK ${user.nama}.`);
     res.json({ message: "Family member added", member: newMember, user });
   } else {
     res.status(404).json({ error: "User not found" });
   }
 });
 
-// Admin or Self API to edit family member
-app.put("/api/warga/:id/members/:memberId", (req, res) => {
+app.put("/api/warga/:id/members/:memberId", async (req, res) => {
   const { name, role, age } = req.body;
-  const users = getUsers();
+  const users = await getUsers();
   const user = users.find((u: any) => u.id === req.params.id);
   if (user && user.members) {
     const memberIndex = user.members.findIndex((m: any) => m.id === req.params.memberId);
     if (memberIndex !== -1) {
       user.members[memberIndex] = { ...user.members[memberIndex], name, role, age };
-      saveUsers(users);
+      await saveUsers(users);
       res.json({ message: "Family member updated", user });
     } else {
       res.status(404).json({ error: "Member not found" });
@@ -228,77 +219,74 @@ app.put("/api/warga/:id/members/:memberId", (req, res) => {
   }
 });
 
-// Admin or Self API to delete family member
-app.delete("/api/warga/:id/members/:memberId", (req, res) => {
-  const users = getUsers();
+app.delete("/api/warga/:id/members/:memberId", async (req, res) => {
+  const users = await getUsers();
   const user = users.find((u: any) => u.id === req.params.id);
   if (user && user.members) {
     user.members = user.members.filter((m: any) => m.id !== req.params.memberId);
-    saveUsers(users);
+    await saveUsers(users);
     res.json({ message: "Family member deleted", user });
   } else {
     res.status(404).json({ error: "User or member not found" });
   }
 });
 
-app.put("/api/warga/:id/role", (req, res) => {
+app.put("/api/warga/:id/role", async (req, res) => {
   const { role } = req.body;
-  const users = getUsers();
+  const users = await getUsers();
   const userIndex = users.findIndex((u: any) => u.id === req.params.id);
   if (userIndex !== -1 && users[userIndex].id !== "admin") {
     users[userIndex].role = role;
-    saveUsers(users);
+    await saveUsers(users);
     res.json({ message: "Role updated successfully", user: users[userIndex] });
   } else {
     res.status(400).json({ error: "Gagal update role" });
   }
 });
 
-app.get("/api/notifications", (req, res) => {
-  res.json({ notifications: getNotifications() });
+app.get("/api/notifications", async (req, res) => {
+  res.json({ notifications: await getNotifications() });
 });
 
-app.post("/api/notifications/read", (req, res) => {
-  const notifs = getNotifications();
+app.post("/api/notifications/read", async (req, res) => {
+  const notifs = await getNotifications();
   const updated = notifs.map((n: any) => ({ ...n, read: true }));
-  saveNotifications(updated);
+  await saveNotifications(updated);
   res.json({ success: true });
 });
 
-app.post("/api/transactions", (req, res) => {
+app.post("/api/transactions", async (req, res) => {
   const { type, amount, name, message } = req.body;
-  // This abstracts kas/iuran/sedekah
   const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' });
   const formattedAmount = formatter.format(amount || 0);
 
   let notifTitle = `Transaksi ${type || 'Baru'}`;
   let notifMessage = message || `Terdapat transaksi ${type ? type.toLowerCase() : 'baru'} masuk sebesar ${formattedAmount} dari ${name || 'Warga'}.`;
 
-  addNotification(notifTitle, notifMessage);
+  await addNotification(notifTitle, notifMessage);
   res.json({ success: true, message: "Transaksi berhasil dan notifikasi dikirim" });
 });
 
-// --- Generic APP_DATA Routes ---
-app.get("/api/data/:resource", (req, res) => {
-  const data = getAppData();
+app.get("/api/data/:resource", async (req, res) => {
+  const data = await getAppData();
   const resource = req.params.resource;
   if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
   res.json({ data: data[resource] });
 });
 
-app.post("/api/data/:resource", (req, res) => {
-  const data = getAppData();
+app.post("/api/data/:resource", async (req, res) => {
+  const data = await getAppData();
   const resource = req.params.resource;
   if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
   
   const newItem = { id: Date.now().toString(), createdAt: new Date().toISOString(), ...req.body };
   data[resource].push(newItem);
-  saveAppData(data);
+  await saveAppData(data);
   res.json({ message: "Created successfully", item: newItem });
 });
 
-app.put("/api/data/:resource/:id", (req, res) => {
-  const data = getAppData();
+app.put("/api/data/:resource/:id", async (req, res) => {
+  const data = await getAppData();
   const resource = req.params.resource;
   if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
 
@@ -307,17 +295,16 @@ app.put("/api/data/:resource/:id", (req, res) => {
     const oldItem = data[resource][index];
     const newItem = { ...oldItem, ...req.body };
     data[resource][index] = newItem;
-    saveAppData(data);
+    await saveAppData(data);
 
-    // Notifications logic depending on resource
     if (resource === 'surat' && oldItem.status !== newItem.status && newItem.status === 'selesai') {
-      addNotification('Surat Selesai', `Surat pengajuan untuk ${newItem.keperluan || 'anda'} sudah bisa diambil.`);
+      await addNotification('Surat Selesai', `Surat pengajuan untuk ${newItem.keperluan || 'anda'} sudah bisa diambil.`);
     }
     if (resource === 'laporan' && oldItem.status !== newItem.status) {
-      addNotification('Update Laporan', `Laporan ${newItem.judul || 'warga'} kini berstatus: ${newItem.status}.`);
+      await addNotification('Update Laporan', `Laporan ${newItem.judul || 'warga'} kini berstatus: ${newItem.status}.`);
     }
     if (resource === 'iuran' && oldItem.status !== newItem.status && newItem.status === 'verifikasi') {
-      addNotification('Iuran Diverifikasi', `Iuran dari ${newItem.nama || 'warga'} sebesar Rp ${newItem.nominal} telah diverifikasi dan masuk kas.`);
+      await addNotification('Iuran Diverifikasi', `Iuran dari ${newItem.nama || 'warga'} sebesar Rp ${newItem.nominal} telah diverifikasi dan masuk kas.`);
       data['kas'].push({
         id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
         createdAt: new Date().toISOString(),
@@ -327,7 +314,7 @@ app.put("/api/data/:resource/:id", (req, res) => {
         message: 'Iuran Warga',
         category: 'Kas RT'
       });
-      saveAppData(data);
+      await saveAppData(data);
     }
 
     res.json({ message: "Updated successfully", item: newItem });
@@ -336,13 +323,13 @@ app.put("/api/data/:resource/:id", (req, res) => {
   }
 });
 
-app.delete("/api/data/:resource/:id", (req, res) => {
-  const data = getAppData();
+app.delete("/api/data/:resource/:id", async (req, res) => {
+  const data = await getAppData();
   const resource = req.params.resource;
   if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
 
   data[resource] = data[resource].filter((item: any) => item.id !== req.params.id);
-  saveAppData(data);
+  await saveAppData(data);
   res.json({ message: "Deleted successfully" });
 });
 
@@ -351,6 +338,8 @@ app.get("/api/health", (req, res) => {
 });
 
 async function startServer() {
+  await initDb();
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
