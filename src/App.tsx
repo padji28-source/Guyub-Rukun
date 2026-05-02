@@ -91,95 +91,314 @@ const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange
   </aside>
 );
 
-const WebHeader = () => (
-  <header className="flex items-center justify-between p-6 bg-white border-b border-gray-100 sticky top-0 z-10" style={{ marginLeft: '16rem' }}>
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: fontStyle }}>Halo, Admin RT 01!</h1>
-      <p className="text-xs text-gray-500 mt-1">Website Guyub Rukun Admin Dashboard (Web View)</p>
-    </div>
-    <div className="flex items-center gap-6">
-      <div className="flex items-center gap-2">
-        <ProfileAvatar size="10"/>
-        <div className="text-right">
-          <span className="font-semibold text-sm text-gray-800">Bpk. Adji Prasetyo</span>
-          <p className="text-xs text-gray-500">Ketua RT 01</p>
-        </div>
-        <icons.profil className="w-5 h-5 text-gray-400" />
-      </div>
-      <div className="relative">
-        <icons.pengumuman className="w-6 h-6 text-gray-400" />
-        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold">12</span>
-      </div>
-    </div>
-  </header>
-);
+const WebHeader = ({ user, onLogout, onUpdateUser }: { user?: any; onLogout?: () => void; onUpdateUser?: (data: any) => void }) => {
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifs, setNotifs] = useState<any[]>([]);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
-const WebStatsCards = () => (
-  <div className="grid grid-cols-4 gap-6 mb-8">
-    {[
-      { title: 'Warga', value: '358', unit: '', icon: icons.warga, accent: '#60A5FA' },
-      { title: 'Laporan', value: '12', unit: 'Baru', icon: icons.laporan, accent: '#F87171' },
-      { title: 'Saldo Kas', value: 'Rp 4,500,000', unit: '', icon: icons.iuran, accent: '#FBBF24' },
-      { title: 'Iuran', value: '92%', unit: 'Lunas', icon: icons.iuran, accent: '#34D399' },
-    ].map((card, index) => (
-      <div key={index} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex gap-4 items-center">
-        <div className="p-3 rounded-lg" style={{ backgroundColor: `${card.accent}1A` }}>
-          <card.icon className="w-7 h-7" style={{ color: card.accent }} />
-        </div>
+  useEffect(() => {
+    apiFetch('/api/data/laporan').then(r => r.json()).then(d => {
+      const items = d.data || [];
+      const newItems = items.filter((i: any) => i.status === 'menunggu').reverse().slice(0, 5);
+      setNotifs(newItems);
+    }).catch(console.error);
+  }, []);
+
+  return (
+    <>
+      <header className="flex items-center justify-between p-6 bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm" style={{ marginLeft: '16rem' }}>
         <div>
-          <p className="text-xs text-gray-500 font-medium">{card.title}</p>
-          <div className="flex items-end gap-1 mt-1">
-            <span className="text-3xl font-bold text-gray-900" style={{ fontFamily: fontStyle }}>{card.value}</span>
-            {card.unit && <span className="text-sm font-medium text-gray-500 pb-1">{card.unit}</span>}
+          <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: fontStyle }}>Halo, {user?.nama || 'Admin RT 01'}!</h1>
+          <p className="text-xs text-gray-500 mt-1">Website Guyub Rukun Admin Dashboard (Web View)</p>
+        </div>
+        <div className="flex items-center gap-6">
+          <div 
+            onClick={() => setShowProfileModal(true)}
+            className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors"
+          >
+            {user?.photo ? (
+               <img src={user.photo} alt="Profile" className="w-10 h-10 rounded-full border border-gray-200 object-cover" />
+            ) : (
+               <ProfileAvatar size="10"/>
+            )}
+            <div className="text-right">
+              <span className="font-semibold text-sm text-gray-800 block leading-tight">{user?.nama || 'Admin'}</span>
+              <span className="text-[10px] text-gray-500 uppercase tracking-wider">{user?.role === 'admin' ? 'Ketua RT' : 'Pengurus RT'}</span>
+            </div>
+          </div>
+          <div className="relative">
+            <button 
+              onClick={() => setShowNotifications(!showNotifications)} 
+              className={`relative p-2 rounded-full transition-colors ${showNotifications ? 'bg-teal-50 text-teal-600' : 'hover:bg-gray-100 text-gray-500'}`}
+            >
+              <icons.pengumuman className="w-6 h-6" />
+              {notifs.length > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold ring-2 ring-white">
+                  {notifs.length}
+                </span>
+              )}
+            </button>
+            
+            <AnimatePresence>
+              {showNotifications && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+                  animate={{ opacity: 1, y: 0, scale: 1 }} 
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }} 
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 transform origin-top-right"
+                >
+                  <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
+                    <h4 className="font-bold text-gray-800 text-sm">Notifikasi</h4>
+                    <span className="text-[10px] uppercase font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">{notifs.length} Baru</span>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto">
+                    {notifs.length > 0 ? notifs.map((n, i) => (
+                      <div key={i} className="p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
+                        <div className="flex items-start justify-between">
+                           <p className="text-xs font-bold text-gray-800 group-hover:text-teal-600 transition-colors">{n.judul}</p>
+                           <span className="w-2 h-2 rounded-full bg-red-500 mt-1 flex-shrink-0"></span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">{n.keterangan}</p>
+                        <p className="text-[9px] text-gray-400 mt-2 font-medium uppercase tracking-wider">{new Date(n.timestamp || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                    )) : (
+                      <div className="p-8 flex flex-col items-center justify-center text-center">
+                        <icons.laporan className="w-10 h-10 text-gray-200 mb-2" />
+                        <p className="text-xs text-gray-500 font-medium">Belum ada notifikasi</p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
-      </div>
-    ))}
-  </div>
-);
+      </header>
 
-const WebLaporanTable = () => (
-  <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm col-span-2">
-    <div className="flex items-center justify-between mb-4">
-      <h3 className="text-sm font-semibold text-gray-900">Laporan Warga Terbaru</h3>
-      <a href="#" className="text-teal-600 font-medium text-xs">View all</a>
-    </div>
-    <table className="w-full text-left text-xs">
-      <thead>
-        <tr className="text-gray-500 border-b border-gray-100">
-          <th className="pb-2 font-medium">Nama</th>
-          <th className="pb-2 font-medium">Status</th>
-          <th className="pb-2 font-medium">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {laporanWargaData.map((item, index) => (
-          <tr key={index} className={index < laporanWargaData.length - 1 ? 'border-b border-gray-50' : ''}>
-            <td className="py-3 font-medium text-gray-800">{item.nama}</td>
-            <td className="py-3 text-gray-600">{item.status_laporan}</td>
-            <td className="py-3 text-right">
-              <span className={`px-2 py-1 rounded-md ${item.status_jalan === 'Normal' ? 'bg-orange-50 text-orange-700' : 'bg-red-50 text-red-700'}`}>{item.status_jalan}</span>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
+      <AnimatePresence>
+        {showProfileModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-md w-full overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 className="font-bold text-gray-800">Edit Profil Admin</h3>
+                <button onClick={() => setShowProfileModal(false)} className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-full text-gray-500 hover:bg-gray-50">×</button>
+              </div>
+              <div className="p-6 overflow-y-auto w-full relative">
+                 <MobileProfilPage user={user} onLogout={() => setShowProfileModal(false)} onUpdateUser={(d) => { if(onUpdateUser) onUpdateUser(d); setShowProfileModal(false); }} />
+                 <div className="absolute top-6 left-6 right-6 bottom-6 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent, white)', opacity: 0 }}></div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
 
-const WebIuranChart = () => (
-  <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-4">
-    <h3 className="text-sm font-semibold text-gray-900">Tren Iuran Bulanan</h3>
-    <div className="flex-grow flex items-end justify-between gap-1 p-2 border border-gray-50 rounded-lg">
-      {[120000, 100000, 110000, 105000, 115000, 120000].map((value, index) => (
-        <div key={index} className="flex flex-col items-center gap-1 min-h-[100px] justify-end mt-4">
-          <div className="bg-teal-500 w-8 rounded-t-sm" style={{ height: `${value / 1200}px` }}></div>
-          <span className="text-[9px] text-gray-400 font-medium">{['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'][index]}</span>
+const WebStatsCards = () => {
+  const [stats, setStats] = useState({ warga: 0, laporan: 0, saldo: 0, iuranRef: 0, iuranTotal: 0, kasRT: 0, danaKematian: 0, danaSosial: 0 });
+  const [showKasDetail, setShowKasDetail] = useState(false);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [wargaRes, laporanRes, kasRes, iuranRes] = await Promise.all([
+          apiFetch('/api/warga'),
+          apiFetch('/api/data/laporan'),
+          apiFetch('/api/data/kas'),
+          apiFetch('/api/data/iuran')
+        ]);
+        const wData = await wargaRes.json();
+        const lData = await laporanRes.json();
+        const kData = await kasRes.json();
+        const iData = await iuranRes.json();
+
+        // calc warga
+        const totalWarga = wData.users?.length || 0;
+        // calc laporan baru
+        const laporanBaru = (lData.data || []).filter((l: any) => l.status === 'menunggu').length;
+        // calc saldo (Kas RT + Dana Kematian + Dana Sosial)
+        const items = kData.data || [];
+        const m = items.filter((d: any) => d.type === 'Masuk').reduce((a: number, b: any) => a + (b.amount || 0), 0);
+        const k = items.filter((d: any) => d.type === 'Keluar').reduce((a: number, b: any) => a + (b.amount || 0), 0);
+        const saldo = m - k;
+
+        const getSaldo = (cat: string) => {
+          const catItems = items.filter((d: any) => (d.category || 'Kas RT') === cat);
+          const catM = catItems.filter((d: any) => d.type === 'Masuk').reduce((a: number, b: any) => a + (b.amount || 0), 0);
+          const catK = catItems.filter((d: any) => d.type === 'Keluar').reduce((a: number, b: any) => a + (b.amount || 0), 0);
+          return catM - catK;
+        };
+        const kasRT = getSaldo('Kas RT');
+        const danaKematian = getSaldo('Dana Kematian');
+        const danaSosial = getSaldo('Dana Sosial');
+        
+        // iuran bulan ini
+        const currentMonth = new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+        let iuranTotal = 0;
+        let lunas = 0;
+        const currentIuran = (iData.data || []).filter((i: any) => i.bulan === currentMonth);
+        if (currentIuran.length > 0) {
+           iuranTotal = currentIuran.length;
+           lunas = currentIuran.filter((i: any) => i.status === 'verifikasi').length;
+        } else {
+           // fallback to overall if no iuran this month generated yet
+           const allIuran = iData.data || [];
+           iuranTotal = allIuran.length || 1;
+           lunas = allIuran.filter((i: any) => i.status === 'verifikasi').length;
+        }
+        
+        setStats({
+          warga: totalWarga,
+          laporan: laporanBaru,
+          saldo,
+          iuranRef: lunas,
+          iuranTotal,
+          kasRT,
+          danaKematian,
+          danaSosial
+        });
+
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const formatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
+  const saldoFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+      {[
+        { title: 'Warga', value: formatter.format(stats.warga), unit: '', icon: icons.warga, accent: '#60A5FA' },
+        { title: 'Laporan', value: formatter.format(stats.laporan), unit: 'Baru', icon: icons.laporan, accent: '#F87171' },
+        { title: 'Saldo Kas', value: saldoFormatter.format(stats.saldo), unit: '', icon: icons.iuran, accent: '#FBBF24', isKas: true },
+        { title: 'Iuran', value: `${Math.round((stats.iuranRef / Math.max(stats.iuranTotal, 1)) * 100)}%`, unit: 'Lunas', icon: icons.iuran, accent: '#34D399' },
+      ].map((card, index) => (
+        <div 
+          key={index} 
+          className={`bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex gap-4 items-center ${card.isKas ? 'cursor-pointer hover:border-amber-200 transition-colors relative' : 'overflow-hidden'}`}
+          onClick={() => card.isKas && setShowKasDetail(!showKasDetail)}
+        >
+          <div className="p-3 rounded-lg flex-shrink-0" style={{ backgroundColor: `${card.accent}1A` }}>
+            <card.icon className="w-7 h-7" style={{ color: card.accent }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-gray-500 font-medium truncate flex items-center justify-between">
+              {card.title}
+              {card.isKas && <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-400">Detail</span>}
+            </p>
+            <div className="flex items-baseline gap-1 mt-1 truncate">
+              <span className="text-2xl font-bold text-gray-900 truncate" style={{ fontFamily: fontStyle }}>{card.value}</span>
+              {card.unit && <span className="text-xs font-medium text-gray-500 flex-shrink-0">{card.unit}</span>}
+            </div>
+          </div>
+          
+          {card.isKas && showKasDetail && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-gray-100 p-4 z-20" onClick={e => e.stopPropagation()}>
+               <h4 className="text-xs font-bold text-gray-800 mb-3 border-b border-gray-50 pb-2">Rincian Saldo Kas</h4>
+               <div className="space-y-2">
+                 <div className="flex justify-between items-center text-xs">
+                   <span className="text-gray-500">Kas RT</span>
+                   <span className="font-semibold text-gray-800">{saldoFormatter.format(stats.kasRT)}</span>
+                 </div>
+                 <div className="flex justify-between items-center text-xs">
+                   <span className="text-gray-500">Dana Sosial</span>
+                   <span className="font-semibold text-gray-800">{saldoFormatter.format(stats.danaSosial)}</span>
+                 </div>
+                 <div className="flex justify-between items-center text-xs">
+                   <span className="text-gray-500">Dana Kematian</span>
+                   <span className="font-semibold text-gray-800">{saldoFormatter.format(stats.danaKematian)}</span>
+                 </div>
+               </div>
+            </div>
+          )}
         </div>
       ))}
     </div>
-  </div>
-);
+  );
+};
+
+const WebLaporanTable = () => {
+  const [laporanWargaData, setLaporanWargaData] = useState<any[]>([]);
+  useEffect(() => {
+    apiFetch('/api/data/laporan').then(r => r.json()).then(d => {
+      setLaporanWargaData(d.data?.slice(-5).reverse() || []);
+    }).catch(console.error);
+  }, []);
+
+  return (
+    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm col-span-2">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-900">Laporan Warga Terbaru</h3>
+      </div>
+      <table className="w-full text-left text-xs">
+        <thead>
+          <tr className="text-gray-500 border-b border-gray-100">
+            <th className="pb-2 font-medium">Pelapor</th>
+            <th className="pb-2 font-medium">Judul</th>
+            <th className="pb-2 font-medium text-right">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {laporanWargaData.map((item, index) => (
+            <tr key={index} className={index < laporanWargaData.length - 1 ? 'border-b border-gray-50' : ''}>
+              <td className="py-3 font-medium text-gray-800">{item.nama || 'Warga'}</td>
+              <td className="py-3 text-gray-600 truncate max-w-[200px]">{item.judul}</td>
+              <td className="py-3 text-right">
+                <span className={`px-2 py-1 rounded-md ${item.status === 'selesai' ? 'bg-teal-50 text-teal-700' : (item.status === 'diproses' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700')}`}>{item.status || 'menunggu'}</span>
+              </td>
+            </tr>
+          ))}
+          {laporanWargaData.length === 0 && (
+            <tr><td colSpan={3} className="text-center py-4 text-gray-400">Belum ada laporan</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const WebIuranChart = () => {
+  const [chartData, setChartData] = useState<{bulan: string, value: number}[]>([]);
+  useEffect(() => {
+    apiFetch('/api/data/iuran').then(res => res.json()).then(data => {
+      const items = data.data || [];
+      const stats: Record<string, number> = {};
+      items.forEach((i: any) => {
+        if (i.status === 'verifikasi') {
+          stats[i.bulan] = (stats[i.bulan] || 0) + parseInt(i.nominal || '0');
+        }
+      });
+      const keys = Object.keys(stats).slice(-6);
+      setChartData(keys.map(k => ({ bulan: k.split(' ')[0].substring(0,3), value: stats[k] })));
+    }).catch(console.error);
+  }, []);
+
+  const maxValue = Math.max(...chartData.map(d => d.value), 100000);
+
+  return (
+    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-4">
+      <h3 className="text-sm font-semibold text-gray-900">Tren Pemasukan Bulanan</h3>
+      <div className="flex-grow flex items-end justify-between gap-1 p-2 border border-gray-50 rounded-lg">
+        {chartData.length > 0 ? chartData.map((data, index) => (
+          <div key={index} className="flex flex-col items-center gap-1 min-h-[100px] justify-end mt-4 w-full">
+            <div className="bg-teal-500 w-8 rounded-t-sm" style={{ height: `${(data.value / maxValue) * 100}px` }}></div>
+            <span className="text-[9px] text-gray-400 font-medium">{data.bulan}</span>
+          </div>
+        )) : <div className="text-xs text-gray-400 text-center w-full py-8">Belum ada data pemasukan</div>}
+      </div>
+    </div>
+  );
+};
 
 const WebWargaPage = ({ user }: { user: any }) => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
@@ -189,64 +408,82 @@ const WebWargaPage = ({ user }: { user: any }) => (
   </div>
 );
 
-const WebIuranPage = () => (
-  <div className="space-y-6 w-full">
-    <WebStatsCards/>
-    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-4 mb-6">
-       <h3 className="text-sm font-semibold text-gray-900 border-b border-gray-50 pb-3">Manajemen Kas & Iuran</h3>
-       <table className="w-full text-left text-xs mt-2">
-          <thead>
-             <tr className="text-gray-500 border-b border-gray-100">
-                <th className="pb-2 font-medium">Nama Warga</th>
-                <th className="pb-2 font-medium">Bulan</th>
-                <th className="pb-2 font-medium">Nominal</th>
-                <th className="pb-2 font-medium">Status</th>
-             </tr>
-          </thead>
-          <tbody>
-             <tr className="border-b border-gray-50">
-                <td className="py-3 font-medium text-gray-800">Adji Prasetyo</td>
-                <td className="py-3 text-gray-600">Maret 2024</td>
-                <td className="py-3 text-gray-600">Rp 50.000</td>
-                <td className="py-3"><span className="px-2 py-1 bg-teal-50 text-teal-700 rounded-md font-medium">Lunas</span></td>
-             </tr>
-             <tr className="border-b border-gray-50">
-                <td className="py-3 font-medium text-gray-800">Budi Santoso</td>
-                <td className="py-3 text-gray-600">Maret 2024</td>
-                <td className="py-3 text-gray-600">Rp 50.000</td>
-                <td className="py-3"><span className="px-2 py-1 bg-red-50 text-red-700 rounded-md font-medium">Belum Lunas</span></td>
-             </tr>
-          </tbody>
-       </table>
+const WebIuranPage = ({ user }: { user: any }) => (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
+    <div className="p-4 md:p-8">
+      <MobileIuran onBack={() => {}} currentUser={user} />
     </div>
   </div>
 );
 
-const WebLaporanPage = () => (
-  <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center py-24 text-center w-full">
-    <icons.laporan className="w-16 h-16 text-gray-300 mb-4" />
-    <h2 className="text-2xl font-bold text-gray-800 mb-2">Laporan & Keluhan</h2>
-    <p className="text-gray-500 mb-6">Tindak lanjuti laporan warga yang masuk terkait fasilitas atau keamanan.</p>
+const WebLaporanPage = ({ user }: { user: any }) => (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
+    <div className="p-4 md:p-8">
+      <MobileLaporRT onBack={() => {}} currentUser={user} />
+    </div>
   </div>
 );
 
-const WebPengumumanPage = () => (
-  <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center py-24 text-center w-full">
-    <icons.pengumuman className="w-16 h-16 text-gray-300 mb-4" />
-    <h2 className="text-2xl font-bold text-gray-800 mb-2">Pengumuman & Acara</h2>
-    <p className="text-gray-500 mb-6">Siarkan kabar penting dan buat jadwal kegiatan/acara untuk warga.</p>
-    <button className="px-6 py-2 bg-amber-500 text-white rounded-lg font-medium">Buat Pengumuman Baru</button>
+const WebPengumumanPage = ({ user }: { user: any }) => (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
+    <div className="p-4 md:p-8">
+      <MobileAcaraPage currentUser={user} />
+    </div>
   </div>
 );
 
-const WebUMKMPage = () => (
-  <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center py-24 text-center w-full">
-    <icons.umkm className="w-16 h-16 text-gray-300 mb-4" />
-    <h2 className="text-2xl font-bold text-gray-800 mb-2">Direktori UMKM Warga</h2>
-    <p className="text-gray-500 mb-6">Kelola dan dukung usaha kecil menengah milik warga di lingkungan RT.</p>
-    <button className="px-6 py-2 bg-teal-600 text-white rounded-lg font-medium">Tambah Data UMKM</button>
+const WebUMKMPage = ({ user }: { user: any }) => (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
+    <div className="p-4 md:p-8">
+      <MobileUMKM onBack={() => {}} currentUser={user} />
+    </div>
   </div>
 );
+
+const WebPengaturanPage = ({ user, onLogout }: { user: any, onLogout: () => void }) => {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full min-h-[500px]">
+      <div className="p-8 border-b border-gray-50">
+        <h2 className="text-xl font-bold text-gray-800">Pengaturan Web</h2>
+        <p className="text-sm text-gray-500 mt-1">Kelola preferensi dan sistem aplikasi RT.</p>
+      </div>
+      <div className="p-8 space-y-6">
+        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
+          <div>
+            <h3 className="font-semibold text-gray-800 text-sm">Notifikasi Web</h3>
+            <p className="text-xs text-gray-500 mt-1">Terima pop-up notifikasi saat ada aktivitas baru.</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" className="sr-only peer" defaultChecked />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+          </label>
+        </div>
+        
+        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
+          <div>
+            <h3 className="font-semibold text-gray-800 text-sm">Tema Aplikasi</h3>
+            <p className="text-xs text-gray-500 mt-1">Ubah tampilan terang atau gelap.</p>
+          </div>
+          <select className="text-sm border border-gray-200 rounded-lg bg-white p-2 text-gray-700 outline-none">
+            <option>Terang (Default)</option>
+            <option>Gelap</option>
+            <option>Otomatis</option>
+          </select>
+        </div>
+
+        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
+          <div>
+            <h3 className="font-semibold text-gray-800 text-sm">Logout</h3>
+            <p className="text-xs text-gray-500 mt-1">Keluar dari sesi admin web saat ini.</p>
+          </div>
+          <button onClick={onLogout} className="px-6 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition">
+            Keluar Aplikasi
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // --- Mobile UI Components (Aplikasi Warga Mockup) ---
 const MobileHeader = ({ notifications, onShowNotifications }: { notifications: any[], onShowNotifications: () => void }) => {
@@ -832,7 +1069,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
       <div className="hidden md:flex relative z-10 w-full h-full flex-col">
         <WebSidebar activeTab={activeWebTab} onTabChange={setActiveWebTab} />
         <div className="flex flex-col flex-grow w-full">
-          <WebHeader/>
+          <WebHeader user={user} onLogout={onLogout} onUpdateUser={onUpdateUser} />
           <main className="flex-grow p-8 overflow-y-auto" style={{ marginLeft: '16rem', backgroundColor: themeColors.neutral.bg }}>
             {activeWebTab === 'Dashboard' && (
               <>
@@ -844,17 +1081,11 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
               </>
             )}
             {activeWebTab === 'Warga' && <WebWargaPage user={user} />}
-            {activeWebTab === 'Iuran' && <WebIuranPage />}
-            {activeWebTab === 'Laporan' && <WebLaporanPage />}
-            {activeWebTab === 'Pengumuman' && <WebPengumumanPage />}
-            {activeWebTab === 'UMKM' && <WebUMKMPage />}
-            {activeWebTab === 'Pengaturan' && (
-              <div className="flex flex-col items-center justify-center h-full opacity-50 py-24 bg-white rounded-xl border border-gray-100">
-                <icons.pengaturan className="w-16 h-16 text-gray-300 mb-4" />
-                <h2 className="text-xl font-semibold text-gray-500">Pengaturan Web</h2>
-                <p className="text-sm text-gray-400">Pengaturan akses sistem RT</p>
-              </div>
-            )}
+            {activeWebTab === 'Iuran' && <WebIuranPage user={user} />}
+            {activeWebTab === 'Laporan' && <WebLaporanPage user={user} />}
+            {activeWebTab === 'Pengumuman' && <WebPengumumanPage user={user} />}
+            {activeWebTab === 'UMKM' && <WebUMKMPage user={user} />}
+            {activeWebTab === 'Pengaturan' && <WebPengaturanPage user={user} onLogout={onLogout} />}
           </main>
         </div>
       </div>
