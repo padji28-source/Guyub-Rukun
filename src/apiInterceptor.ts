@@ -146,11 +146,11 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
       }
 
       if (url === '/api/profile' && method === 'PUT') {
-        const { id, username, nama, alamat, noHp, status, photo } = body;
+        const { id, username, nama, alamat, noHp, status, photo, umur } = body;
         const users = await getUsers();
         const userIndex = users.findIndex((u: any) => u.id === id);
         if (userIndex !== -1) {
-          users[userIndex] = { ...users[userIndex], nama: nama || users[userIndex].nama, alamat: alamat || users[userIndex].alamat, noHp: noHp || users[userIndex].noHp, status: status || users[userIndex].status, photo: photo || users[userIndex].photo };
+          users[userIndex] = { ...users[userIndex], nama: nama || users[userIndex].nama, alamat: alamat || users[userIndex].alamat, noHp: noHp || users[userIndex].noHp, status: status || users[userIndex].status, photo: photo || users[userIndex].photo, umur: umur !== undefined ? umur : users[userIndex].umur };
           await saveUsers(users);
           return sendResponse({ message: "Profile updated successfully", user: users[userIndex] });
         }
@@ -159,7 +159,7 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
 
       if (url === '/api/warga' && method === 'GET') {
         const users = await getUsers();
-        return sendResponse({ users: users.filter((u: any) => u.id !== "admin") });
+        return sendResponse({ users });
       }
 
       const wargaMatch = url.match(/^\/api\/warga\/([^\/]+)$/);
@@ -268,6 +268,37 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
             if (!data[resource]) return sendResponse({ error: "Resource not found" }, 404);
             const newItem = { id: Date.now().toString(), createdAt: new Date().toISOString(), ...body };
             data[resource].push(newItem);
+            
+            if (resource === 'iuran' && newItem.status === 'verifikasi') {
+              const totalNominal = parseInt(newItem.nominal || '0', 10);
+              const danaKematian = 5000;
+              const kasRt = totalNominal - danaKematian;
+              
+              if (kasRt > 0) {
+                data['kas'].push({
+                  id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
+                  createdAt: new Date().toISOString(),
+                  type: 'Masuk',
+                  amount: kasRt,
+                  name: newItem.nama,
+                  message: `Iuran Warga - ${newItem.bulan || ''}`,
+                  category: 'Kas RT'
+                });
+              }
+              
+              if (totalNominal >= danaKematian) {
+                data['kas'].push({
+                  id: (Date.now() + 1).toString() + Math.random().toString(36).substring(2, 7),
+                  createdAt: new Date().toISOString(),
+                  type: 'Masuk',
+                  amount: danaKematian,
+                  name: newItem.nama,
+                  message: `Dana Kematian - ${newItem.bulan || ''}`,
+                  category: 'Dana Kematian'
+                });
+              }
+            }
+            
             await saveAppData(data);
             return sendResponse({ message: "Created successfully", item: newItem });
          }
@@ -296,15 +327,33 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
               }
               if (resource === 'iuran' && oldItem.status !== newItem.status && newItem.status === 'verifikasi') {
                 await addNotification('Iuran Diverifikasi', `Iuran dari ${newItem.nama || 'warga'} sebesar Rp ${newItem.nominal} telah diverifikasi dan masuk kas.`);
-                data['kas'].push({
-                  id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-                  createdAt: new Date().toISOString(),
-                  type: 'Masuk',
-                  amount: parseInt(newItem.nominal || '0', 10),
-                  name: newItem.nama,
-                  message: 'Iuran Warga',
-                  category: 'Kas RT'
-                });
+                const totalNominal = parseInt(newItem.nominal || '0', 10);
+                const danaKematian = 5000;
+                const kasRt = totalNominal - danaKematian;
+                
+                if (kasRt > 0) {
+                  data['kas'].push({
+                    id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
+                    createdAt: new Date().toISOString(),
+                    type: 'Masuk',
+                    amount: kasRt,
+                    name: newItem.nama,
+                    message: `Iuran Warga - ${newItem.bulan || ''}`,
+                    category: 'Kas RT'
+                  });
+                }
+                
+                if (totalNominal >= danaKematian) {
+                  data['kas'].push({
+                    id: (Date.now() + 1).toString() + Math.random().toString(36).substring(2, 7),
+                    createdAt: new Date().toISOString(),
+                    type: 'Masuk',
+                    amount: danaKematian,
+                    name: newItem.nama,
+                    message: `Dana Kematian - ${newItem.bulan || ''}`,
+                    category: 'Dana Kematian'
+                  });
+                }
                 await saveAppData(data);
               }
               return sendResponse({ message: "Updated successfully", item: newItem });

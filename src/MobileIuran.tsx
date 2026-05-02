@@ -4,19 +4,36 @@ import React, { useState, useEffect } from 'react';
 export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [nominal, setNominal] = useState('50000');
+  const [nominal, setNominal] = useState(currentUser?.role === 'admin' ? '65000' : '85000');
   const [bulan, setBulan] = useState('Januari');
   const [tahun, setTahun] = useState(new Date().getFullYear().toString());
   const [wargaList, setWargaList] = useState<any[]>([]);
+  const [filterStatus, setFilterStatus] = useState('Semua');
 
   // admin form state
   const [adminSelectedUserId, setAdminSelectedUserId] = useState('');
+  
+  useEffect(() => {
+    if (adminSelectedUserId === 'all') {
+      setNominal('85000');
+    } else if (adminSelectedUserId) {
+      const user = wargaList.find(w => w.id === adminSelectedUserId);
+      if (user?.role === 'admin') setNominal('65000');
+      else setNominal('85000');
+    }
+  }, [adminSelectedUserId, wargaList]);
   
   const [showBayarForm, setShowBayarForm] = useState(false);
   const [buktiBase64, setBuktiBase64] = useState('');
   const [viewBuktiUrl, setViewBuktiUrl] = useState<string | null>(null);
 
   const isAdminOrBendahara = currentUser?.role === 'admin' || currentUser?.role === 'bendahara';
+  
+  const tagihanList = data.filter(d => d.userId === currentUser?.id && d.status === 'belum dibayar');
+  const totalTagihan = tagihanList.reduce((sum, item) => sum + Number(item.nominal || 0), 0);
+  const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' });
+
+  const [adminStatus, setAdminStatus] = useState('verifikasi');
 
   const fetchData = async () => {
     try {
@@ -41,9 +58,30 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
       const reader = new FileReader();
-      reader.onload = (ev) => setBuktiBase64(ev.target?.result as string);
-      reader.readAsDataURL(e.target.files[0]);
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+          } else {
+            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          setBuktiBase64(canvas.toDataURL('image/jpeg', 0.6));
+        };
+        img.src = ev.target?.result as string;
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -53,19 +91,35 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
       return;
     }
     setLoading(true);
+    const period = `${bulan} ${tahun}`;
+    // Check if there is an existing tagihan (belum dibayar) for this month
+    const existing = tagihanList.find(t => t.bulan === period);
+
     try {
-      await apiFetch('/api/data/iuran', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          nominal, 
-          bulan: `${bulan} ${tahun}`,
-          status: 'menunggu', // menunggu verifikasi
-          userId: currentUser?.id,
-          nama: currentUser?.nama,
-          buktiUrl: buktiBase64
-        })
-      });
+      if (existing) {
+        await apiFetch(`/api/data/iuran/${existing.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            nominal,
+            status: 'menunggu',
+            buktiUrl: buktiBase64
+          })
+        });
+      } else {
+        await apiFetch('/api/data/iuran', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            nominal, 
+            bulan: period,
+            status: 'menunggu', // menunggu verifikasi
+            userId: currentUser?.id,
+            nama: currentUser?.nama,
+            buktiUrl: buktiBase64
+          })
+        });
+      }
       alert('Pembayaran iuran berhasil dicatat! Menunggu verifikasi pengurus.');
       setShowBayarForm(false);
       setBuktiBase64('');
@@ -86,19 +140,20 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
       const period = `${bulan} ${tahun}`;
 
-      await Promise.all(targetUsers.map(selectedUser => 
-        apiFetch('/api/data/iuran', {
+      for (const selectedUser of targetUsers) {
+        const userNominal = selectedUser.role === 'admin' ? '65000' : '85000';
+        await apiFetch('/api/data/iuran', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            nominal, 
+            nominal: adminSelectedUserId === 'all' ? userNominal : nominal, 
             bulan: period,
-            status: 'verifikasi', // langsung masuk kalau diinput admin
+            status: adminStatus,
             userId: selectedUser.id,
             nama: selectedUser.nama
           })
-        })
-      ));
+        });
+      }
 
       alert('Iuran berhasil ditambahkan.');
       setNominal('50000');
@@ -132,12 +187,14 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
         <div className="bg-white p-5 rounded-2xl shadow-md border border-gray-100">
           <h3 className="font-bold text-gray-800 text-sm mb-4 border-b pb-2">Pembayaran Iuran</h3>
           <div className="mb-4">
-            <p className="text-xs text-gray-600 mb-1">Silahkan transfer Tagihan Bulan Ini sebesar <span className="font-bold text-teal-600">Rp 50.000</span> ke:</p>
-            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
+            <p className="text-xs text-gray-600 mb-2">Silahkan transfer Tagihan ke bank berikut:</p>
+            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 mb-4">
               <p className="text-xs font-bold text-gray-800">Bank BCA</p>
               <p className="text-sm font-mono text-teal-700 tracking-wider">1234 5678 90</p>
               <p className="text-[10px] text-gray-500 uppercase">A.N. Bendahara RT 01</p>
             </div>
+            <label className="block text-xs font-semibold text-gray-700 mb-2">Nominal Transfer (Rp)</label>
+            <input type="number" value={nominal} onChange={e => setNominal(e.target.value)} disabled={loading} className="w-full p-2 text-xs border rounded-xl outline-none" />
           </div>
           <div className="mb-4">
             <label className="block text-xs font-semibold text-gray-700 mb-2">Pilih Bulan</label>
@@ -175,18 +232,28 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     <div className="p-4 pb-24">
       <button onClick={onBack} className="text-[10px] text-teal-600 mb-4 font-bold inline-flex items-center gap-1 bg-teal-50 px-2 py-1 rounded">← Beranda</button>
       
-      {!isAdminOrBendahara && (
-        <div className="bg-teal-600 p-5 rounded-2xl text-white mb-6 shadow-md relative overflow-hidden">
-          <div className="flex justify-between items-start mb-4 relative z-10">
-            <div>
-              <p className="text-[10px] opacity-80 uppercase">Tagihan Bulan Ini</p>
-              <h4 className="text-xl font-bold">Rp 50.000</h4>
-            </div>
-            <button onClick={() => setShowBayarForm(true)} disabled={loading} className="px-3 py-1 bg-white text-teal-600 rounded-lg text-xs font-bold shadow-sm">Bayar</button>
+      <div className="bg-teal-600 p-5 rounded-2xl text-white mb-6 shadow-md relative overflow-hidden">
+        <div className="flex justify-between items-start mb-4 relative z-10">
+          <div>
+            <p className="text-[10px] opacity-80 uppercase">Total Tagihan Belum Dibayar</p>
+            <h4 className="text-xl font-bold">{formatter.format(totalTagihan)}</h4>
           </div>
-          <p className="text-[10px] opacity-80">Mohon bayar sebelum tanggal 10 agar terhindar dari denda.</p>
+          <button onClick={() => {
+            if (tagihanList.length > 0) {
+              const [b, t] = tagihanList[0].bulan.split(' ');
+              setBulan(b);
+              setTahun(t);
+              setNominal(tagihanList[0].nominal);
+            }
+            setShowBayarForm(true);
+          }} disabled={loading} className="px-3 py-1 bg-white text-teal-600 rounded-lg text-xs font-bold shadow-sm">Bayar</button>
         </div>
-      )}
+        {tagihanList.length > 0 ? (
+          <p className="text-[10px] opacity-90 font-medium">Ada {tagihanList.length} tagihan menunggu pembayaran.</p>
+        ) : (
+          <p className="text-[10px] opacity-80">Tidak ada tagihan tertunggak. Anda dapat menginput pembayaran secara mandiri.</p>
+        )}
+      </div>
 
       {isAdminOrBendahara && (
         <form onSubmit={handleTambahAdmin} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 space-y-3">
@@ -202,7 +269,14 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
             </select>
           </div>
           <div className="flex gap-2">
-            <div className="w-1/3">
+            <div className="w-1/4">
+              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Status</label>
+              <select value={adminStatus} onChange={e => setAdminStatus(e.target.value)} required className="w-full p-2 text-xs border rounded">
+                <option value="verifikasi">Lunas</option>
+                <option value="belum dibayar">Tagihan</option>
+              </select>
+            </div>
+            <div className="w-1/4">
               <label className="block text-[10px] font-semibold text-gray-700 mb-1">Bulan</label>
               <select value={bulan} onChange={e => setBulan(e.target.value)} required className="w-full p-2 text-xs border rounded">
                 {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(m => (
@@ -210,7 +284,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
                 ))}
               </select>
             </div>
-            <div className="w-1/3">
+            <div className="w-1/4">
               <label className="block text-[10px] font-semibold text-gray-700 mb-1">Tahun</label>
               <select value={tahun} onChange={e => setTahun(e.target.value)} required className="w-full p-2 text-xs border rounded">
                 {[2024, 2025, 2026, 2027, 2028].map(y => (
@@ -218,7 +292,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
                 ))}
               </select>
             </div>
-            <div className="w-1/3">
+            <div className="w-1/4">
               <label className="block text-[10px] font-semibold text-gray-700 mb-1">Nominal (Rp)</label>
               <input type="number" placeholder="Nominal" value={nominal} onChange={e => setNominal(e.target.value)} required className="w-full p-2 text-xs border rounded" />
             </div>
@@ -227,9 +301,24 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
         </form>
       )}
 
-      <h4 className="font-bold text-gray-800 text-xs mb-3 px-1">Riwayat Iuran {isAdminOrBendahara ? 'Warga' : 'Saya'}</h4>
+      <div className="flex justify-between items-end mb-3 px-1">
+        <h4 className="font-bold text-gray-800 text-xs">Riwayat Iuran {isAdminOrBendahara ? 'Warga' : 'Saya'}</h4>
+        <div className="flex gap-1">
+          {['Semua', 'Belum Bayar', 'Verifikasi', 'Lunas'].map(f => (
+            <button key={f} onClick={() => setFilterStatus(f)} className={`text-[8px] px-2 py-1 rounded font-bold border ${filterStatus === f ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="space-y-2">
-        {data.filter(d => isAdminOrBendahara || d.userId === currentUser?.id).reverse().map((item) => (
+        {data.filter(d => {
+          if (!isAdminOrBendahara && d.userId !== currentUser?.id) return false;
+          if (filterStatus === 'Belum Bayar') return d.status === 'belum dibayar';
+          if (filterStatus === 'Verifikasi') return d.status === 'menunggu';
+          if (filterStatus === 'Lunas') return d.status === 'verifikasi';
+          return true;
+        }).reverse().map((item) => (
           <div key={item.id} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
               <p className="font-bold text-xs text-gray-800">{item.nama} - {item.bulan}</p>
@@ -254,7 +343,13 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
             </div>
           </div>
         ))}
-        {data.filter(d => isAdminOrBendahara || d.userId === currentUser?.id).length === 0 && (
+        {data.filter(d => {
+          if (!isAdminOrBendahara && d.userId !== currentUser?.id) return false;
+          if (filterStatus === 'Belum Bayar') return d.status === 'belum dibayar';
+          if (filterStatus === 'Verifikasi') return d.status === 'menunggu';
+          if (filterStatus === 'Lunas') return d.status === 'verifikasi';
+          return true;
+        }).length === 0 && (
           <p className="text-xs text-center text-gray-400 py-4">Belum ada riwayat iuran.</p>
         )}
       </div>

@@ -8,6 +8,8 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
   const [category, setCategory] = useState('Kas RT');
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState('');
+  const [transferAmount, setTransferAmount] = useState('');
+  const [showTransfer, setShowTransfer] = useState(false);
 
   const isAdminOrBendahara = currentUser?.role === 'admin' || currentUser?.role === 'bendahara';
 
@@ -60,6 +62,55 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
     return masuk - keluar;
   };
 
+  const handleTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const nominal = parseInt(transferAmount.replace(/\D/g, '') || '0');
+    if (nominal <= 0) {
+      alert("Nominal transfer tidak valid.");
+      setLoading(false);
+      return;
+    }
+    const saldoKasRt = getSaldo('Kas RT');
+    if (nominal > saldoKasRt) {
+      alert("Saldo Kas RT tidak mencukupi.");
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      // Keluar dari Kas RT
+      await apiFetch('/api/data/kas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          type: 'Keluar', 
+          category: 'Kas RT',
+          amount: nominal, 
+          message: 'Transfer ke Dana Sosial',
+          name: currentUser?.nama
+        })
+      });
+      // Masuk ke Dana Sosial
+      await apiFetch('/api/data/kas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          type: 'Masuk', 
+          category: 'Dana Sosial',
+          amount: nominal, 
+          message: 'Transfer dari Kas RT',
+          name: currentUser?.nama
+        })
+      });
+      setTransferAmount('');
+      setShowTransfer(false);
+      alert('Transfer berhasil!');
+      fetchData();
+    } catch(e) { console.error(e) }
+    setLoading(false);
+  };
+
   const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' });
 
   return (
@@ -84,23 +135,55 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
       </div>
 
       {isAdminOrBendahara && (
-        <form onSubmit={handleTambah} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 space-y-3">
-          <h4 className="font-bold text-gray-800 text-xs border-b pb-2">Catat Kas Baru</h4>
-          <div className="flex gap-2">
-            <select value={category} onChange={e => setCategory(e.target.value)} className="p-2 text-xs border rounded w-1/2">
-              <option value="Kas RT">Kas RT</option>
-              <option value="Dana Kematian">Dana Kematian</option>
-              <option value="Dana Sosial">Dana Sosial</option>
-            </select>
-            <select value={type} onChange={e => setType(e.target.value)} className="p-2 text-xs border rounded w-1/2">
-              <option value="Masuk">Masuk</option>
-              <option value="Keluar">Keluar</option>
-            </select>
+        <div className="mb-6 space-y-3">
+          <div className="flex gap-2 mb-2">
+            <button 
+              onClick={() => setShowTransfer(false)} 
+              className={`flex-1 py-2 text-xs font-bold rounded-lg border ${!showTransfer ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-700 border-gray-200'}`}
+            >
+              Catat Kas Baru
+            </button>
+            <button 
+              onClick={() => setShowTransfer(true)} 
+              className={`flex-1 py-2 text-xs font-bold rounded-lg border ${showTransfer ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-700 border-gray-200'}`}
+            >
+              Transfer Dana
+            </button>
           </div>
-          <input type="number" placeholder="Nominal" value={amount} onChange={e => setAmount(e.target.value)} required className="w-full p-2 text-xs border rounded" />
-          <input type="text" placeholder="Keterangan..." value={message} onChange={e => setMessage(e.target.value)} required className="w-full p-2 text-xs border rounded" />
-          <button type="submit" disabled={loading} className="w-full py-2 bg-emerald-600 text-white rounded text-xs font-bold">{loading ? 'Menyimpan...' : 'Simpan Kas'}</button>
-        </form>
+
+          {!showTransfer ? (
+            <form onSubmit={handleTambah} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <select value={category} onChange={e => setCategory(e.target.value)} className="p-2 text-xs border rounded w-1/2">
+                    <option value="Kas RT">Kas RT</option>
+                    <option value="Dana Kematian">Dana Kematian</option>
+                    <option value="Dana Sosial">Dana Sosial</option>
+                  </select>
+                  <select value={type} onChange={e => setType(e.target.value)} className="p-2 text-xs border rounded w-1/2">
+                    <option value="Masuk">Masuk</option>
+                    <option value="Keluar">Keluar</option>
+                  </select>
+                </div>
+                <input type="number" placeholder="Nominal" value={amount} onChange={e => setAmount(e.target.value)} required className="w-full p-2 text-xs border rounded" />
+                <input type="text" placeholder="Keterangan..." value={message} onChange={e => setMessage(e.target.value)} required className="w-full p-2 text-xs border rounded" />
+                <button type="submit" disabled={loading} className="w-full py-2 bg-emerald-600 text-white rounded text-xs font-bold">{loading ? 'Menyimpan...' : 'Simpan Kas'}</button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleTransfer} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+              <div className="space-y-3">
+                <div className="flex gap-2 items-center text-xs font-medium text-gray-700 p-2 bg-gray-50 rounded">
+                  <span className="flex-1 text-center">Kas RT</span>
+                  <span>➔</span>
+                  <span className="flex-1 text-center">Dana Sosial</span>
+                </div>
+                <input type="number" placeholder="Nominal Transfer" value={transferAmount} onChange={e => setTransferAmount(e.target.value)} required className="w-full p-2 text-xs border rounded" min="1" max={getSaldo('Kas RT')} />
+                <button type="submit" disabled={loading} className="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold">{loading ? 'Memproses...' : 'Transfer Sekarang'}</button>
+              </div>
+            </form>
+          )}
+        </div>
       )}
 
       <h4 className="font-bold text-gray-800 text-xs mb-3 px-1">Riwayat Transaksi</h4>
