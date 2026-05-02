@@ -34,18 +34,18 @@ async function initDb() {
         noHp: "0812-3456-7890",
         status: "Ketua RT 04 / RW 01"
       });
-      await setDoc(DB_DOC, { list });
+      await saveUsers(list);
     }
   }
 
   const notifSnap = await getDoc(NOTIF_DOC);
   if (!notifSnap.exists()) {
-    await setDoc(NOTIF_DOC, { list: [] });
+    await saveNotifications([]);
   }
 
   const appDataSnap = await getDoc(APP_DATA_DOC);
   if (!appDataSnap.exists()) {
-    await setDoc(APP_DATA_DOC, { data: {
+    await saveAppData({
       surat: [],
       laporan: [],
       acara: [],
@@ -59,7 +59,7 @@ async function initDb() {
         { id: "d4", name: 'Ketua RT 04 (Bpk. Adji)', tel: '081234567890', type: 'Lingkungan' },
         { id: "d5", name: 'Security Pos Depan', tel: '089876543210', type: 'Keamanan' }
       ]
-    }});
+    });
   }
 }
 
@@ -69,7 +69,7 @@ async function getUsers() {
 }
 
 async function saveUsers(users: any) {
-  await setDoc(DB_DOC, { list: users });
+  await setDoc(DB_DOC, JSON.parse(JSON.stringify({ list: users })));
 }
 
 async function getNotifications() {
@@ -78,7 +78,7 @@ async function getNotifications() {
 }
 
 async function saveNotifications(notifs: any) {
-  await setDoc(NOTIF_DOC, { list: notifs });
+  await setDoc(NOTIF_DOC, JSON.parse(JSON.stringify({ list: notifs })));
 }
 
 async function getAppData() {
@@ -94,7 +94,7 @@ async function getAppData() {
 }
 
 async function saveAppData(data: any) {
-  await setDoc(APP_DATA_DOC, { data });
+  await setDoc(APP_DATA_DOC, JSON.parse(JSON.stringify({ data })));
 }
 
 export async function addNotification(title: string, message: string) {
