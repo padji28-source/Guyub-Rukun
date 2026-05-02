@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [date, setDate] = useState('');
@@ -50,13 +51,25 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
       <h3 className="font-bold text-gray-800 text-sm mb-2">Manajemen Acara Mendatang</h3>
       
       {isAdminOrPengurus && (
-        <form onSubmit={handleTambah} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3">
-          <h4 className="font-bold text-gray-800 text-xs border-b pb-2">Tambah Acara Baru</h4>
-          <input type="text" placeholder="Nama Acara" value={title} onChange={e => setTitle(e.target.value)} required className="w-full p-2 text-xs border rounded" />
-          <textarea placeholder="Deskripsi Acara" value={desc} onChange={e => setDesc(e.target.value)} required className="w-full p-2 text-xs border rounded"></textarea>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full p-2 text-xs border rounded" />
-          <button type="submit" disabled={loading} className="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold">{loading ? 'Menyimpan...' : 'Tambah'}</button>
-        </form>
+        <div className="mb-4">
+          <button 
+            onClick={() => setShowForm(!showForm)} 
+            className="w-full py-3 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold border border-blue-100 flex justify-between items-center px-4 shadow-sm"
+          >
+            <span>Ingin Membuat Acara?</span>
+            <span className="text-lg leading-none">{showForm ? '−' : '+'}</span>
+          </button>
+          
+          {showForm && (
+            <form onSubmit={handleTambah} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <h4 className="font-bold text-gray-800 text-xs border-b pb-2">Tambah Acara Baru</h4>
+              <input type="text" placeholder="Nama Acara" value={title} onChange={e => setTitle(e.target.value)} required className="w-full p-2 text-xs border rounded" />
+              <textarea placeholder="Deskripsi Acara" value={desc} onChange={e => setDesc(e.target.value)} required className="w-full p-2 text-xs border rounded"></textarea>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full p-2 text-xs border rounded" />
+              <button type="submit" disabled={loading} className="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold">{loading ? 'Menyimpan...' : 'Tambah'}</button>
+            </form>
+          )}
+        </div>
       )}
 
       <div className="space-y-3 mt-4">

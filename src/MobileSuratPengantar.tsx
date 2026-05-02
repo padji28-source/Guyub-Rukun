@@ -6,6 +6,7 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
   const [keperluan, setKeperluan] = useState('');
   const [keterangan, setKeterangan] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
 
@@ -59,20 +60,31 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
     <div className="p-4 pb-24">
       <button onClick={onBack} className="text-[10px] text-teal-600 mb-4 font-bold inline-flex items-center gap-1 bg-teal-50 px-2 py-1 rounded">← Kembali ke Beranda</button>
       
-      <>
+      <div className="mb-6">
         <h3 className="font-bold text-gray-800 text-sm mb-3">Buat Surat Pengantar</h3>
-        <form onSubmit={handleSubmit} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3 mb-6">
-          <div>
-            <label className="block text-[10px] font-semibold text-gray-700 mb-1">Keperluan</label>
-            <input type="text" placeholder="Contoh: Pengantar SKCK" value={keperluan} onChange={e => setKeperluan(e.target.value)} required className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
-          </div>
-          <div>
-            <label className="block text-[10px] font-semibold text-gray-700 mb-1">Keterangan Tambahan</label>
-            <textarea placeholder="Tulis rincian..." value={keterangan} onChange={e => setKeterangan(e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg text-xs h-16"></textarea>
-          </div>
-          <button type="submit" disabled={loading} className="w-full py-2.5 mt-2 bg-teal-600 text-white rounded-lg text-xs font-semibold">{loading ? 'Memproses...' : 'Kirim Permohonan'}</button>
-        </form>
-      </>
+        
+        <button 
+          onClick={() => setShowForm(!showForm)} 
+          className="w-full py-3 bg-teal-50 text-teal-600 rounded-xl text-xs font-bold border border-teal-100 flex justify-between items-center px-4 shadow-sm"
+        >
+          <span>Ingin Membuat Surat?</span>
+          <span className="text-lg leading-none">{showForm ? '−' : '+'}</span>
+        </button>
+
+        {showForm && (
+          <form onSubmit={handleSubmit} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div>
+              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Keperluan</label>
+              <input type="text" placeholder="Contoh: Pengantar SKCK" value={keperluan} onChange={e => setKeperluan(e.target.value)} required className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Keterangan Tambahan</label>
+              <textarea placeholder="Tulis rincian..." value={keterangan} onChange={e => setKeterangan(e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg text-xs h-16"></textarea>
+            </div>
+            <button type="submit" disabled={loading} className="w-full py-2.5 mt-2 bg-teal-600 text-white rounded-lg text-xs font-semibold">{loading ? 'Memproses...' : 'Kirim Permohonan'}</button>
+          </form>
+        )}
+      </div>
 
       {(isAdminOrPengurus || data.some(d => d.userId === currentUser?.id)) && (
         <div>

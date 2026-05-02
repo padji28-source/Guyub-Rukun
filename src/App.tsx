@@ -537,7 +537,8 @@ const quickActions = [
 
 const MobileSaldoCard = () => {
   const [saldo, setSaldo] = useState(0);
-  const [masukBulanIni, setMasukBulanIni] = useState(0);
+  const [danaKematian, setDanaKematian] = useState(0);
+  const [danaSosial, setDanaSosial] = useState(0);
 
   useEffect(() => {
     apiFetch('/api/data/kas')
@@ -549,13 +550,15 @@ const MobileSaldoCard = () => {
         const keluar = kasRtData.filter((d: any) => d.type === 'Keluar').reduce((a: number, b: any) => a + (b.amount || 0), 0);
         setSaldo(masuk - keluar);
 
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-        const monthInc = kasRtData.filter((d: any) => {
-          const dDate = new Date(d.date);
-          return d.type === 'Masuk' && dDate.getMonth() === currentMonth && dDate.getFullYear() === currentYear;
-        }).reduce((a: number, b: any) => a + (b.amount || 0), 0);
-        setMasukBulanIni(monthInc);
+        const getSaldo = (cat: string) => {
+          const items = data.filter((d: any) => (d.category || 'Kas RT') === cat);
+          const m = items.filter((d: any) => d.type === 'Masuk').reduce((a: number, b: any) => a + (b.amount || 0), 0);
+          const k = items.filter((d: any) => d.type === 'Keluar').reduce((a: number, b: any) => a + (b.amount || 0), 0);
+          return m - k;
+        };
+
+        setDanaKematian(getSaldo('Dana Kematian'));
+        setDanaSosial(getSaldo('Dana Sosial'));
       })
       .catch(e => console.error(e));
   }, []);
@@ -571,8 +574,9 @@ const MobileSaldoCard = () => {
             <icons.kas className="w-5 h-5 opacity-80"/>
           </div>
           <h3 className="text-2xl font-bold tracking-tight mt-1 mb-1 text-white" style={{ fontFamily: fontStyle }}>{formatter.format(saldo)}</h3>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm font-medium">+ {formatter.format(masukBulanIni)} (Bulan ini)</span>
+          <div className="flex items-center gap-2 mt-2 truncate">
+            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm font-medium">Sosial: {formatter.format(danaSosial)}</span>
+            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm font-medium">Kematian: {formatter.format(danaKematian)}</span>
           </div>
       </div>
     </section>
