@@ -309,14 +309,18 @@ const MobileQuickActions = ({ onActionClick }: { onActionClick: (action: string)
 );
 
 const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => void }) => {
-  const [selectedDate, setSelectedDate] = useState<number | null>(15);
+  const today = new Date();
+  const [selectedDate, setSelectedDate] = useState<number | null>(today.getDate());
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [mediaList, setMediaList] = useState<any[]>([]);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [backendEvents, setBackendEvents] = useState<any[]>([]);
 
   useEffect(() => {
     apiFetch('/api/data/media').then(r => r.json()).then(json => {
       if (json.data && json.data.length > 0) {
-        setMediaList(json.data.slice(-5).reverse()); // Get up to 5 latest media, newest first
+        setMediaList(json.data.slice(-5).reverse());
       } else {
         setMediaList([{
           imageUrl: "https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=600&q=80",
@@ -325,7 +329,11 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
           desc: "Keseruan warga RT 01 bergotong royong membersihkan selokan dan jalanan."
         }]);
       }
-    }).catch(e => console.error(e));
+    }).catch(console.error);
+
+    apiFetch('/api/data/acara').then(r => r.json()).then(json => {
+      setBackendEvents(json.data || []);
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -337,6 +345,26 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
   }, [mediaList.length]);
 
   const currentMedia = mediaList[activeMediaIndex] || null;
+
+  // Calendar Logic
+  const getDaysInMonth = (month: number, year: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (month: number, year: number) => new Date(year, month, 1).getDay();
+
+  const daysInMonth = getDaysInMonth(currentMonth, currentYear);
+  const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
+  const blanks = Array.from({ length: firstDay }, (_, i) => null);
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const totalSlots = [...blanks, ...days];
+  const weeks = [];
+  for (let i = 0; i < totalSlots.length; i += 7) weeks.push(totalSlots.slice(i, i + 7));
+
+  const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+  const selectedDateEvents = backendEvents.filter(e => {
+    if (!selectedDate) return false;
+    const d = new Date(e.date);
+    return d.getDate() === selectedDate && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
 
   return (
   <section className="px-4 mb-6 space-y-4">
@@ -375,29 +403,43 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
 
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
       <div className="flex justify-between items-center mb-3">
-         <h4 className="font-bold text-gray-800 text-xs">Jadwal Acara (Maret)</h4>
-         <span className="text-[9px] text-teal-600 font-bold cursor-pointer" onClick={() => onActionClick('Acara')}>Buka Kalender</span>
+         <div className="flex items-center gap-2">
+           <select 
+             className="text-xs font-bold text-gray-800 bg-transparent border-none outline-none cursor-pointer"
+             value={currentMonth}
+             onChange={(e) => setCurrentMonth(parseInt(e.target.value))}
+           >
+             {monthNames.map((m, i) => <option key={i} value={i}>{m}</option>)}
+           </select>
+           <select 
+             className="text-xs font-bold text-gray-800 bg-transparent border-none outline-none cursor-pointer ml-1"
+             value={currentYear}
+             onChange={(e) => setCurrentYear(parseInt(e.target.value))}
+           >
+             {Array.from({ length: 10 }, (_, i) => today.getFullYear() - 5 + i).map(y => (
+               <option key={y} value={y}>{y}</option>
+             ))}
+           </select>
+         </div>
+         <span className="text-[9px] text-teal-600 font-bold cursor-pointer" onClick={() => onActionClick('Acara')}>Kelola Acara</span>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center mb-2">
         {['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'].map(d => <div key={d} className="text-[8px] font-bold text-gray-400">{d}</div>)}
       </div>
       <div className="space-y-1">
-        {[
-          [null, null, null, 1, 2, 3, 4],
-          [5, 6, 7, 8, 9, 10, 11],
-          [12, 13, 14, 15, 16, 17, 18],
-          [19, 20, 21, 22, 23, 24, 25],
-          [26, 27, 28, 29, 30, 31, null]
-        ].map((week, i) => (
+        {weeks.map((week, i) => (
           <div key={i} className="grid grid-cols-7 gap-1 text-center">
             {week.map((date, j) => {
-              const isEvent = date === 19 || date === 10;
+              const isEvent = date && backendEvents.some(e => {
+                const d = new Date(e.date);
+                return d.getDate() === date && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+              });
               const isSelected = selectedDate === date;
               return (
                 <div 
                   key={j} 
                   onClick={() => date && setSelectedDate(date)}
-                  className={`text-[10px] aspect-square cursor-pointer flex flex-col items-center justify-center rounded-full font-medium transition-colors ${isSelected ? 'bg-teal-600 text-white shadow-md' : isEvent ? 'bg-orange-100 text-orange-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                  className={`text-[10px] aspect-square cursor-pointer flex flex-col items-center justify-center rounded-full font-medium transition-colors ${!date ? '' : isSelected ? 'bg-teal-600 text-white shadow-md' : isEvent ? 'bg-orange-100 text-orange-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
                   {date || ''}
                   {isEvent && !isSelected && <div className="w-1 h-1 bg-orange-500 rounded-full mt-0.5"></div>}
                 </div>
@@ -407,18 +449,17 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
         ))}
       </div>
       <div className="mt-4 space-y-3 border-t border-gray-50 pt-3">
-         {mobileEventsData.filter(e => !selectedDate || e.day === selectedDate.toString()).map((item) => (
+         {selectedDateEvents.map((item) => (
           <div key={item.id} className="flex gap-2 items-center">
-            <div className={`w-1 h-full min-h-[30px] rounded-full ${item.id === 1 ? 'bg-orange-400' : 'bg-teal-500'}`}></div>
+            <div className={`w-1 h-full min-h-[30px] rounded-full bg-teal-500`}></div>
             <div className="flex-grow">
-              <h5 className="text-[10px] font-bold text-gray-800 leading-tight">{item.name}</h5>
-              <p className="text-[8px] text-gray-500 mt-0.5">{item.day} Mar • {item.year.split('/')[1] || '08:00 WIB'}</p>
+              <h5 className="text-[10px] font-bold text-gray-800 leading-tight">{item.title}</h5>
+              <p className="text-[8px] text-gray-500 mt-0.5">{new Date(item.date).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})} • {item.desc}</p>
             </div>
-            <button className="text-[9px] font-medium text-teal-600 bg-teal-50 px-2 py-1 rounded">Rincian</button>
           </div>
          ))}
-         {selectedDate && mobileEventsData.filter(e => e.day === selectedDate.toString()).length === 0 && (
-           <p className="text-[10px] text-center text-gray-400 py-2">Tidak ada acara di tanggal {selectedDate} Maret</p>
+         {selectedDate && selectedDateEvents.length === 0 && (
+           <p className="text-[10px] text-center text-gray-400 py-2">Tidak ada acara di tanggal {selectedDate} {monthNames[currentMonth]}</p>
          )}
       </div>
     </div>
