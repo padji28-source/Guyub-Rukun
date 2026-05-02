@@ -1,3 +1,4 @@
+import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 
 export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
@@ -6,7 +7,7 @@ export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, cur
 
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/data/darurat');
+      const res = await apiFetch('/api/data/darurat');
       const json = await res.json();
       setData(json.data || []);
     } catch(e) { console.error(e); }
@@ -23,7 +24,7 @@ export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, cur
     if (!newTel) return;
 
     try {
-      await fetch(`/api/data/darurat/${id}`, {
+      await apiFetch(`/api/data/darurat/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tel: newTel })

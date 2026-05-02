@@ -1,3 +1,4 @@
+import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 
 export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
@@ -12,7 +13,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
 
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/data/kas');
+      const res = await apiFetch('/api/data/kas');
       const json = await res.json();
       setData(json.data || []);
     } catch(e) { console.error(e); }
@@ -26,7 +27,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
     e.preventDefault();
     setLoading(true);
     try {
-      await fetch('/api/data/kas', {
+      await apiFetch('/api/data/kas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -47,7 +48,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`/api/data/kas/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/data/kas/${id}`, { method: 'DELETE' });
       fetchData();
     } catch(e) { console.error(e) }
   };

@@ -1,3 +1,4 @@
+import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProfileAvatar } from './App'; // Assuming we can export it or copy it
@@ -26,7 +27,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
 
   const fetchWarga = async () => {
     try {
-      const res = await fetch('/api/warga');
+      const res = await apiFetch('/api/warga');
       const data = await res.json();
       setWargaData(data.users || []);
     } catch(e) { console.error(e); }
@@ -39,7 +40,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
   const handleAddWarga = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await fetch('/api/register', {
+      await apiFetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newWarga)
@@ -54,13 +55,13 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
     e.preventDefault();
     try {
       if (editingMember) {
-        await fetch(`/api/warga/${activeWargaId}/members/${editingMember.id}`, {
+        await apiFetch(`/api/warga/${activeWargaId}/members/${editingMember.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(memberForm)
         });
       } else {
-        await fetch(`/api/warga/${activeWargaId}/members`, {
+        await apiFetch(`/api/warga/${activeWargaId}/members`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(memberForm)
@@ -75,7 +76,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
 
   const handleDeleteMember = async (wargaId: string, memberId: string) => {
     try {
-      await fetch(`/api/warga/${wargaId}/members/${memberId}`, { method: 'DELETE' });
+      await apiFetch(`/api/warga/${wargaId}/members/${memberId}`, { method: 'DELETE' });
       fetchWarga();
     } catch(e) { console.error(e); }
   };
@@ -209,7 +210,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                     <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border bg-teal-50 text-teal-600 border-teal-100`}>{warga.role === 'admin' ? 'Admin' : (warga.role === 'pengurus' ? 'Pengurus' : warga.status)}</span>
                     <span className="text-[9px] text-gray-400 font-medium flex items-center gap-0.5">
                       {isAdmin && warga.id !== currentUser?.id && (
-                        <button onClick={(e) => { e.stopPropagation(); fetch(`/api/warga/${warga.id}`,{method:'DELETE'}).then(()=>fetchWarga()); }} className="text-red-500 mr-2 p-1 bg-red-50 rounded text-[8px]">Hapus</button>
+                        <button onClick={(e) => { e.stopPropagation(); apiFetch(`/api/warga/${warga.id}`,{method:'DELETE'}).then(()=>fetchWarga()); }} className="text-red-500 mr-2 p-1 bg-red-50 rounded text-[8px]">Hapus</button>
                       )}
                       {expandedId === warga.id ? 'Tutup' : 'Lihat'} <icons.lainnya className={`w-3 h-3 ${expandedId === warga.id ? 'rotate-180' : ''}`} />
                     </span>
@@ -230,7 +231,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                           <select 
                             value={warga.role || 'warga'} 
                             onChange={async (e) => {
-                              await fetch(`/api/warga/${warga.id}/role`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({role: e.target.value})});
+                              await apiFetch(`/api/warga/${warga.id}/role`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({role: e.target.value})});
                               fetchWarga();
                             }}
                             className="text-[9px] border rounded p-1"

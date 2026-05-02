@@ -1,3 +1,4 @@
+import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MobileDataWarga } from './MobileDataWarga';
@@ -313,7 +314,7 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
 
   useEffect(() => {
-    fetch('/api/data/media').then(r => r.json()).then(json => {
+    apiFetch('/api/data/media').then(r => r.json()).then(json => {
       if (json.data && json.data.length > 0) {
         setMediaList(json.data.slice(-5).reverse()); // Get up to 5 latest media, newest first
       } else {
@@ -498,7 +499,7 @@ const MobileSaldoCard = () => {
   const [masukBulanIni, setMasukBulanIni] = useState(0);
 
   useEffect(() => {
-    fetch('/api/data/kas')
+    apiFetch('/api/data/kas')
       .then(res => res.json())
       .then(json => {
         const data = json.data || [];
@@ -569,7 +570,7 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/profile', {
+      const res = await apiFetch('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -691,7 +692,7 @@ const MobileSedekah = ({ onBack, user }: { onBack: () => void, user?: any }) => 
   const handleDonasi = async () => {
     setLoading(true);
     try {
-      await fetch('/api/transactions', {
+      await apiFetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'Sedekah', amount: 20000, name: user?.nama, message: 'Ada sedekah masuk ke Masjid' })
@@ -755,7 +756,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch('/api/notifications');
+      const res = await apiFetch('/api/notifications');
       const data = await res.json();
       setNotifications(data.notifications || []);
     } catch(e) { console.error(e); }
@@ -771,7 +772,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
     setShowNotifications(true);
     setNotifications(prev => prev.map(n => ({...n, read: true})));
     try {
-      await fetch('/api/notifications/read', { method: 'POST' });
+      await apiFetch('/api/notifications/read', { method: 'POST' });
     } catch(e) { console.error(e) }
   };
 

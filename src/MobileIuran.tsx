@@ -1,3 +1,4 @@
+import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 
 export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
@@ -19,12 +20,12 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/data/iuran');
+      const res = await apiFetch('/api/data/iuran');
       const json = await res.json();
       setData(json.data || []);
       
       if (isAdminOrBendahara) {
-        const resWarga = await fetch('/api/warga');
+        const resWarga = await apiFetch('/api/warga');
         const jsonWarga = await resWarga.json();
         setWargaList(jsonWarga.users || []);
         if (jsonWarga.users?.length > 0) {
@@ -53,7 +54,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     }
     setLoading(true);
     try {
-      await fetch('/api/data/iuran', {
+      await apiFetch('/api/data/iuran', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -86,7 +87,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
       const period = `${bulan} ${tahun}`;
 
       await Promise.all(targetUsers.map(selectedUser => 
-        fetch('/api/data/iuran', {
+        apiFetch('/api/data/iuran', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -108,7 +109,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
-      await fetch(`/api/data/iuran/${id}`, {
+      await apiFetch(`/api/data/iuran/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -119,7 +120,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`/api/data/iuran/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/data/iuran/${id}`, { method: 'DELETE' });
       fetchData();
     } catch(e) { console.error(e) }
   };

@@ -1,3 +1,4 @@
+import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 
 export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
@@ -11,7 +12,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
 
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/data/umkm');
+      const res = await apiFetch('/api/data/umkm');
       const json = await res.json();
       setData(json.data || []);
     } catch(e) { console.error(e); }
@@ -25,7 +26,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
     e.preventDefault();
     setLoading(true);
     try {
-      await fetch('/api/data/umkm', {
+      await apiFetch('/api/data/umkm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nama, desc, kontak })
@@ -39,7 +40,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`/api/data/umkm/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/data/umkm/${id}`, { method: 'DELETE' });
       fetchData();
     } catch(e) { console.error(e) }
   };

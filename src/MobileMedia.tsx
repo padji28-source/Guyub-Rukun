@@ -1,3 +1,4 @@
+import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect, useRef } from 'react';
 import { icons } from './App';
 
@@ -10,7 +11,7 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
 
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/data/media');
+      const res = await apiFetch('/api/data/media');
       const json = await res.json();
       setData(json.data || []);
     } catch(e) { console.error(e) }
@@ -32,7 +33,7 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
         const base64 = ev.target?.result as string;
         try {
           setLoading(true);
-          await fetch('/api/data/media', {
+          await apiFetch('/api/data/media', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -54,7 +55,7 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`/api/data/media/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/data/media/${id}`, { method: 'DELETE' });
       fetchData();
     } catch(e) { console.error(e) }
   };

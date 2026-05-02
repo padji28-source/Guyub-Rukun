@@ -1,3 +1,4 @@
+import { apiFetch } from './apiInterceptor';
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { icons } from './App'; // Note: I'll need to export icons from App if needed, but I don't really need icons here. Or just no icons.
@@ -12,7 +13,7 @@ export function Login({ onLogin, onNavRegister }: any) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('/api/login', {
+      const res = await apiFetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -65,7 +66,7 @@ export function Register({ onRegister, onNavLogin }: any) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('/api/register', {
+      const res = await apiFetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

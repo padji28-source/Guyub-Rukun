@@ -1,3 +1,4 @@
+import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 
 export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
@@ -11,7 +12,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
 
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/data/acara');
+      const res = await apiFetch('/api/data/acara');
       const json = await res.json();
       setData(json.data || []);
     } catch(e) { console.error(e); }
@@ -25,7 +26,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await fetch('/api/data/acara', {
+      await apiFetch('/api/data/acara', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, desc, date })
@@ -39,7 +40,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`/api/data/acara/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/data/acara/${id}`, { method: 'DELETE' });
       fetchData();
     } catch(e) { console.error(e) }
   };

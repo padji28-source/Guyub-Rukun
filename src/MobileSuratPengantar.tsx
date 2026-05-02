@@ -1,3 +1,4 @@
+import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 
 export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
@@ -10,7 +11,7 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
 
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/data/surat');
+      const res = await apiFetch('/api/data/surat');
       const json = await res.json();
       setData(json.data || []);
     } catch(e) { console.error(e); }
@@ -24,7 +25,7 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
     e.preventDefault();
     setLoading(true);
     try {
-      await fetch('/api/data/surat', {
+      await apiFetch('/api/data/surat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -45,7 +46,7 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
-      await fetch(`/api/data/surat/${id}`, {
+      await apiFetch(`/api/data/surat/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
