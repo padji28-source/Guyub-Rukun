@@ -24,8 +24,8 @@ export function Login({ onLogin, onNavRegister }: any) {
       } else {
         setError(data.error);
       }
-    } catch (err) {
-      setError('Terjadi kesalahan jaringan.');
+    } catch (err: any) {
+      setError(err?.message || 'Terjadi kesalahan jaringan.');
     }
     setLoading(false);
   };
@@ -78,8 +78,8 @@ export function Register({ onRegister, onNavLogin }: any) {
       } else {
         setError(data.error);
       }
-    } catch (err) {
-      setError('Terjadi kesalahan jaringan.');
+    } catch (err: any) {
+      setError(err?.message || 'Terjadi kesalahan jaringan.');
     }
     setLoading(false);
   };

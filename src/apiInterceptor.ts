@@ -61,37 +61,77 @@ async function initDb() {
 initDb();
 
 async function getUsers() {
-  const snap = await getDoc(DB_DOC);
-  return snap.exists() ? (snap.data().list || []) : [];
+  try {
+    const snap = await getDoc(DB_DOC);
+    return snap.exists() ? (snap.data().list || []) : [];
+  } catch (e) {
+    console.error("Failed to fetch users", e);
+    return [];
+  }
 }
 
 async function saveUsers(users: any) {
-  await setDoc(DB_DOC, JSON.parse(JSON.stringify({ list: users })));
+  try {
+    await setDoc(DB_DOC, JSON.parse(JSON.stringify({ list: users })));
+  } catch (e) {
+    console.warn("Failed to save users", e);
+  }
 }
 
 async function getNotifications() {
-  const snap = await getDoc(NOTIF_DOC);
-  return snap.exists() ? (snap.data().list || []) : [];
+  try {
+    const snap = await getDoc(NOTIF_DOC);
+    return snap.exists() ? (snap.data().list || []) : [];
+  } catch (e) {
+    console.error("Failed to fetch notifications", e);
+    return [];
+  }
 }
 
 async function saveNotifications(notifs: any) {
-  await setDoc(NOTIF_DOC, JSON.parse(JSON.stringify({ list: notifs })));
+  try {
+    await setDoc(NOTIF_DOC, JSON.parse(JSON.stringify({ list: notifs })));
+  } catch (e) {
+    console.warn("Failed to save notifications", e);
+  }
 }
 
 async function getAppData() {
-  const snap = await getDoc(APP_DATA_DOC);
-  const data = snap.exists() ? (snap.data().data || {}) : {};
+  let data: any = {};
+  try {
+    const snap = await getDoc(APP_DATA_DOC);
+    data = snap.exists() ? (snap.data().data || {}) : {};
+  } catch (e) {
+    console.error("Failed to fetch APP_DATA_DOC", e);
+  }
+
+  if (!data.surat) data.surat = [];
+  if (!data.laporan) data.laporan = [];
+  if (!data.acara) data.acara = [];
+  if (!data.umkm) data.umkm = [];
+  if (!data.kas) data.kas = [];
+  if (!data.iuran) data.iuran = [];
+  if (!data.darurat) data.darurat = [];
+
   if (!data.media) {
     data.media = [
       { id: '1', imageUrl: 'https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=300&q=80', title: 'Kerja Bakti 2024', uploaderName: 'Admin', createdAt: new Date().toISOString() }
     ];
-    await saveAppData(data);
+    try {
+      await saveAppData(data);
+    } catch (e) {
+      console.warn("Mute save fail (quota limit?)");
+    }
   }
   return data;
 }
 
 async function saveAppData(data: any) {
-  await setDoc(APP_DATA_DOC, JSON.parse(JSON.stringify({ data })));
+  try {
+    await setDoc(APP_DATA_DOC, JSON.parse(JSON.stringify({ data })));
+  } catch (e) {
+    console.warn("Failed to save app data", e);
+  }
 }
 
 async function addNotification(title: string, message: string) {
@@ -104,11 +144,17 @@ async function addNotification(title: string, message: string) {
 const originalFetch = window.fetch;
 
 export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-  const url = typeof input === 'string' ? input : input instanceof Request ? input.url : '';
+  let url = typeof input === 'string' ? input : input instanceof Request ? input.url : '';
+  url = url.includes('/api/') ? '/api/' + url.split('/api/')[1] : url;
   
   if (url.startsWith('/api/')) {
     const method = init?.method || 'GET';
-    const body = init?.body ? JSON.parse(init.body as string) : {};
+    let body = {};
+    try {
+      body = init?.body ? JSON.parse(init.body as string) : {};
+    } catch (e) {
+      console.error("Parse error", e);
+    }
     
     const sendResponse = (data: any, status = 200) => {
       return new Response(JSON.stringify(data), {

@@ -39,8 +39,10 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus data UMKM ini?")) return;
     try {
       await apiFetch(`/api/data/umkm/${id}`, { method: 'DELETE' });
+      alert('Data UMKM berhasil dihapus!');
       fetchData();
     } catch(e) { console.error(e) }
   };

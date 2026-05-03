@@ -49,8 +49,10 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
     try {
       await apiFetch(`/api/data/kas/${id}`, { method: 'DELETE' });
+      alert('Data kas berhasil dihapus!');
       fetchData();
     } catch(e) { console.error(e) }
   };

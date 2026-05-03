@@ -174,8 +174,10 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
     try {
       await apiFetch(`/api/data/iuran/${id}`, { method: 'DELETE' });
+      alert('Data iuran berhasil dihapus!');
       fetchData();
     } catch(e) { console.error(e) }
   };

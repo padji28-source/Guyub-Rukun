@@ -40,8 +40,10 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus data acara ini?")) return;
     try {
       await apiFetch(`/api/data/acara/${id}`, { method: 'DELETE' });
+      alert('Acara berhasil dihapus!');
       fetchData();
     } catch(e) { console.error(e) }
   };

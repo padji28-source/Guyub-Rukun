@@ -43,6 +43,7 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
               uploaderName: currentUser?.nama
             })
           });
+          alert('Foto berhasil diunggah!');
           fetchData();
         } catch(err) {
           console.error(err);
@@ -54,8 +55,10 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus foto ini?")) return;
     try {
       await apiFetch(`/api/data/media/${id}`, { method: 'DELETE' });
+      alert('Foto berhasil dihapus!');
       fetchData();
     } catch(e) { console.error(e) }
   };

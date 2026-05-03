@@ -47,6 +47,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
       });
       setShowAddWarga(false);
       setNewWarga({ username: '', nama: '', password: '', alamat: '', noHp: '', status: '' });
+      alert('Warga berhasil ditambahkan!');
       fetchWarga();
     } catch(e) { console.error(e); }
   };
@@ -70,13 +71,16 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
       setShowMemberForm(false);
       setEditingMember(null);
       setMemberForm({ name: '', role: '', age: '' });
+      alert(editingMember ? 'Data anggota keluarga berhasil diubah!' : 'Data anggota keluarga berhasil ditambahkan!');
       fetchWarga();
     } catch(e) { console.error(e); }
   };
 
   const handleDeleteMember = async (wargaId: string, memberId: string) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
     try {
       await apiFetch(`/api/warga/${wargaId}/members/${memberId}`, { method: 'DELETE' });
+      alert('Data anggota keluarga berhasil dihapus!');
       fetchWarga();
     } catch(e) { console.error(e); }
   };
@@ -210,7 +214,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                     <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border bg-teal-50 text-teal-600 border-teal-100`}>{warga.role === 'admin' ? 'Admin' : (warga.role === 'pengurus' ? 'Pengurus' : warga.status)}</span>
                     <span className="text-[9px] text-gray-400 font-medium flex items-center gap-0.5">
                       {isAdmin && warga.id !== currentUser?.id && (
-                        <button onClick={(e) => { e.stopPropagation(); apiFetch(`/api/warga/${warga.id}`,{method:'DELETE'}).then(()=>fetchWarga()); }} className="text-red-500 mr-2 p-1 bg-red-50 rounded text-[8px]">Hapus</button>
+                        <button onClick={(e) => { e.stopPropagation(); if (window.confirm('Apakah Anda yakin ingin menghapus warga ini?')) { apiFetch(`/api/warga/${warga.id}`,{method:'DELETE'}).then(()=> { alert('Warga berhasil dihapus!'); fetchWarga(); }); } }} className="text-red-500 mr-2 p-1 bg-red-50 rounded text-[8px]">Hapus</button>
                       )}
                       {expandedId === warga.id ? 'Tutup' : 'Lihat'} <icons.lainnya className={`w-3 h-3 ${expandedId === warga.id ? 'rotate-180' : ''}`} />
                     </span>
