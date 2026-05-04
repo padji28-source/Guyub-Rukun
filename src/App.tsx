@@ -355,10 +355,19 @@ const WebStatsCards = () => {
 
 const WebDateWidget = () => {
   const [date, setDate] = useState(new Date());
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
+  const [selectedDateState, setSelectedDateState] = useState<number>(date.getDate());
 
   useEffect(() => {
     const timer = setInterval(() => setDate(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    apiFetch('/api/data/acara').then(r => r.json()).then(json => {
+      setEvents(json.data || []);
+    }).catch(console.error);
   }, []);
 
   const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][date.getDay()];
@@ -367,15 +376,98 @@ const WebDateWidget = () => {
   const tahun = date.getFullYear();
   const waktu = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
+  const daysInMonth = new Date(tahun, date.getMonth() + 1, 0).getDate();
+  const firstDayOfMonth = new Date(tahun, date.getMonth(), 1).getDay();
+
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const blanks = Array.from({ length: firstDayOfMonth }, (_, i) => i);
+
+  const selectedDateEvents = events.filter(e => {
+    const d = new Date(e.date);
+    return d.getDate() === selectedDateState && d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear();
+  });
+
   return (
-    <div className="bg-gradient-to-br from-teal-500 to-teal-700 p-6 rounded-xl border border-teal-600 shadow-sm text-white flex items-center justify-between col-span-1 xl:col-span-2">
-      <div>
-        <p className="text-teal-100 text-sm font-medium mb-1">{hari}</p>
-        <h2 className="text-2xl font-bold">{tanggal} {bulan} {tahun}</h2>
+    <div className="relative col-span-1 xl:col-span-2 select-none z-20">
+      <div 
+        className="bg-gradient-to-br from-teal-500 to-teal-700 p-6 rounded-xl border border-teal-600 shadow-sm text-white flex items-center justify-between cursor-pointer hover:from-teal-600 hover:to-teal-800 transition group"
+        onClick={() => setShowCalendar(!showCalendar)}
+      >
+        <div>
+          <p className="text-teal-100 text-sm font-medium mb-1 flex items-center gap-2">
+            {hari}
+            <svg className={`w-4 h-4 transition-transform ${showCalendar ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+          </p>
+          <h2 className="text-2xl font-bold">{tanggal} {bulan} {tahun}</h2>
+        </div>
+        <div className="bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/20">
+          <span className="text-xl font-bold tracking-wider">{waktu}</span>
+        </div>
       </div>
-      <div className="bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/20">
-        <span className="text-xl font-bold tracking-wider">{waktu}</span>
-      </div>
+      
+      <AnimatePresence>
+        {showCalendar && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-full left-0 right-0 mt-3 bg-white rounded-xl shadow-lg border border-gray-100 p-6 z-30 transform-gpu flex flex-col md:flex-row gap-6"
+          >
+            <div className="flex-1">
+              <div className="text-center font-bold text-gray-800 text-lg mb-4">{bulan} {tahun}</div>
+              <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => (
+                  <div key={d} className="text-xs font-bold text-gray-400 py-1">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {blanks.map(b => <div key={`blank-${b}`} className="p-2"></div>)}
+                {days.map(d => {
+                  const hasEvent = events.some(e => {
+                    const evD = new Date(e.date);
+                    return evD.getDate() === d && evD.getMonth() === date.getMonth() && evD.getFullYear() === date.getFullYear();
+                  });
+                  return (
+                    <div 
+                      key={d} 
+                      onClick={() => setSelectedDateState(d)}
+                      className={`p-2 rounded-lg text-sm font-semibold transition-colors relative cursor-pointer ${d === selectedDateState ? 'bg-teal-600 text-white shadow-sm' : 'text-gray-700 hover:bg-teal-50 hover:text-teal-700'}`}
+                    >
+                      {d}
+                      {hasEvent && (
+                        <div className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${d === selectedDateState ? 'bg-white' : 'bg-teal-500'}`}></div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            <div className="flex-1 border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6 flex flex-col min-h-[200px]">
+              <h3 className="font-bold text-gray-800 text-sm mb-3">Agenda {selectedDateState} {bulan} {tahun}</h3>
+              <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+                {selectedDateEvents.length > 0 ? (
+                  selectedDateEvents.map((e, idx) => (
+                    <div key={idx} className="bg-orange-50 border border-orange-100 rounded-lg p-3">
+                      <div className="text-xs font-bold text-orange-600 mb-1">{e.time || 'Waktu tidak ditentukan'}</div>
+                      <div className="text-sm font-bold text-gray-800">{e.title}</div>
+                      <div className="text-xs text-gray-600 mt-1 flex items-center gap-1">
+                        <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        {e.location || 'Lokasi tidak disebutkan'}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-gray-400 py-6">
+                    <svg className="w-8 h-8 text-gray-200 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <p className="text-xs">Tidak ada agenda pada hari ini</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
