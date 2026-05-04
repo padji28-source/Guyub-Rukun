@@ -105,10 +105,8 @@ const WebHeader = ({ user, onLogout, onUpdateUser }: { user?: any; onLogout?: ()
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
-    apiFetch('/api/data/laporan').then(r => r.json()).then(d => {
-      const items = d.data || [];
-      const newItems = items.filter((i: any) => i.status === 'menunggu').reverse().slice(0, 5);
-      setNotifs(newItems);
+    apiFetch('/api/notifications').then(r => r.json()).then(d => {
+      setNotifs(d.notifications || []);
     }).catch(console.error);
   }, []);
 
@@ -164,11 +162,13 @@ const WebHeader = ({ user, onLogout, onUpdateUser }: { user?: any; onLogout?: ()
                     {notifs.length > 0 ? notifs.map((n, i) => (
                       <div key={i} className="p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
                         <div className="flex items-start justify-between">
-                           <p className="text-xs font-bold text-gray-800 group-hover:text-teal-600 transition-colors">{n.judul}</p>
-                           <span className="w-2 h-2 rounded-full bg-red-500 mt-1 flex-shrink-0"></span>
+                           <p className="text-xs font-bold text-gray-800 group-hover:text-teal-600 transition-colors">{n.title}</p>
+                           {!n.read && <span className="w-2 h-2 rounded-full bg-red-500 mt-1 flex-shrink-0"></span>}
                         </div>
-                        <p className="text-[10px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">{n.keterangan}</p>
-                        <p className="text-[9px] text-gray-400 mt-2 font-medium uppercase tracking-wider">{new Date(n.timestamp || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className="text-[10px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">{n.message}</p>
+                        <p className="text-[9px] text-gray-400 mt-2 font-medium uppercase tracking-wider">{new Date(n.time || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          {n.updaterName && <span className="ml-2 font-bold text-teal-600">oleh: {n.updaterName}</span>}
+                        </p>
                       </div>
                     )) : (
                       <div className="p-8 flex flex-col items-center justify-center text-center">
@@ -1541,7 +1541,10 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                        <div>
                          <h5 className="text-xs font-bold text-gray-800">{n.title}</h5>
                          <p className="text-[10px] text-gray-600 mt-0.5">{n.message}</p>
-                         <span className="text-[8px] font-medium text-gray-400 mt-1 block">{n.time}</span>
+                         <span className="text-[8px] font-medium text-gray-400 mt-1 block">
+                           {new Date(n.time || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                           {n.updaterName && <span className="ml-1 text-teal-600 font-bold bg-teal-50 px-1 py-0.5 rounded">oleh: {n.updaterName}</span>}
+                         </span>
                        </div>
                     </div>
                   ))}

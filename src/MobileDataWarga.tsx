@@ -2,6 +2,7 @@ import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProfileAvatar } from './App'; // Assuming we can export it or copy it
+import { GoogleGenAI, Type } from '@google/genai';
 // Need icons as well... let's just use some simple SVGs or import them from lucide-react?
 // App.tsx uses an `icons` object. Let's just create standard SVG icons.
 
@@ -26,6 +27,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
   const [memberForm, setMemberForm] = useState({ name: '', role: '', age: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [previewDocs, setPreviewDocs] = useState<{docs: {url: string, title: string}[], currentIndex: number, wargaName: string} | null>(null);
+  const [extractingId, setExtractingId] = useState<string | null>(null);
 
   const fetchWarga = async () => {
     try {
@@ -85,6 +87,83 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
       alert('Data anggota keluarga berhasil dihapus!');
       fetchWarga();
     } catch(e) { console.error(e); }
+  };
+
+  const handleExtractKK = async (wargaId: string) => {
+    setExtractingId(wargaId);
+    try {
+      const user = wargaData.find(w => w.id === wargaId);
+      if (!user || !user.dokumenKk) {
+        alert("Warga ini belum mengunggah Kartu Keluarga.");
+        setExtractingId(null);
+        return;
+      }
+
+      if (!process.env.GEMINI_API_KEY) {
+        alert("API Key Gemini belum dikonfigurasi.");
+        setExtractingId(null);
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+      const base64Data = user.dokumenKk.replace(/^data:image\/\w+;base64,/, "");
+      const mimeTypeMatch = user.dokumenKk.match(/^data:(image\/\w+);base64,/);
+      const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : "image/jpeg";
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-pro-preview",
+        contents: [
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: mimeType
+            }
+          },
+          "Extract the family members from this Kartu Keluarga (KK). Exclude the 'Kepala Keluarga' if it matches the current user's name already. Return a JSON Array containing the other family members."
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+               type: Type.OBJECT,
+               properties: {
+                  name: { type: Type.STRING, description: "Nama Lengkap" },
+                  role: { type: Type.STRING, description: "Hubungan Keluarga (e.g. Suami, Istri, Anak, Orang Tua, Kerabat)" },
+                  age: { type: Type.STRING, description: "Usia (e.g. '25' atau '10 Tahun')" },
+               },
+               required: ["name", "role", "age"]
+            }
+          }
+        }
+      });
+
+      const parsedText = response.text?.trim() || "[]";
+      const membersList = JSON.parse(parsedText);
+      
+      let addedCount = 0;
+      for (const m of membersList) {
+        if (m.name.toLowerCase() !== user.nama.toLowerCase() && !user.members?.find((extM: any) => extM.name.toLowerCase() === m.name.toLowerCase())) {
+          const res = await apiFetch(`/api/warga/${user.id}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: m.name, role: m.role, age: m.age })
+          });
+          if (res.ok) {
+            addedCount++;
+          }
+        }
+      }
+
+      alert(`Berhasil menambahkan ${addedCount} anggota keluarga baru dari KK!`);
+      fetchWarga();
+    } catch (e) {
+      console.error("Extraction error:", e);
+      alert('Terjadi kesalahan saat mengekstrak data dari KK.');
+    } finally {
+      setExtractingId(null);
+    }
   };
 
   const isAdmin = currentUser?.role === 'admin';
@@ -315,7 +394,16 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                           </button>
                         )}
                         {canEditFamily && (
-                          <button onClick={() => { setActiveWargaId(warga.id); setMemberForm({name:'', role:'', age:''}); setEditingMember(null); setShowMemberForm(true); }} className="text-[9px] text-teal-600 font-bold bg-teal-50 px-2 py-0.5 rounded stroke-teal-600">+ Tambah</button>
+                          <>
+                            {warga.dokumenKk && (
+                              <button onClick={() => handleExtractKK(warga.id)} disabled={extractingId === warga.id} className="text-[9px] text-orange-600 font-bold bg-orange-50 px-2 py-0.5 rounded border border-orange-100 disabled:opacity-50">
+                                {extractingId === warga.id ? 'Mengekstrak...' : 'Ekstrak KK'}
+                              </button>
+                            )}
+                            <button onClick={() => { setActiveWargaId(warga.id); setMemberForm({name:'', role:'', age:''}); setEditingMember(null); setShowMemberForm(true); }} className="text-[9px] text-teal-600 font-bold bg-teal-50 px-2 py-0.5 rounded stroke-teal-600 border border-teal-100">
+                              + Tambah
+                            </button>
+                          </>
                         )}
                         </div>
                       </div>

@@ -5,6 +5,7 @@ import { icons } from './App';
 export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
   const [media, setMedia] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [viewImage, setViewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus' || currentUser?.role === 'bendahara';
@@ -79,13 +80,13 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
        
        <div className="grid grid-cols-2 gap-2">
           {media.reverse().map(item => (
-            <div key={item.id} className="aspect-square bg-gray-200 rounded-xl overflow-hidden relative group">
+            <div key={item.id} className="aspect-square bg-gray-200 rounded-xl overflow-hidden relative group cursor-pointer" onClick={() => setViewImage(item.imageUrl)}>
                <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-2 pointer-events-none">
                   <span className="text-white text-[9px] font-medium leading-tight line-clamp-1">{item.title}</span>
                   <span className="text-white/80 text-[7px]">{item.uploaderName} • {new Date(item.createdAt).toLocaleDateString()}</span>
                </div>
-               <div className="absolute top-2 right-2 flex gap-1">
+               <div className="absolute top-2 right-2 flex gap-1" onClick={e => e.stopPropagation()}>
                  <a href={item.imageUrl} download={item.title || 'foto-rt'} target="_blank" rel="noopener noreferrer" className="bg-white/80 text-teal-700 p-1 rounded font-bold text-[8px] flex items-center justify-center backdrop-blur-sm hover:bg-white transition">
                    Unduh
                  </a>
@@ -104,6 +105,20 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
              </div>
           )}
        </div>
+
+        {viewImage && (
+          <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 transition-opacity" onClick={() => setViewImage(null)}>
+            <div className="relative w-full max-h-full flex items-center justify-center flex-col" onClick={e => e.stopPropagation()}>
+              <div className="w-full flex justify-end mb-2">
+                 <button onClick={() => setViewImage(null)} className="bg-white/20 hover:bg-white/40 text-white rounded-full p-2 backdrop-blur-sm transition w-8 h-8 flex items-center justify-center font-bold text-xs">
+                   X
+                 </button>
+              </div>
+              <img src={viewImage} alt="Zoom" className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl" />
+            </div>
+          </div>
+        )}
+
     </div>
   );
 };

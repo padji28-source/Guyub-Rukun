@@ -24,7 +24,7 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
       await apiFetch(`/api/data/laporan/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus, updaterName: currentUser?.nama })
       });
       fetchData();
     } catch(e) { console.error(e); }

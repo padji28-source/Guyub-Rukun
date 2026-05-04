@@ -180,7 +180,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
       await apiFetch(`/api/data/iuran/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus, updaterName: currentUser?.nama })
       });
       fetchData();
     } catch(e) { console.error(e) }

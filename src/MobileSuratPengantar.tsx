@@ -50,7 +50,7 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
       await apiFetch(`/api/data/surat/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus, updaterName: currentUser?.nama })
       });
       fetchData();
     } catch(e) { console.error(e); }

@@ -166,9 +166,9 @@ async function saveAppData(data: any) {
   await setDocData('app_data', { data });
 }
 
-export async function addNotification(title: string, message: string) {
+export async function addNotification(title: string, message: string, updaterName: string = 'Sistem') {
   const notifs = await getNotifications();
-  notifs.unshift({ id: Date.now().toString(), title, message, time: new Date().toISOString(), read: false });
+  notifs.unshift({ id: Date.now().toString(), title, message, updaterName, time: new Date().toISOString(), read: false });
   if (notifs.length > 100) notifs.length = 100;
   await saveNotifications(notifs);
 }
@@ -409,13 +409,13 @@ app.put("/api/data/:resource/:id", async (req, res) => {
     await saveAppData(data);
 
     if (resource === 'surat' && oldItem.status !== newItem.status && newItem.status === 'selesai') {
-      await addNotification('Surat Selesai', `Surat pengajuan untuk ${newItem.keperluan || 'anda'} sudah bisa diambil.`);
+      await addNotification('Surat Selesai', `Surat pengajuan untuk ${newItem.keperluan || 'anda'} sudah bisa diambil.`, req.body.updaterName || 'Admin');
     }
     if (resource === 'laporan' && oldItem.status !== newItem.status) {
-      await addNotification('Update Laporan', `Laporan ${newItem.judul || 'warga'} kini berstatus: ${newItem.status}.`);
+      await addNotification('Update Laporan', `Laporan ${newItem.judul || 'warga'} kini berstatus: ${newItem.status}.`, req.body.updaterName || 'Admin');
     }
     if (resource === 'iuran' && oldItem.status !== newItem.status && newItem.status === 'verifikasi') {
-      await addNotification('Iuran Diverifikasi', `Iuran dari ${newItem.nama || 'warga'} sebesar Rp ${newItem.nominal} telah diverifikasi dan masuk kas.`);
+      await addNotification('Iuran Diverifikasi', `Iuran dari ${newItem.nama || 'warga'} sebesar Rp ${newItem.nominal} telah diverifikasi dan masuk kas.`, req.body.updaterName || 'Admin');
       const nominal = parseInt(newItem.nominal || '0', 10);
       const isSplit = nominal >= 5000;
       const danaKematianAmount = isSplit ? 5000 : 0;
