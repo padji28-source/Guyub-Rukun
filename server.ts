@@ -151,6 +151,7 @@ async function getAppData() {
   if (!data.kas) data.kas = [];
   if (!data.iuran) data.iuran = [];
   if (!data.darurat) data.darurat = [];
+  if (!data.tamu) data.tamu = [];
 
   if (!data.media) {
     data.media = [
@@ -218,7 +219,7 @@ app.post("/api/login", async (req, res) => {
 });
 
 app.put("/api/profile", async (req, res) => {
-  const { id, username, nama, alamat, noHp, status, photo, umur } = req.body;
+  const { id, username, nama, alamat, noHp, status, photo, umur, dokumenKk, dokumenKtp } = req.body;
 
   const users = await getUsers();
   const userIndex = users.findIndex((u: any) => u.id === id);
@@ -231,7 +232,9 @@ app.put("/api/profile", async (req, res) => {
       noHp: noHp || users[userIndex].noHp,
       status: status || users[userIndex].status,
       photo: photo || users[userIndex].photo,
-      umur: umur !== undefined ? umur : users[userIndex].umur
+      umur: umur !== undefined ? umur : users[userIndex].umur,
+      dokumenKk: dokumenKk !== undefined ? dokumenKk : users[userIndex].dokumenKk,
+      dokumenKtp: dokumenKtp !== undefined ? dokumenKtp : users[userIndex].dokumenKtp
     };
     await saveUsers(users);
     res.json({ message: "Profile updated successfully", user: users[userIndex] });

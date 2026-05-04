@@ -25,6 +25,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
   const [activeWargaId, setActiveWargaId] = useState('');
   const [memberForm, setMemberForm] = useState({ name: '', role: '', age: '' });
   const [searchQuery, setSearchQuery] = useState('');
+  const [previewDocs, setPreviewDocs] = useState<{docs: {url: string, title: string}[], currentIndex: number, wargaName: string} | null>(null);
 
   const fetchWarga = async () => {
     try {
@@ -224,6 +225,13 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                     <div>
                       <h5 className="text-xs font-bold text-gray-800">{warga.nama} {currentUser?.id === warga.id && "(Anda)"}</h5>
                       <p className="text-[9px] text-gray-500 mt-0.5">{warga.alamat} • <span className="font-medium text-gray-700">{members.length} Anggota</span></p>
+                      <div className="mt-1">
+                        {(warga.dokumenKk || (Array.isArray(warga.dokumenKtp) ? warga.dokumenKtp.length > 0 : warga.dokumenKtp)) ? (
+                          <span className="text-[8px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-medium">Sudah Upload Dokumen</span>
+                        ) : (
+                          <span className="text-[8px] bg-red-100 text-red-700 px-1 py-0.5 rounded font-medium">Belum Upload Dokumen</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -287,9 +295,29 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                       )}
                       <div className="flex justify-between items-center mb-2 px-1">
                         <p className="text-[9px] font-bold text-gray-800">Daftar Anggota Keluarga</p>
-                        {canEditFamily && (
-                          <button onClick={() => { setActiveWargaId(warga.id); setMemberForm({name:'', role:'', age:''}); setEditingMember(null); setShowMemberForm(true); }} className="text-[9px] text-teal-600 font-bold bg-teal-50 px-2 py-0.5 rounded">+ Tambah</button>
+                        <div className="flex gap-2">
+                        {isAdmin && (
+                          <button onClick={() => {
+                            const docs: {url: string, title: string}[] = [];
+                            if (warga.dokumenKk) docs.push({ url: warga.dokumenKk, title: 'Kartu Keluarga' });
+                            if (Array.isArray(warga.dokumenKtp)) {
+                              warga.dokumenKtp.forEach((ktp: string, i: number) => docs.push({ url: ktp, title: `KTP ${i+1}` }));
+                            } else if (warga.dokumenKtp) {
+                              docs.push({ url: warga.dokumenKtp, title: 'KTP' });
+                            }
+                            if (docs.length > 0) {
+                              setPreviewDocs({ docs, currentIndex: 0, wargaName: warga.nama });
+                            } else {
+                              alert('Warga ini belum mengunggah dokumen.');
+                            }
+                          }} className="text-[9px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                            Lihat Dokumen
+                          </button>
                         )}
+                        {canEditFamily && (
+                          <button onClick={() => { setActiveWargaId(warga.id); setMemberForm({name:'', role:'', age:''}); setEditingMember(null); setShowMemberForm(true); }} className="text-[9px] text-teal-600 font-bold bg-teal-50 px-2 py-0.5 rounded stroke-teal-600">+ Tambah</button>
+                        )}
+                        </div>
                       </div>
                       
                       {members.length === 0 ? (
@@ -329,6 +357,53 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
           </div>
         </>
       )}
+      
+      {/* Document Preview Modal */}
+      {previewDocs && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60" onClick={() => setPreviewDocs(null)}>
+          <div className="bg-white rounded-xl shadow-lg flex flex-col max-h-[90vh] max-w-[90vw] relative" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-3 border-b">
+              <h3 className="font-bold text-gray-800 text-sm">Dokumen: {previewDocs.wargaName} - {previewDocs.docs[previewDocs.currentIndex].title}</h3>
+              <button onClick={() => setPreviewDocs(null)} className="text-gray-500 font-bold p-1 px-3 bg-gray-100 rounded-full">X</button>
+            </div>
+            
+            <div className="p-2 overflow-auto text-center flex items-center justify-center relative min-h-[50vh]">
+              {previewDocs.docs.length > 1 && (
+                 <button 
+                   onClick={() => setPreviewDocs({...previewDocs, currentIndex: (previewDocs.currentIndex - 1 + previewDocs.docs.length) % previewDocs.docs.length})}
+                   className="absolute left-2 bg-white/80 p-2 rounded-full shadow hover:bg-white z-10"
+                 >
+                   &lt;
+                 </button>
+              )}
+              
+              <img src={previewDocs.docs[previewDocs.currentIndex].url} alt="Dokumen" className="max-w-full max-h-[70vh] object-contain rounded-md" />
+              
+              {previewDocs.docs.length > 1 && (
+                 <button 
+                   onClick={() => setPreviewDocs({...previewDocs, currentIndex: (previewDocs.currentIndex + 1) % previewDocs.docs.length})}
+                   className="absolute right-2 bg-white/80 p-2 rounded-full shadow hover:bg-white z-10"
+                 >
+                   &gt;
+                 </button>
+              )}
+            </div>
+            
+            {previewDocs.docs.length > 1 && (
+              <div className="flex justify-center p-2 gap-2 border-t">
+                 {previewDocs.docs.map((_, index) => (
+                   <div key={index} className={`h-2 w-2 rounded-full ${index === previewDocs.currentIndex ? 'bg-teal-600' : 'bg-gray-300'}`} />
+                 ))}
+              </div>
+            )}
+            
+            <div className="p-3 border-t text-xs text-gray-600 text-center bg-gray-50 rounded-b-xl">
+              <p>Hanya Ketua RT (Admin) yang dapat melihat dokumen ini.</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
     </div>
   );
 };

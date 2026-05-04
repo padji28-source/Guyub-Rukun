@@ -6,6 +6,8 @@ import { MobileSuratPengantar } from './MobileSuratPengantar';
 import { MobileLaporRT } from './MobileLaporRT';
 
 import { MobileDarurat } from './MobileDarurat';
+import { MobileDokumen } from './MobileDokumen';
+import { MobileTamu } from './MobileTamu';
 import { MobileAcaraPage } from './MobileAcara';
 import { MobileIuran } from './MobileIuran';
 import { MobileKas } from './MobileKas';
@@ -34,6 +36,8 @@ export const icons = {
   home: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>,
   profil: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
   bell: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>,
+  dokumen: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+  arrowLeft: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
 };
 
 const laporanWargaData = [
@@ -71,9 +75,12 @@ const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange
         { name: 'Dashboard', icon: icons.dashboard },
         { name: 'Warga', icon: icons.warga },
         { name: 'Iuran', icon: icons.iuran },
+        { name: 'Kas', icon: icons.kas },
+        { name: 'Dokumen', icon: icons.dokumen },
         { name: 'Laporan', icon: icons.laporan },
         { name: 'Pengumuman', icon: icons.pengumuman },
         { name: 'UMKM', icon: icons.umkm },
+        { name: 'Tamu', icon: icons.warga },
         { name: 'Pengaturan', icon: icons.pengaturan },
       ].map((item) => (
         <button 
@@ -202,7 +209,7 @@ const WebHeader = ({ user, onLogout, onUpdateUser }: { user?: any; onLogout?: ()
 };
 
 const WebStatsCards = () => {
-  const [stats, setStats] = useState({ warga: 0, laporan: 0, saldo: 0, iuranRef: 0, iuranTotal: 0, kasRT: 0, danaKematian: 0, danaSosial: 0 });
+  const [stats, setStats] = useState({ warga: 0, laporan: 0, saldo: 0, iuranRef: 0, iuranTotal: 0, kasRT: 0, danaKematian: 0, danaSosial: 0, docUploaded: 0, docNotUploaded: 0 });
   const [showKasDetail, setShowKasDetail] = useState(false);
 
   useEffect(() => {
@@ -221,6 +228,16 @@ const WebStatsCards = () => {
 
         // calc warga
         const totalWarga = wData.users?.length || 0;
+        let docUploaded = 0;
+        let docNotUploaded = 0;
+        (wData.users || []).forEach((u: any) => {
+          if (u.dokumenKk || (Array.isArray(u.dokumenKtp) ? u.dokumenKtp.length > 0 : u.dokumenKtp)) {
+            docUploaded++;
+          } else {
+            docNotUploaded++;
+          }
+        });
+        
         // calc laporan baru
         const laporanBaru = (lData.data || []).filter((l: any) => l.status === 'menunggu').length;
         // calc saldo (Kas RT + Dana Kematian + Dana Sosial)
@@ -262,7 +279,9 @@ const WebStatsCards = () => {
           iuranTotal,
           kasRT,
           danaKematian,
-          danaSosial
+          danaSosial,
+          docUploaded,
+          docNotUploaded
         });
 
       } catch (e) {
@@ -278,14 +297,14 @@ const WebStatsCards = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
       {[
-        { title: 'Warga', value: formatter.format(stats.warga), unit: '', icon: icons.warga, accent: '#60A5FA' },
+        { title: 'Warga', value: formatter.format(stats.warga), unit: '', icon: icons.warga, accent: '#60A5FA', isWarga: true },
         { title: 'Laporan', value: formatter.format(stats.laporan), unit: 'Baru', icon: icons.laporan, accent: '#F87171' },
         { title: 'Saldo Kas', value: saldoFormatter.format(stats.saldo), unit: '', icon: icons.iuran, accent: '#FBBF24', isKas: true },
         { title: 'Iuran', value: `${Math.round((stats.iuranRef / Math.max(stats.iuranTotal, 1)) * 100)}%`, unit: 'Lunas', icon: icons.iuran, accent: '#34D399' },
       ].map((card, index) => (
         <div 
           key={index} 
-          className={`bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex gap-4 items-center ${card.isKas ? 'cursor-pointer hover:border-amber-200 transition-colors relative' : 'overflow-hidden'}`}
+          className={`bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex gap-4 items-center flex-wrap ${card.isKas ? 'cursor-pointer hover:border-amber-200 transition-colors relative' : 'overflow-hidden'}`}
           onClick={() => card.isKas && setShowKasDetail(!showKasDetail)}
         >
           <div className="p-3 rounded-lg flex-shrink-0" style={{ backgroundColor: `${card.accent}1A` }}>
@@ -301,6 +320,12 @@ const WebStatsCards = () => {
               {card.unit && <span className="text-xs font-medium text-gray-500 flex-shrink-0">{card.unit}</span>}
             </div>
           </div>
+          {card.isWarga && (
+              <div className="w-full flex gap-2 mt-2 text-[10px] font-medium border-t pt-2">
+                <span className="text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100">{stats.docUploaded} Upload Dokumen</span>
+                <span className="text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100">{stats.docNotUploaded} Belum</span>
+              </div>
+          )}
           
           {card.isKas && showKasDetail && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-gray-100 p-4 z-20" onClick={e => e.stopPropagation()}>
@@ -370,12 +395,15 @@ const WebLaporanTable = () => {
 const WebIuranChart = () => {
   const [chartData, setChartData] = useState<{bulan: string, value: number}[]>([]);
   useEffect(() => {
-    apiFetch('/api/data/iuran').then(res => res.json()).then(data => {
+    apiFetch('/api/data/kas').then(res => res.json()).then(data => {
       const items = data.data || [];
       const stats: Record<string, number> = {};
       items.forEach((i: any) => {
-        if (i.status === 'verifikasi') {
-          stats[i.bulan] = (stats[i.bulan] || 0) + parseInt(i.nominal || '0');
+        if (i.type === 'Masuk') {
+          const dateStr = i.createdAt 
+            ? new Date(i.createdAt).toLocaleString('id-ID', { month: 'long', year: 'numeric' }) 
+            : new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+          stats[dateStr] = (stats[dateStr] || 0) + (parseInt(i.amount) || 0);
         }
       });
       const keys = Object.keys(stats).slice(-6);
@@ -416,6 +444,22 @@ const WebIuranPage = ({ user }: { user: any }) => (
   </div>
 );
 
+const WebKasPage = ({ user }: { user: any }) => (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
+    <div className="p-4 md:p-8">
+      <MobileKas onBack={() => {}} currentUser={user} />
+    </div>
+  </div>
+);
+
+const WebDokumenPage = ({ user, onUpdateUser }: { user: any, onUpdateUser: (u: any) => void }) => (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
+    <div className="p-4 md:p-8">
+      <MobileDokumen onBack={() => {}} currentUser={user} onUpdateUser={onUpdateUser} />
+    </div>
+  </div>
+);
+
 const WebLaporanPage = ({ user }: { user: any }) => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
     <div className="p-4 md:p-8">
@@ -436,6 +480,14 @@ const WebUMKMPage = ({ user }: { user: any }) => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
     <div className="p-4 md:p-8">
       <MobileUMKM onBack={() => {}} currentUser={user} />
+    </div>
+  </div>
+);
+
+const WebTamuPage = ({ user }: { user: any }) => (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
+    <div className="p-4 md:p-8">
+      <MobileTamu onBack={() => {}} currentUser={user} />
     </div>
   </div>
 );
@@ -763,6 +815,7 @@ export const ProfileAvatar = ({ size = '10' }: { size?: string }) => (
 const quickActions = [
   { name: 'Surat', icon: icons.surat },
   { name: 'Lapor RT', icon: icons.laporanrt },
+  { name: 'Dokumen', icon: icons.dokumen },
   { name: 'Media', icon: icons.media },
   { name: 'Iuran', icon: icons.iuran },
   { name: 'Kas', icon: icons.kas },
@@ -770,6 +823,7 @@ const quickActions = [
   { name: 'Data Warga', icon: icons.warga },
   { name: 'UMKM', icon: icons.umkm },
   { name: 'Darurat', icon: icons.darurat },
+  { name: 'Tamu', icon: icons.warga },
 ];
 
 const MobileSaldoCard = () => {
@@ -1082,9 +1136,12 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
             )}
             {activeWebTab === 'Warga' && <WebWargaPage user={user} />}
             {activeWebTab === 'Iuran' && <WebIuranPage user={user} />}
+            {activeWebTab === 'Kas' && <WebKasPage user={user} />}
+            {activeWebTab === 'Dokumen' && <WebDokumenPage user={user} onUpdateUser={onUpdateUser} />}
             {activeWebTab === 'Laporan' && <WebLaporanPage user={user} />}
             {activeWebTab === 'Pengumuman' && <WebPengumumanPage user={user} />}
             {activeWebTab === 'UMKM' && <WebUMKMPage user={user} />}
+            {activeWebTab === 'Tamu' && <WebTamuPage user={user} />}
             {activeWebTab === 'Pengaturan' && <WebPengaturanPage user={user} onLogout={onLogout} />}
           </main>
         </div>
@@ -1135,9 +1192,11 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
               {activeMobileTab === 'Data Warga' && <MobileDataWarga onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
               {activeMobileTab === 'Media' && <MobileMedia onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
               {activeMobileTab === 'Darurat' && <MobileDarurat onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+              {activeMobileTab === 'Dokumen' && <MobileDokumen onBack={() => setActiveMobileTab('Beranda')} currentUser={user} onUpdateUser={onUpdateUser} />}
+              {activeMobileTab === 'Tamu' && <MobileTamu onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
 
               {/* Fallback for unrecognized tabs */}
-              {!['Beranda', 'Acara', 'Laporan', 'Profil', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat'].includes(activeMobileTab) && (
+              {!['Beranda', 'Acara', 'Laporan', 'Profil', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu'].includes(activeMobileTab) && (
                 <div className="flex flex-col items-center justify-center h-full opacity-50 py-20">
                   <icons.dashboard className="w-12 h-12 text-gray-300 mb-3" />
                   <h2 className="text-lg font-semibold text-gray-500">Halaman {activeMobileTab}</h2>
