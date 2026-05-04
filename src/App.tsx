@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { MobileDataWarga } from './MobileDataWarga';
 import { MobileSuratPengantar } from './MobileSuratPengantar';
 import { MobileLaporRT } from './MobileLaporRT';
+import { MobileLaporan } from './MobileLaporan';
 
 import { MobileDarurat } from './MobileDarurat';
 import { MobileDokumen } from './MobileDokumen';
@@ -460,13 +461,25 @@ const WebDokumenPage = ({ user, onUpdateUser }: { user: any, onUpdateUser: (u: a
   </div>
 );
 
-const WebLaporanPage = ({ user }: { user: any }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
-    <div className="p-4 md:p-8">
-      <MobileLaporRT onBack={() => {}} currentUser={user} />
+const WebLaporanPage = ({ user }: { user: any }) => {
+  const [showForm, setShowForm] = useState(false);
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
+      <div className="p-4 md:p-8 relative">
+        {!showForm ? (
+          <div>
+            <div className="flex justify-end mb-4">
+              <button onClick={() => setShowForm(true)} className="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-teal-700 transition">Tambahkan Laporan</button>
+            </div>
+            <MobileLaporan onBack={() => {}} currentUser={user} />
+          </div>
+        ) : (
+          <MobileLaporRT onBack={() => setShowForm(false)} currentUser={user} defaultTab="Keluhan" />
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const WebPengumumanPage = ({ user }: { user: any }) => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
@@ -484,13 +497,25 @@ const WebUMKMPage = ({ user }: { user: any }) => (
   </div>
 );
 
-const WebTamuPage = ({ user }: { user: any }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
-    <div className="p-4 md:p-8">
-      <MobileTamu onBack={() => {}} currentUser={user} />
+const WebTamuPage = ({ user }: { user: any }) => {
+  const [showForm, setShowForm] = useState(false);
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
+      <div className="p-4 md:p-8 relative">
+        {!showForm ? (
+          <div>
+            <div className="flex justify-end mb-4">
+              <button onClick={() => setShowForm(true)} className="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-teal-700 transition">Tambahkan Laporan</button>
+            </div>
+            <MobileTamu onBack={() => {}} currentUser={user} />
+          </div>
+        ) : (
+          <MobileLaporRT onBack={() => setShowForm(false)} currentUser={user} defaultTab="Tamu" />
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const WebPengaturanPage = ({ user, onLogout }: { user: any, onLogout: () => void }) => {
   return (
@@ -884,6 +909,7 @@ const mobileNavItems = [
 const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => void; onUpdateUser: (data: any) => void }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
   const [profile, setProfile] = useState({
     name: user?.nama || 'Admin RT',
     address: user?.alamat || 'Jl. Bahagia No. 12, Kompleks Rukun, Kota Tegal',
@@ -905,6 +931,7 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
 
   const handleSave = async () => {
     setSaving(true);
+    setSuccessMsg('');
     try {
       const res = await apiFetch('/api/profile', {
         method: 'PUT',
@@ -929,6 +956,8 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
           umur: profile.umur
         });
         setIsEditing(false);
+        setSuccessMsg('Profil berhasil disimpan!');
+        setTimeout(() => setSuccessMsg(''), 3000);
       }
     } catch(e) {
       console.error(e);
@@ -987,6 +1016,11 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
 
   return (
     <div className="p-4 flex flex-col items-center space-y-4 pb-24">
+      {successMsg && (
+        <div className="bg-green-100 border border-green-200 text-green-700 px-4 py-3 rounded-xl w-full text-sm font-medium text-center animate-in fade-in slide-in-from-top-2">
+          {successMsg}
+        </div>
+      )}
       <div className="w-full flex justify-end">
          <button onClick={() => setIsEditing(true)} className="text-[10px] text-teal-600 font-bold inline-flex items-center gap-1 bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-100">Edit Profil</button>
       </div>
@@ -1023,21 +1057,6 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
 
 
 const MobileSedekah = ({ onBack, user }: { onBack: () => void, user?: any }) => {
-  const [loading, setLoading] = useState(false);
-
-  const handleDonasi = async () => {
-    setLoading(true);
-    try {
-      await apiFetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'Sedekah', amount: 20000, name: user?.nama, message: 'Ada sedekah masuk ke Masjid' })
-      });
-      alert('Sedekah berhasil dikonfirmasi! Notifikasi segera muncul.');
-    } catch(e) { console.error(e) }
-    setLoading(false);
-  };
-
   return (
   <div className="p-4 pb-24">
      <button onClick={onBack} className="text-[10px] text-teal-600 mb-4 font-bold inline-flex items-center gap-1 bg-teal-50 px-2 py-1 rounded">← Kembali</button>
@@ -1075,10 +1094,6 @@ const MobileSedekah = ({ onBack, user }: { onBack: () => void, user?: any }) => 
            <button className="px-3 py-1.5 bg-teal-50 text-teal-600 font-bold text-[10px] rounded-lg">Salin</button>
         </div>
      </div>
-
-     <button onClick={handleDonasi} disabled={loading} className="w-full mt-4 bg-teal-600 text-white font-bold py-3 rounded-xl">
-        {loading ? 'Proses...' : 'Konfirmasi Donasi'}
-     </button>
   </div>
   );
 };
@@ -1178,7 +1193,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
 
               {activeMobileTab === 'Acara' && <MobileAcaraPage currentUser={user} />}
               {activeMobileTab === 'Laporan' && (
-                  <MobileLaporRT onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />
+                  <MobileLaporan onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />
               )}
               {activeMobileTab === 'Profil' && <MobileProfilPage user={user} onLogout={onLogout} onUpdateUser={onUpdateUser} />}
               {activeMobileTab === 'Surat' && <MobileSuratPengantar onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
