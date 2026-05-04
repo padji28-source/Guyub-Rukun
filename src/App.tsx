@@ -1393,6 +1393,13 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
   const [activeMobileTab, setActiveMobileTab] = useState('Beranda');
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchNotifications = async () => {
     try {
@@ -1419,11 +1426,14 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50" style={{ fontFamily: fontStyle }}>
       
-      <div className="fixed inset-0 z-0 opacity-[0.03] flex items-center justify-center p-20 pointer-events-none md:flex hidden">
-        <IllustrationFamilyGroup/>
-      </div>
+      {!isMobile && (
+        <div className="fixed inset-0 z-0 opacity-[0.03] flex items-center justify-center p-20 pointer-events-none md:flex hidden">
+          <IllustrationFamilyGroup/>
+        </div>
+      )}
 
       {/* --- DESKTOP ADMIN VIEW --- */}
+      {!isMobile ? (
       <div className="hidden md:flex relative z-10 w-full h-full flex-col">
         <WebSidebar activeTab={activeWebTab} onTabChange={setActiveWebTab} />
         <div className="flex flex-col flex-grow w-full">
@@ -1451,9 +1461,9 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
           </main>
         </div>
       </div>
-
-      {/* --- MOBILE USER VIEW --- */}
+      ) : (
       <div className="flex md:hidden relative z-20 w-full h-full bg-white flex-col overflow-hidden">
+        {/* --- MOBILE USER VIEW --- */}
         <MobileHeader notifications={notifications} onShowNotifications={handleShowNotifications} />
         <MobileProfile user={user} />
         <div className="flex-grow overflow-hidden bg-white relative">
@@ -1540,6 +1550,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

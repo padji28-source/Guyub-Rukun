@@ -48,13 +48,23 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
     setLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
+  const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
+
+  const handleDeleteClick = (id: string) => {
+    setShowConfirmDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!showConfirmDelete) return;
     try {
-      await apiFetch(`/api/data/kas/${id}`, { method: 'DELETE' });
-      alert('Data kas berhasil dihapus!');
+      await apiFetch(`/api/data/kas/${showConfirmDelete}`, { method: 'DELETE' });
       fetchData();
     } catch(e) { console.error(e) }
+    setShowConfirmDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setShowConfirmDelete(null);
   };
 
   const getSaldo = (cat: string) => {
@@ -201,13 +211,30 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
                 {item.type === 'Masuk' ? '+' : '-'} {formatter.format(item.amount)}
               </span>
               {isAdminOrBendahara && (
-                <button onClick={() => handleDelete(item.id)} className="text-[9px] text-red-500 underline mt-1">Hapus</button>
+                <button onClick={() => handleDeleteClick(item.id)} className="text-[9px] text-red-500 underline mt-1">Hapus</button>
               )}
             </div>
           </div>
         ))}
         {data.length === 0 && <p className="text-xs text-center text-gray-400 py-4">Belum ada catatan kas.</p>}
       </div>
+
+      {showConfirmDelete && (
+        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-sm text-center shadow-lg">
+            <h3 className="font-bold text-gray-800 text-lg mb-2">Hapus Data Kas?</h3>
+            <p className="text-xs text-gray-600 mb-6">Data yang dihapus tidak dapat dipulihkan. Lanjutkan?</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={cancelDelete} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold text-xs flex-1 hover:bg-gray-200">
+                Batal
+              </button>
+              <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-xs flex-1 hover:bg-red-700">
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

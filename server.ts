@@ -215,7 +215,7 @@ app.post("/api/login", async (req, res) => {
 
   if (user) {
     if (activeSessions.has(user.id) && Date.now() - activeSessions.get(user.id)! < 10000) {
-      return res.status(403).json({ error: "User sedang digunakan" });
+      return res.status(409).json({ error: "User sedang digunakan di perangkat lain" });
     }
     activeSessions.set(user.id, Date.now());
     res.json({ message: "Login berhasil", user });
@@ -416,15 +416,35 @@ app.put("/api/data/:resource/:id", async (req, res) => {
     }
     if (resource === 'iuran' && oldItem.status !== newItem.status && newItem.status === 'verifikasi') {
       await addNotification('Iuran Diverifikasi', `Iuran dari ${newItem.nama || 'warga'} sebesar Rp ${newItem.nominal} telah diverifikasi dan masuk kas.`);
-      data['kas'].push({
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-        createdAt: new Date().toISOString(),
-        type: 'Masuk',
-        amount: parseInt(newItem.nominal || '0', 10),
-        name: newItem.nama,
-        message: 'Iuran Warga',
-        category: 'Kas RT'
-      });
+      const nominal = parseInt(newItem.nominal || '0', 10);
+      const isSplit = nominal >= 5000;
+      const danaKematianAmount = isSplit ? 5000 : 0;
+      const kasRTAmount = nominal - danaKematianAmount;
+
+      if (kasRTAmount > 0) {
+        data['kas'].push({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+          createdAt: new Date().toISOString(),
+          type: 'Masuk',
+          amount: kasRTAmount,
+          name: newItem.nama,
+          message: 'Iuran Warga (Kas RT)',
+          category: 'Kas RT',
+          iuranId: newItem.id
+        });
+      }
+      if (danaKematianAmount > 0) {
+        data['kas'].push({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+          createdAt: new Date().toISOString(),
+          type: 'Masuk',
+          amount: danaKematianAmount,
+          name: newItem.nama,
+          message: 'Iuran Warga (Dana Kematian)',
+          category: 'Dana Kematian',
+          iuranId: newItem.id
+        });
+      }
       await saveAppData(data);
     }
 
@@ -438,6 +458,19 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
   const data = await getAppData();
   const resource = req.params.resource;
   if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
+
+  const itemToDelete = data[resource].find((item: any) => item.id === req.params.id);
+
+  if (resource === 'kas' && itemToDelete && itemToDelete.iuranId) {
+    if (data['iuran']) {
+      data['iuran'] = data['iuran'].filter((i: any) => i.id !== itemToDelete.iuranId);
+    }
+    data['kas'] = data['kas'].filter((k: any) => k.iuranId !== itemToDelete.iuranId);
+  } else if (resource === 'iuran') {
+    if (data['kas']) {
+      data['kas'] = data['kas'].filter((k: any) => k.iuranId !== req.params.id);
+    }
+  }
 
   data[resource] = data[resource].filter((item: any) => item.id !== req.params.id);
   await saveAppData(data);

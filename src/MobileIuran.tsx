@@ -165,7 +165,17 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     setLoading(false);
   };
 
+  const [showConfirmVerify, setShowConfirmVerify] = useState<{id: string, status: string} | null>(null);
+
   const handleUpdateStatus = async (id: string, newStatus: string) => {
+    if (newStatus === 'verifikasi') {
+      setShowConfirmVerify({ id, status: newStatus });
+    } else {
+      await updateStatus(id, newStatus);
+    }
+  };
+
+  const updateStatus = async (id: string, newStatus: string) => {
     try {
       await apiFetch(`/api/data/iuran/${id}`, {
         method: 'PUT',
@@ -176,13 +186,33 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     } catch(e) { console.error(e) }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
+  const confirmVerify = async () => {
+    if (!showConfirmVerify) return;
+    await updateStatus(showConfirmVerify.id, showConfirmVerify.status);
+    setShowConfirmVerify(null);
+  };
+
+  const cancelVerify = () => {
+    setShowConfirmVerify(null);
+  };
+
+  const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
+
+  const handleDeleteClick = (id: string) => {
+    setShowConfirmDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!showConfirmDelete) return;
     try {
-      await apiFetch(`/api/data/iuran/${id}`, { method: 'DELETE' });
-      alert('Data iuran berhasil dihapus!');
+      await apiFetch(`/api/data/iuran/${showConfirmDelete}`, { method: 'DELETE' });
       fetchData();
     } catch(e) { console.error(e) }
+    setShowConfirmDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setShowConfirmDelete(null);
   };
 
   if (showBayarForm) {
@@ -374,7 +404,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
                   {item.status !== 'verifikasi' && (
                     <button onClick={() => handleUpdateStatus(item.id, 'verifikasi')} className="text-[9px] bg-teal-100 text-teal-700 font-bold px-1.5 py-0.5 rounded">Verifikasi</button>
                   )}
-                  <button onClick={() => handleDelete(item.id)} className="text-[9px] bg-red-100 text-red-700 font-bold px-1.5 py-0.5 rounded">Hapus</button>
+                  <button onClick={() => handleDeleteClick(item.id)} className="text-[9px] bg-red-100 text-red-700 font-bold px-1.5 py-0.5 rounded">Hapus</button>
                 </div>
               )}
             </div>
@@ -399,11 +429,45 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
       {viewBuktiUrl && (
         <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden relative">
-            <button onClick={() => setViewBuktiUrl(null)} className="absolute top-2 right-2 bg-black/50 text-white w-6 h-6 rounded-full flex justify-center items-center font-bold text-xs">X</button>
-            <div className="p-2 border-b"><h3 className="text-xs font-bold text-center">Bukti Pembayaran</h3></div>
-            <div className="p-4 flex justify-center bg-gray-100">
-              <img src={viewBuktiUrl} alt="Bukti" className="max-h-[60vh] object-contain rounded" />
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden relative shadow-lg">
+            <button onClick={() => setViewBuktiUrl(null)} className="absolute top-2 right-2 bg-black/50 text-white w-6 h-6 rounded-full flex justify-center items-center font-bold text-xs hover:bg-black/70 transition">X</button>
+            <div className="p-3 border-b border-gray-100"><h3 className="text-sm border-0 m-0 font-bold text-center">Bukti Pembayaran</h3></div>
+            <div className="p-4 flex justify-center bg-gray-50">
+              <img src={viewBuktiUrl} alt="Bukti" className="max-h-[60vh] object-contain rounded-xl shadow-sm border border-gray-200" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showConfirmVerify && (
+        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-sm text-center shadow-lg">
+            <h3 className="font-bold text-gray-800 text-lg mb-2">Verifikasi Iuran?</h3>
+            <p className="text-xs text-gray-600 mb-6">Iuran yang diverifikasi akan masuk ke Kas RT dan/atau Dana Kematian, dan tidak dapat dibatalkan. Lanjutkan?</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={cancelVerify} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold text-xs flex-1 hover:bg-gray-200 transition">
+                Batal
+              </button>
+              <button onClick={confirmVerify} className="px-4 py-2 bg-teal-600 text-white rounded-xl font-bold text-xs flex-1 hover:bg-teal-700 transition">
+                Ya, Verifikasi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showConfirmDelete && (
+        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-sm text-center shadow-lg">
+            <h3 className="font-bold text-gray-800 text-lg mb-2">Hapus Data Iuran?</h3>
+            <p className="text-xs text-gray-600 mb-6">Data yang dihapus tidak dapat dipulihkan. Lanjutkan?</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={cancelDelete} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold text-xs flex-1 hover:bg-gray-200 transition">
+                Batal
+              </button>
+              <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-xs flex-1 hover:bg-red-700 transition">
+                Ya, Hapus
+              </button>
             </div>
           </div>
         </div>
