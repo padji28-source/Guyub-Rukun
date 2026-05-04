@@ -749,8 +749,10 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
   const [mediaList, setMediaList] = useState<any[]>([]);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [backendEvents, setBackendEvents] = useState<any[]>([]);
+  const [loadingMedia, setLoadingMedia] = useState(true);
 
   useEffect(() => {
+    setLoadingMedia(true);
     apiFetch('/api/data/media').then(r => r.json()).then(json => {
       if (json.data && json.data.length > 0) {
         setMediaList(json.data.slice(-5).reverse());
@@ -762,7 +764,7 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
           desc: "Keseruan warga RT 01 bergotong royong membersihkan selokan dan jalanan."
         }]);
       }
-    }).catch(console.error);
+    }).catch(console.error).finally(() => setLoadingMedia(false));
 
     apiFetch('/api/data/acara').then(r => r.json()).then(json => {
       setBackendEvents(json.data || []);
@@ -811,21 +813,32 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
           transition={{ duration: 0.5 }}
           className="w-full h-40"
         >
-          {currentMedia && (
+          {loadingMedia ? (
+             <div className="w-full h-full bg-gray-200 animate-pulse"></div>
+          ) : currentMedia && (
             <img src={currentMedia.imageUrl} alt={currentMedia.title} className="w-full h-full object-cover" />
           )}
         </motion.div>
       </AnimatePresence>
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 text-white">
         <span className="px-2 py-1 bg-teal-500/80 backdrop-blur-sm text-[9px] font-bold rounded-full w-max mb-2">Galeri Terbaru</span>
-        <h4 className="text-sm font-bold leading-snug">{currentMedia?.title}</h4>
-        {currentMedia?.desc ? (
-          <p className="text-[10px] text-gray-200 mt-1 line-clamp-2">{currentMedia.desc}</p>
+        {loadingMedia ? (
+            <>
+               <div className="h-4 w-32 bg-white/30 animate-pulse rounded mb-2"></div>
+               <div className="h-3 w-48 bg-white/20 animate-pulse rounded"></div>
+            </>
         ) : (
-          <p className="text-[10px] text-gray-200 mt-1 line-clamp-2">Diunggah oleh {currentMedia?.uploaderName}</p>
+            <>
+                <h4 className="text-sm font-bold leading-snug">{currentMedia?.title}</h4>
+                {currentMedia?.desc ? (
+                  <p className="text-[10px] text-gray-200 mt-1 line-clamp-2">{currentMedia.desc}</p>
+                ) : (
+                  <p className="text-[10px] text-gray-200 mt-1 line-clamp-2">Diunggah oleh {currentMedia?.uploaderName}</p>
+                )}
+            </>
         )}
       </div>
-      {mediaList.length > 1 && (
+      {mediaList.length > 1 && !loadingMedia && (
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
           {mediaList.map((_, idx) => (
             <div key={idx} className={`h-1 rounded-full transition-all ${idx === activeMediaIndex ? 'w-4 bg-teal-400' : 'w-1.5 bg-white/50'}`} />
@@ -974,8 +987,10 @@ const MobileSaldoCard = () => {
   const [saldo, setSaldo] = useState(0);
   const [danaKematian, setDanaKematian] = useState(0);
   const [danaSosial, setDanaSosial] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     apiFetch('/api/data/kas')
       .then(res => res.json())
       .then(json => {
@@ -995,7 +1010,8 @@ const MobileSaldoCard = () => {
         setDanaKematian(getSaldo('Dana Kematian'));
         setDanaSosial(getSaldo('Dana Sosial'));
       })
-      .catch(e => console.error(e));
+      .catch(e => console.error(e))
+      .finally(() => setLoading(false));
   }, []);
 
   const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' });
@@ -1008,10 +1024,23 @@ const MobileSaldoCard = () => {
             <p className="text-[11px] font-medium opacity-90 uppercase tracking-widest">Saldo Kas RT 01</p>
             <icons.kas className="w-5 h-5 opacity-80"/>
           </div>
-          <h3 className="text-2xl font-bold tracking-tight mt-1 mb-1 text-white" style={{ fontFamily: fontStyle }}>{formatter.format(saldo)}</h3>
+          {loading ? (
+             <div className="h-8 w-40 bg-white/20 animate-pulse rounded mt-1 mb-1"></div>
+          ) : (
+             <h3 className="text-2xl font-bold tracking-tight mt-1 mb-1 text-white" style={{ fontFamily: fontStyle }}>{formatter.format(saldo)}</h3>
+          )}
           <div className="flex items-center gap-2 mt-2 truncate">
-            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm font-medium">Sosial: {formatter.format(danaSosial)}</span>
-            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm font-medium">Kematian: {formatter.format(danaKematian)}</span>
+            {loading ? (
+              <>
+                <div className="h-4 w-20 bg-white/20 animate-pulse rounded-full"></div>
+                <div className="h-4 w-24 bg-white/20 animate-pulse rounded-full"></div>
+              </>
+            ) : (
+              <>
+                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm font-medium">Sosial: {formatter.format(danaSosial)}</span>
+                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm font-medium">Kematian: {formatter.format(danaKematian)}</span>
+              </>
+            )}
           </div>
       </div>
     </section>
