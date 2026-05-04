@@ -42,7 +42,7 @@ export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, cur
         {data.map(item => (
           <div key={item.id} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500 font-bold">
+              <div className="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 font-bold">
                 {item.id.charAt(1)}
               </div>
               <div>
@@ -51,7 +51,7 @@ export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, cur
               </div>
             </div>
             <div className="flex flex-col gap-1 items-end">
-              <button onClick={() => window.location.href=`tel:${item.tel}`} className="px-3 py-1.5 bg-red-500 text-white font-bold text-[10px] rounded-lg shadow-sm">Hubungi</button>
+              <button onClick={() => window.location.href=`tel:${item.tel}`} className="px-3 py-1.5 bg-teal-600 text-white font-bold text-[10px] rounded-lg shadow-sm">Hubungi</button>
               {isAdmin && (
                 <button onClick={() => handleUpdate(item.id)} className="text-[9px] text-blue-500 underline">Edit No: {item.tel}</button>
               )}

@@ -18,12 +18,13 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
 
   // Forms states
   const [showAddWarga, setShowAddWarga] = useState(false);
-  const [newWarga, setNewWarga] = useState({ username: '', nama: '', password: '', alamat: '', noHp: '', status: '' });
+  const [newWarga, setNewWarga] = useState({ username: '', nama: '', password: '', alamat: '', noHp: '', status: '', umur: '' });
 
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
   const [activeWargaId, setActiveWargaId] = useState('');
   const [memberForm, setMemberForm] = useState({ name: '', role: '', age: '' });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchWarga = async () => {
     try {
@@ -46,7 +47,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
         body: JSON.stringify(newWarga)
       });
       setShowAddWarga(false);
-      setNewWarga({ username: '', nama: '', password: '', alamat: '', noHp: '', status: '' });
+      setNewWarga({ username: '', nama: '', password: '', alamat: '', noHp: '', status: '', umur: '' });
       alert('Warga berhasil ditambahkan!');
       fetchWarga();
     } catch(e) { console.error(e); }
@@ -119,6 +120,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
             <input type="password" placeholder="Password Login" value={newWarga.password} onChange={e => setNewWarga({...newWarga, password: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
             <input type="text" placeholder="Alamat (Cth: Blok A/1)" value={newWarga.alamat} onChange={e => setNewWarga({...newWarga, alamat: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
             <input type="tel" placeholder="No HP" value={newWarga.noHp} onChange={e => setNewWarga({...newWarga, noHp: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
+            <input type="number" placeholder="Usia (Tahun)" value={newWarga.umur} onChange={e => setNewWarga({...newWarga, umur: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
             <select value={newWarga.status} onChange={e => setNewWarga({...newWarga, status: e.target.value})} required className="w-full text-xs p-2 border rounded-lg">
               <option value="">Pilih Status</option>
               <option value="Warga Tetap">Warga Tetap</option>
@@ -190,8 +192,22 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
             </button>
           )}
 
+          <div className="mb-4 relative">
+            <icons.search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+            <input 
+              type="text" 
+              placeholder="Cari nama warga / keluarga..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl"
+            />
+          </div>
+
           <div className="space-y-3">
-            {wargaData.map((warga) => {
+            {wargaData.filter(w => 
+              w.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
+              (w.members || []).some((m: any) => m.name.toLowerCase().includes(searchQuery.toLowerCase()))
+            ).map((warga) => {
               const members = warga.members || [];
               const canEditFamily = isAdmin || currentUser?.id === warga.id;
               
@@ -244,6 +260,29 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                             <option value="pengurus">Pengurus</option>
                             <option value="bendahara">Bendahara</option>
                           </select>
+                        </div>
+                      )}
+                      {canEditFamily && (
+                        <div className="mb-3 px-1 flex gap-2 items-center">
+                          <label className="text-[9px] font-bold text-gray-800">Usia Warga Utama (Tahun):</label>
+                          <input 
+                            type="number"
+                            min="0"
+                            placeholder="Belum diisi"
+                            defaultValue={warga.umur || ''}
+                            onBlur={async (e) => {
+                              const newVal = e.target.value;
+                              if (newVal !== (warga.umur || '')) {
+                                await apiFetch(`/api/profile`, { 
+                                  method: 'PUT', 
+                                  headers: {'Content-Type': 'application/json'}, 
+                                  body: JSON.stringify({ id: warga.id, umur: newVal })
+                                });
+                                fetchWarga();
+                              }
+                            }}
+                            className="text-[9px] border rounded p-1 w-16"
+                          />
                         </div>
                       )}
                       <div className="flex justify-between items-center mb-2 px-1">

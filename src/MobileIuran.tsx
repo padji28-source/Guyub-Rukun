@@ -9,6 +9,8 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   const [tahun, setTahun] = useState(new Date().getFullYear().toString());
   const [wargaList, setWargaList] = useState<any[]>([]);
   const [filterStatus, setFilterStatus] = useState('Semua');
+  const [showTambahIuran, setShowTambahIuran] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // admin form state
   const [adminSelectedUserId, setAdminSelectedUserId] = useState('');
@@ -156,6 +158,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
       }
 
       alert('Iuran berhasil ditambahkan.');
+      setShowTambahIuran(false);
       setNominal('50000');
       fetchData();
     } catch(e) { console.error(e) }
@@ -258,8 +261,23 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
       </div>
 
       {isAdminOrBendahara && (
-        <form onSubmit={handleTambahAdmin} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 space-y-3">
-          <h4 className="font-bold text-gray-800 text-xs border-b pb-2">Tambah Iuran Warga</h4>
+        !showTambahIuran ? (
+          <button 
+            onClick={() => setShowTambahIuran(true)} 
+            className="w-full mb-6 bg-teal-600 text-white font-bold text-xs py-3 rounded-xl shadow-sm hover:bg-teal-700 transition-colors"
+          >
+            + Buatkan Iuran Warga
+          </button>
+        ) : (
+        <form onSubmit={handleTambahAdmin} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 space-y-3 relative">
+          <button 
+            type="button" 
+            onClick={() => setShowTambahIuran(false)} 
+            className="absolute top-3 right-3 text-gray-400 font-bold text-[10px] bg-gray-50 px-2 py-1 rounded-full border border-gray-200"
+          >
+            Tutup
+          </button>
+          <h4 className="font-bold text-gray-800 text-xs border-b pb-2 mr-10">Buatkan Iuran Warga</h4>
           <div>
             <label className="block text-[10px] font-semibold text-gray-700 mb-1">Nama Warga</label>
             <select value={adminSelectedUserId} onChange={e => setAdminSelectedUserId(e.target.value)} required className="w-full p-2 text-xs border rounded">
@@ -301,11 +319,22 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
           </div>
           <button type="submit" disabled={loading} className="w-full py-2 bg-teal-600 text-white rounded text-xs font-bold">{loading ? 'Menyimpan...' : 'Simpan Iuran'}</button>
         </form>
+        )
       )}
+
+      <div className="mb-4 relative">
+        <input 
+          type="text" 
+          placeholder="Cari nama warga / bulan..." 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl"
+        />
+      </div>
 
       <div className="flex justify-between items-end mb-3 px-1">
         <h4 className="font-bold text-gray-800 text-xs">Riwayat Iuran {isAdminOrBendahara ? 'Warga' : 'Saya'}</h4>
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap justify-end pl-2">
           {['Semua', 'Belum Bayar', 'Verifikasi', 'Lunas'].map(f => (
             <button key={f} onClick={() => setFilterStatus(f)} className={`text-[8px] px-2 py-1 rounded font-bold border ${filterStatus === f ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-200'}`}>
               {f}
@@ -319,6 +348,12 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
           if (filterStatus === 'Belum Bayar') return d.status === 'belum dibayar';
           if (filterStatus === 'Verifikasi') return d.status === 'menunggu';
           if (filterStatus === 'Lunas') return d.status === 'verifikasi';
+          if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            const matchName = d.nama?.toLowerCase().includes(query);
+            const matchBulan = d.bulan?.toLowerCase().includes(query);
+            if (!matchName && !matchBulan) return false;
+          }
           return true;
         }).reverse().map((item) => (
           <div key={item.id} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
@@ -350,6 +385,12 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
           if (filterStatus === 'Belum Bayar') return d.status === 'belum dibayar';
           if (filterStatus === 'Verifikasi') return d.status === 'menunggu';
           if (filterStatus === 'Lunas') return d.status === 'verifikasi';
+          if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            const matchName = d.nama?.toLowerCase().includes(query);
+            const matchBulan = d.bulan?.toLowerCase().includes(query);
+            if (!matchName && !matchBulan) return false;
+          }
           return true;
         }).length === 0 && (
           <p className="text-xs text-center text-gray-400 py-4">Belum ada riwayat iuran.</p>

@@ -2,12 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import fs from "fs";
 import path from "path";
-import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
-
-const firebaseConfig = JSON.parse(fs.readFileSync(path.resolve('./firebase-applet-config.json'), 'utf-8'));
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+import mongoose from "mongoose";
 
 const app = express();
 const PORT = 3000;
@@ -15,14 +10,63 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-const DB_DOC = doc(db, 'system', 'users');
-const NOTIF_DOC = doc(db, 'system', 'notifications');
-const APP_DATA_DOC = doc(db, 'system', 'app_data');
+const MONGODB_URI = process.env.MONGODB_URI || "";
+
+const SystemDataSchema = new mongoose.Schema({
+  _id: String,
+  data: mongoose.Schema.Types.Mixed
+}, { strict: false });
+
+const SystemDataModel = mongoose.model("SystemData", SystemDataSchema);
+
+let isDbConnected = false;
+
+async function connectDB() {
+  if (!MONGODB_URI) {
+    console.warn("MONGODB_URI is not set. Data will not be saved persistently.");
+    return;
+  }
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+    });
+    isDbConnected = true;
+    console.log("Connected to MongoDB");
+  } catch (err) {
+    console.error("MongoDB connection error:", err);
+  }
+}
+
+let memoryStorage: Record<string, any> = {};
+
+async function getDocData(id: string) {
+  if (!isDbConnected) return memoryStorage[id] || null;
+  try {
+    const doc = await SystemDataModel.findById(id);
+    return doc ? doc.data : null;
+  } catch (e) {
+    console.error(`Error getting ${id}:`, e);
+    return null;
+  }
+}
+
+async function setDocData(id: string, data: any) {
+  if (!isDbConnected) {
+    memoryStorage[id] = data;
+    return;
+  }
+  try {
+    await SystemDataModel.findByIdAndUpdate(id, { data }, { upsert: true });
+  } catch (e) {
+    console.error(`Error saving ${id}:`, e);
+  }
+}
 
 async function initDb() {
-  const usersSnap = await getDoc(DB_DOC);
-  if (!usersSnap.exists() || !(usersSnap.data().list || []).find((u: any) => u.username === "ketuart")) {
-    const list = usersSnap.exists() ? usersSnap.data().list || [] : [];
+  await connectDB();
+  try {
+    let list = await getUsers();
     if (!list.find((u: any) => u.username === "ketuart")) {
       list.push({
         id: "admin",
@@ -36,54 +80,70 @@ async function initDb() {
       });
       await saveUsers(list);
     }
-  }
 
-  const notifSnap = await getDoc(NOTIF_DOC);
-  if (!notifSnap.exists()) {
-    await saveNotifications([]);
-  }
+    const notifs = await getNotifications();
+    if (notifs.length === 0) {
+      // not really needed to save but ok
+    }
 
-  const appDataSnap = await getDoc(APP_DATA_DOC);
-  if (!appDataSnap.exists()) {
-    await saveAppData({
-      surat: [],
-      laporan: [],
-      acara: [],
-      umkm: [],
-      kas: [],
-      iuran: [],
-      darurat: [
+    const appData = await getAppData();
+    if (!appData.darurat || appData.darurat.length === 0) {
+      appData.darurat = [
         { id: "d1", name: 'Ambulance & Gawat Darurat', tel: '118', type: 'Medis' },
         { id: "d2", name: 'Polisi', tel: '110', type: 'Keamanan' },
         { id: "d3", name: 'Pemadam Kebakaran', tel: '113', type: 'Kebakaran' },
-        { id: "d4", name: 'Ketua RT 04 (Bpk. Adji)', tel: '081234567890', type: 'Lingkungan' },
+        { id: "d4", name: 'Ketua RT', tel: '081234567890', type: 'Lingkungan' },
         { id: "d5", name: 'Security Pos Depan', tel: '089876543210', type: 'Keamanan' }
-      ]
-    });
+      ];
+      await saveAppData(appData);
+    } else {
+      let updated = false;
+      appData.darurat = appData.darurat.map((d: any) => {
+        if (d.id === "d4" && d.name === "Ketua RT 04 (Bpk. Adji)") {
+          updated = true;
+          return { ...d, name: 'Ketua RT' };
+        }
+        return d;
+      });
+      if (updated) {
+        await saveAppData(appData);
+      }
+    }
+  } catch (e: any) {
+    console.error("DB Init Error:", e);
   }
 }
 
 async function getUsers() {
-  const snap = await getDoc(DB_DOC);
-  return snap.exists() ? (snap.data().list || []) : [];
+  const data = await getDocData('users');
+  return data && data.list ? data.list : [];
 }
 
 async function saveUsers(users: any) {
-  await setDoc(DB_DOC, JSON.parse(JSON.stringify({ list: users })));
+  await setDocData('users', { list: users });
 }
 
 async function getNotifications() {
-  const snap = await getDoc(NOTIF_DOC);
-  return snap.exists() ? (snap.data().list || []) : [];
+  const data = await getDocData('notifications');
+  return data && data.list ? data.list : [];
 }
 
 async function saveNotifications(notifs: any) {
-  await setDoc(NOTIF_DOC, JSON.parse(JSON.stringify({ list: notifs })));
+  await setDocData('notifications', { list: notifs });
 }
 
 async function getAppData() {
-  const snap = await getDoc(APP_DATA_DOC);
-  const data = snap.exists() ? (snap.data().data || {}) : {};
+  const doc = await getDocData('app_data');
+  const data = doc ? (doc.data || {}) : {};
+  
+  if (!data.surat) data.surat = [];
+  if (!data.laporan) data.laporan = [];
+  if (!data.acara) data.acara = [];
+  if (!data.umkm) data.umkm = [];
+  if (!data.kas) data.kas = [];
+  if (!data.iuran) data.iuran = [];
+  if (!data.darurat) data.darurat = [];
+
   if (!data.media) {
     data.media = [
       { id: '1', imageUrl: 'https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=300&q=80', title: 'Kerja Bakti 2024', uploaderName: 'Admin', createdAt: new Date().toISOString() }
@@ -94,7 +154,7 @@ async function getAppData() {
 }
 
 async function saveAppData(data: any) {
-  await setDoc(APP_DATA_DOC, JSON.parse(JSON.stringify({ data })));
+  await setDocData('app_data', { data });
 }
 
 export async function addNotification(title: string, message: string) {
@@ -150,7 +210,7 @@ app.post("/api/login", async (req, res) => {
 });
 
 app.put("/api/profile", async (req, res) => {
-  const { id, username, nama, alamat, noHp, status, photo } = req.body;
+  const { id, username, nama, alamat, noHp, status, photo, umur } = req.body;
 
   const users = await getUsers();
   const userIndex = users.findIndex((u: any) => u.id === id);
@@ -162,7 +222,8 @@ app.put("/api/profile", async (req, res) => {
       alamat: alamat || users[userIndex].alamat,
       noHp: noHp || users[userIndex].noHp,
       status: status || users[userIndex].status,
-      photo: photo || users[userIndex].photo
+      photo: photo || users[userIndex].photo,
+      umur: umur !== undefined ? umur : users[userIndex].umur
     };
     await saveUsers(users);
     res.json({ message: "Profile updated successfully", user: users[userIndex] });
@@ -173,7 +234,7 @@ app.put("/api/profile", async (req, res) => {
 
 app.get("/api/warga", async (req, res) => {
   const users = await getUsers();
-  res.json({ users: users.filter((u: any) => u.id !== "admin") });
+  res.json({ users });
 });
 
 app.delete("/api/warga/:id", async (req, res) => {

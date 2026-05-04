@@ -7,6 +7,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
   const [nama, setNama] = useState('');
   const [desc, setDesc] = useState('');
   const [kontak, setKontak] = useState('');
+  const [showTambahUMKM, setShowTambahUMKM] = useState(false);
 
   const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
 
@@ -32,6 +33,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
         body: JSON.stringify({ nama, desc, kontak })
       });
       setNama(''); setDesc(''); setKontak('');
+      setShowTambahUMKM(false);
       alert('Data UMKM berhasil ditambah!');
       fetchData();
     } catch(e) { console.error(e) }
@@ -53,13 +55,29 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
       <h3 className="font-bold text-gray-800 text-sm mb-4">Direktori UMKM Warga</h3>
       
       {isAdminOrPengurus && (
-        <form onSubmit={handleTambah} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 space-y-3">
-          <h4 className="font-bold text-gray-800 text-xs border-b pb-2">Tambah UMKM</h4>
+        !showTambahUMKM ? (
+          <button 
+            onClick={() => setShowTambahUMKM(true)} 
+            className="w-full mb-6 bg-teal-600 text-white font-bold text-xs py-3 rounded-xl shadow-sm hover:bg-teal-700 transition-colors"
+          >
+            + Tambah UMKM Baru
+          </button>
+        ) : (
+        <form onSubmit={handleTambah} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 space-y-3 relative">
+          <button 
+            type="button" 
+            onClick={() => setShowTambahUMKM(false)} 
+            className="absolute top-3 right-3 text-gray-400 font-bold text-[10px] bg-gray-50 px-2 py-1 rounded-full border border-gray-200"
+          >
+            Tutup
+          </button>
+          <h4 className="font-bold text-gray-800 text-xs border-b pb-2 mr-10">Tambah UMKM</h4>
           <input type="text" placeholder="Nama Usaha" value={nama} onChange={e => setNama(e.target.value)} required className="w-full p-2 text-xs border rounded" />
           <textarea placeholder="Deskripsi Singkat" value={desc} onChange={e => setDesc(e.target.value)} required className="w-full p-2 text-xs border rounded"></textarea>
           <input type="text" placeholder="Nomor Kontak / WA" value={kontak} onChange={e => setKontak(e.target.value)} required className="w-full p-2 text-xs border rounded" />
-          <button type="submit" disabled={loading} className="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold">{loading ? 'Menyimpan...' : 'Tambah'}</button>
+          <button type="submit" disabled={loading} className="w-full py-2 bg-teal-600 text-white rounded text-xs font-bold">{loading ? 'Menyimpan...' : 'Tambah'}</button>
         </form>
+        )
       )}
 
       <div className="grid grid-cols-2 gap-3">
@@ -69,7 +87,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
             <div className="p-3">
               <h5 className="font-bold text-xs text-gray-800 mb-1">{item.nama}</h5>
               <p className="text-[9px] text-gray-500 line-clamp-2 leading-relaxed h-6">{item.desc}</p>
-              <button className="w-full mt-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg border border-blue-100">{item.kontak}</button>
+              <button className="w-full mt-3 py-1.5 bg-teal-50 text-teal-600 text-[10px] font-bold rounded-lg border border-teal-100">{item.kontak}</button>
               {isAdminOrPengurus && (
                 <button onClick={() => handleDelete(item.id)} className="absolute top-2 right-2 bg-white/80 p-1 rounded text-red-500 text-[10px] font-bold">X</button>
               )}

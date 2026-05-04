@@ -831,7 +831,7 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState({
-    name: user?.nama || 'Bpk. Adji Prasetyo',
+    name: user?.nama || 'Admin RT',
     address: user?.alamat || 'Jl. Bahagia No. 12, Kompleks Rukun, Kota Tegal',
     phone: user?.noHp || '0812-3456-7890',
     role: user?.role === 'admin' ? 'Ketua RT 01 / RW 21' : (user?.status || 'Warga RT 01 / RW 21'),
