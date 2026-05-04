@@ -353,6 +353,33 @@ const WebStatsCards = () => {
   );
 };
 
+const WebDateWidget = () => {
+  const [date, setDate] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setDate(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][date.getDay()];
+  const bulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][date.getMonth()];
+  const tanggal = date.getDate();
+  const tahun = date.getFullYear();
+  const waktu = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div className="bg-gradient-to-br from-teal-500 to-teal-700 p-6 rounded-xl border border-teal-600 shadow-sm text-white flex items-center justify-between col-span-1 xl:col-span-2">
+      <div>
+        <p className="text-teal-100 text-sm font-medium mb-1">{hari}</p>
+        <h2 className="text-2xl font-bold">{tanggal} {bulan} {tahun}</h2>
+      </div>
+      <div className="bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/20">
+        <span className="text-xl font-bold tracking-wider">{waktu}</span>
+      </div>
+    </div>
+  );
+};
+
 const WebLaporanTable = () => {
   const [laporanWargaData, setLaporanWargaData] = useState<any[]>([]);
   useEffect(() => {
@@ -362,7 +389,7 @@ const WebLaporanTable = () => {
   }, []);
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm col-span-2">
+    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-900">Laporan Warga Terbaru</h3>
       </div>
@@ -1144,6 +1171,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
               <>
                 <WebStatsCards/>
                 <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
+                  <WebDateWidget/>
                   <WebLaporanTable/>
                   <WebIuranChart/>
                 </div>
