@@ -6,10 +6,19 @@ import mongoose from "mongoose";
 export const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+app.use(async (req, res, next) => {
+  if (process.env.VERCEL) {
+    if (!isDbConnected) {
+      await initDb();
+    }
+  }
+  next();
+});
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://Vercel-Admin-guyubrukun:9g2hBGObfwk7jsC5@guyubrukun.p44ypuj.mongodb.net/guyubrukun?retryWrites=true&w=majority";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://muhammadadji:28April1996!@guyubrukun.ylesvlo.mongodb.net/guyubrukun?appName=guyubrukun";
 
 const SystemDataSchema = new mongoose.Schema({
   _id: String,
@@ -401,7 +410,8 @@ export async function startServer(listen = true) {
   await initDb();
 
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
-    const viteModule = await import("vite");
+    const viteDynamic = "vite";
+    const viteModule = await import(viteDynamic);
     const vite = await viteModule.createServer({
       server: { middlewareMode: true },
       appType: "spa",
