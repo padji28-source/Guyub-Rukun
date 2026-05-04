@@ -205,6 +205,8 @@ app.post("/api/register", async (req, res) => {
   res.json({ message: "Registrasi berhasil", user: { ...newUser, role: "warga" } });
 });
 
+const activeSessions = new Map<string, number>();
+
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
 
@@ -212,9 +214,46 @@ app.post("/api/login", async (req, res) => {
   const user = users.find((u: any) => u.username === username && u.password === password);
 
   if (user) {
+    if (activeSessions.has(user.id) && Date.now() - activeSessions.get(user.id)! < 10000) {
+      return res.status(403).json({ error: "User sedang digunakan" });
+    }
+    activeSessions.set(user.id, Date.now());
     res.json({ message: "Login berhasil", user });
   } else {
     res.status(401).json({ error: "Username atau password salah" });
+  }
+});
+
+app.post("/api/ping", (req, res) => {
+  const { id } = req.body;
+  if (id) {
+    activeSessions.set(id, Date.now());
+  }
+  res.json({ success: true });
+});
+
+app.post("/api/logout", (req, res) => {
+  const { id } = req.body;
+  if (id) {
+    activeSessions.delete(id);
+  }
+  res.json({ success: true });
+});
+
+app.put("/api/password", async (req, res) => {
+  const { id, oldPassword, newPassword } = req.body;
+  const users = await getUsers();
+  const userIndex = users.findIndex((u: any) => u.id === id);
+
+  if (userIndex !== -1) {
+    if (users[userIndex].password !== oldPassword) {
+      return res.status(400).json({ error: "Password lama salah" });
+    }
+    users[userIndex].password = newPassword;
+    await saveUsers(users);
+    res.json({ message: "Password berhasil diganti" });
+  } else {
+    res.status(404).json({ error: "User not found" });
   }
 });
 

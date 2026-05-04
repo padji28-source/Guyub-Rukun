@@ -210,7 +210,7 @@ const WebHeader = ({ user, onLogout, onUpdateUser }: { user?: any; onLogout?: ()
 };
 
 const WebStatsCards = () => {
-  const [stats, setStats] = useState({ warga: 0, laporan: 0, saldo: 0, iuranRef: 0, iuranTotal: 0, kasRT: 0, danaKematian: 0, danaSosial: 0, docUploaded: 0, docNotUploaded: 0 });
+  const [stats, setStats] = useState({ warga: 0, totalWarga: 0, laporan: 0, saldo: 0, iuranRef: 0, iuranTotal: 0, kasRT: 0, danaKematian: 0, danaSosial: 0, docUploaded: 0, docNotUploaded: 0 });
   const [showKasDetail, setShowKasDetail] = useState(false);
 
   useEffect(() => {
@@ -229,9 +229,11 @@ const WebStatsCards = () => {
 
         // calc warga
         const totalWarga = wData.users?.length || 0;
+        let totalWargaPerson = totalWarga;
         let docUploaded = 0;
         let docNotUploaded = 0;
         (wData.users || []).forEach((u: any) => {
+          totalWargaPerson += (u.members?.length || 0);
           if (u.dokumenKk || (Array.isArray(u.dokumenKtp) ? u.dokumenKtp.length > 0 : u.dokumenKtp)) {
             docUploaded++;
           } else {
@@ -274,6 +276,7 @@ const WebStatsCards = () => {
         
         setStats({
           warga: totalWarga,
+          totalWarga: totalWargaPerson,
           laporan: laporanBaru,
           saldo,
           iuranRef: lunas,
@@ -296,9 +299,10 @@ const WebStatsCards = () => {
   const saldoFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-8">
       {[
-        { title: 'Warga', value: formatter.format(stats.warga), unit: '', icon: icons.warga, accent: '#60A5FA', isWarga: true },
+        { title: 'KK', value: formatter.format(stats.warga), unit: '', icon: icons.warga, accent: '#60A5FA', isWarga: true },
+        { title: 'Total Warga', value: formatter.format(stats.totalWarga), unit: 'Orang', icon: icons.warga, accent: '#10B981' },
         { title: 'Laporan', value: formatter.format(stats.laporan), unit: 'Baru', icon: icons.laporan, accent: '#F87171' },
         { title: 'Saldo Kas', value: saldoFormatter.format(stats.saldo), unit: '', icon: icons.iuran, accent: '#FBBF24', isKas: true },
         { title: 'Iuran', value: `${Math.round((stats.iuranRef / Math.max(stats.iuranTotal, 1)) * 100)}%`, unit: 'Lunas', icon: icons.iuran, accent: '#34D399' },
@@ -637,6 +641,45 @@ const WebTamuPage = ({ user }: { user: any }) => {
 };
 
 const WebPengaturanPage = ({ user, onLogout }: { user: any, onLogout: () => void }) => {
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [savingPass, setSavingPass] = useState(false);
+
+  const handleUpdatePassword = async () => {
+    setPasswordError('');
+    setPasswordMsg('');
+    if (!oldPassword || !newPassword || !confirmPassword) {
+       return setPasswordError('Semua field harus diisi');
+    }
+    if (newPassword !== confirmPassword) {
+       return setPasswordError('Password baru dan konfirmasi tidak cocok');
+    }
+    setSavingPass(true);
+    try {
+      const res = await apiFetch('/api/password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: user.id, oldPassword, newPassword })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPasswordMsg('Password berhasil diganti');
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setTimeout(() => setPasswordMsg(''), 3000);
+      } else {
+        setPasswordError(data.error || 'Gagal mengubah password');
+      }
+    } catch (e) {
+      setPasswordError('Terjadi kesalahan sistem');
+    }
+    setSavingPass(false);
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full min-h-[500px]">
       <div className="p-8 border-b border-gray-50">
@@ -665,6 +708,25 @@ const WebPengaturanPage = ({ user, onLogout }: { user: any, onLogout: () => void
             <option>Gelap</option>
             <option>Otomatis</option>
           </select>
+        </div>
+
+        <div className="bg-gray-50 p-4 rounded-xl space-y-4">
+          <div>
+             <h3 className="font-semibold text-gray-800 text-sm">Ubah Password</h3>
+             <p className="text-xs text-gray-500 mt-1">Ganti password akun anda demi keamanan.</p>
+          </div>
+          {passwordMsg && <div className="p-2 bg-green-100 text-green-700 text-xs rounded-lg">{passwordMsg}</div>}
+          {passwordError && <div className="p-2 bg-red-100 text-red-700 text-xs rounded-lg">{passwordError}</div>}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+             <input type="password" placeholder="Password Lama" value={oldPassword} onChange={e => setOldPassword(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg p-2" />
+             <input type="password" placeholder="Password Baru" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg p-2" />
+             <input type="password" placeholder="Konfirmasi Password Baru" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg p-2" />
+          </div>
+          <div className="flex justify-end">
+             <button onClick={handleUpdatePassword} disabled={savingPass} className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-semibold hover:bg-teal-700 transition disabled:opacity-50">
+               {savingPass ? 'Menyimpan...' : 'Simpan Password'}
+             </button>
+          </div>
         </div>
 
         <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
@@ -821,7 +883,14 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
         </motion.div>
       </AnimatePresence>
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 text-white">
-        <span className="px-2 py-1 bg-teal-500/80 backdrop-blur-sm text-[9px] font-bold rounded-full w-max mb-2">Galeri Terbaru</span>
+        <div className="flex justify-between items-start w-full mb-2">
+          <span className="px-2 py-1 bg-teal-500/80 backdrop-blur-sm text-[9px] font-bold rounded-full w-max">Galeri Terbaru</span>
+          {!loadingMedia && currentMedia && (
+            <a href={currentMedia.imageUrl} download={currentMedia.title || 'foto-rt'} target="_blank" rel="noopener noreferrer" className="bg-white/20 hover:bg-white/40 text-white p-1.5 rounded-full backdrop-blur-sm transition z-10" title="Unduh Foto">
+               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            </a>
+          )}
+        </div>
         {loadingMedia ? (
             <>
                <div className="h-4 w-32 bg-white/30 animate-pulse rounded mb-2"></div>
@@ -1056,8 +1125,18 @@ const mobileNavItems = [
 
 const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => void; onUpdateUser: (data: any) => void }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangingPass, setIsChangingPass] = useState(false);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  
+  // Password state
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [savingPass, setSavingPass] = useState(false);
+
   const [profile, setProfile] = useState({
     name: user?.nama || 'Admin RT',
     address: user?.alamat || 'Jl. Bahagia No. 12, Kompleks Rukun, Kota Tegal',
@@ -1096,12 +1175,12 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
       });
       if (res.ok) {
         onUpdateUser({
-          nama: profile.name,
-          alamat: profile.address,
-          noHp: profile.phone,
-          status: profile.role,
-          photo: profile.photo,
-          umur: profile.umur
+           nama: profile.name,
+           alamat: profile.address,
+           noHp: profile.phone,
+           status: profile.role,
+           photo: profile.photo,
+           umur: profile.umur
         });
         setIsEditing(false);
         setSuccessMsg('Profil berhasil disimpan!');
@@ -1112,6 +1191,67 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
     }
     setSaving(false);
   };
+
+  const handleUpdatePassword = async () => {
+    setPasswordError('');
+    setPasswordMsg('');
+    if (!oldPassword || !newPassword || !confirmPassword) {
+       return setPasswordError('Semua field harus diisi');
+    }
+    if (newPassword !== confirmPassword) {
+       return setPasswordError('Password baru dan konfirmasi tidak cocok');
+    }
+    setSavingPass(true);
+    try {
+      const res = await apiFetch('/api/password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: user.id, oldPassword, newPassword })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setIsChangingPass(false);
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setSuccessMsg('Password berhasil diganti');
+        setTimeout(() => setSuccessMsg(''), 3000);
+      } else {
+        setPasswordError(data.error || 'Gagal mengubah password');
+      }
+    } catch (e) {
+      setPasswordError('Terjadi kesalahan sistem');
+    }
+    setSavingPass(false);
+  };
+
+  if (isChangingPass) {
+    return (
+      <div className="p-4 flex flex-col space-y-4 pb-24">
+        <div className="flex items-center justify-between mb-2">
+          <button onClick={() => setIsChangingPass(false)} className="text-[10px] text-teal-600 font-bold inline-flex items-center gap-1 bg-teal-50 px-2 py-1 rounded">Batal</button>
+          <button onClick={handleUpdatePassword} disabled={savingPass} className="text-[10px] text-white font-bold inline-flex items-center gap-1 bg-teal-600 px-3 py-1 rounded">{savingPass ? 'Menyimpan...' : 'Simpan Password'}</button>
+        </div>
+        
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3">
+           <h3 className="font-bold text-gray-800 text-sm border-b pb-2">Ubah Password</h3>
+           {passwordError && <div className="p-2 bg-red-100 text-red-700 text-[10px] rounded-lg">{passwordError}</div>}
+           <div>
+              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Password Lama</label>
+              <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+           </div>
+           <div>
+              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Password Baru</label>
+              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+           </div>
+           <div>
+              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Konfirmasi Password Baru</label>
+              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+           </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isEditing) {
     return (
@@ -1169,7 +1309,8 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
           {successMsg}
         </div>
       )}
-      <div className="w-full flex justify-end">
+      <div className="w-full flex justify-end gap-2">
+         <button onClick={() => setIsChangingPass(true)} className="text-[10px] text-gray-600 font-bold inline-flex items-center gap-1 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">Ubah Password</button>
          <button onClick={() => setIsEditing(true)} className="text-[10px] text-teal-600 font-bold inline-flex items-center gap-1 bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-100">Edit Profil</button>
       </div>
       <div className="relative mt-2">
@@ -1412,6 +1553,38 @@ export default function App() {
   const handleUpdateUser = (updatedData: any) => {
     setUser({ ...user, ...updatedData });
   };
+  
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    // Initial ping
+    apiFetch('/api/ping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: user.id }) });
+    
+    // Heartbeat ping every 5 seconds
+    const interval = setInterval(() => {
+      apiFetch('/api/ping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: user.id }) });
+    }, 5000);
+    
+    const handleUnload = () => {
+      const blob = new Blob([JSON.stringify({ id: user.id })], { type: 'application/json' });
+      navigator.sendBeacon('/api/logout', blob);
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', handleUnload);
+    };
+  }, [user]);
+
+  const handleLogout = async () => {
+    if (user?.id) {
+      try {
+        await apiFetch('/api/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: user.id }) });
+      } catch (e) {}
+    }
+    setUser(null);
+  };
 
   if (!user) {
     if (authView === 'login') {
@@ -1420,5 +1593,5 @@ export default function App() {
     return <Register onRegister={setUser} onNavLogin={() => setAuthView('login')} />;
   }
 
-  return <MainApp user={user} onLogout={() => setUser(null)} onUpdateUser={handleUpdateUser} />;
+  return <MainApp user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />;
 }

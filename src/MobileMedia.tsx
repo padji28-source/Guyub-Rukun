@@ -81,15 +81,20 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
           {media.reverse().map(item => (
             <div key={item.id} className="aspect-square bg-gray-200 rounded-xl overflow-hidden relative group">
                <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
-               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-2">
+               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-2 pointer-events-none">
                   <span className="text-white text-[9px] font-medium leading-tight line-clamp-1">{item.title}</span>
                   <span className="text-white/80 text-[7px]">{item.uploaderName} • {new Date(item.createdAt).toLocaleDateString()}</span>
                </div>
-               {(isAdminOrPengurus || item.userId === currentUser?.id) && (
-                 <button onClick={() => handleDelete(item.id)} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded font-bold text-[8px] opacity-80">
-                   Hapus
-                 </button>
-               )}
+               <div className="absolute top-2 right-2 flex gap-1">
+                 <a href={item.imageUrl} download={item.title || 'foto-rt'} target="_blank" rel="noopener noreferrer" className="bg-white/80 text-teal-700 p-1 rounded font-bold text-[8px] flex items-center justify-center backdrop-blur-sm hover:bg-white transition">
+                   Unduh
+                 </a>
+                 {(isAdminOrPengurus || item.userId === currentUser?.id) && (
+                   <button onClick={() => handleDelete(item.id)} className="bg-red-500 text-white p-1 rounded font-bold text-[8px] opacity-80 hover:opacity-100 transition">
+                     Hapus
+                   </button>
+                 )}
+               </div>
             </div>
           ))}
           {media.length === 0 && (
