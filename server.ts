@@ -4,8 +4,8 @@ import fs from "fs";
 import path from "path";
 import mongoose from "mongoose";
 
-const app = express();
-const PORT = 3000;
+export const app = express();
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -398,7 +398,7 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-async function startServer() {
+export async function startServer() {
   await initDb();
 
   if (process.env.NODE_ENV !== "production") {
@@ -415,9 +415,17 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (process.env.VERCEL) {
+    console.log("Running in Vercel, skipping app.listen()");
+  } else {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;
