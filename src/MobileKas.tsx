@@ -210,9 +210,30 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
               <span className={`text-xs font-bold ${item.type === 'Masuk' ? 'text-emerald-600' : 'text-red-600'}`}>
                 {item.type === 'Masuk' ? '+' : '-'} {formatter.format(item.amount)}
               </span>
-              {isAdminOrBendahara && (
-                <button onClick={() => handleDeleteClick(item.id)} className="text-[9px] text-red-500 underline mt-1">Hapus</button>
-              )}
+              {item.status === 'butuh_konfirmasi' && <span className="text-[9px] text-orange-500 font-bold bg-orange-50 px-1 py-0.5 rounded mt-1">Butuh Konfirmasi RT</span>}
+              <div className="flex gap-2.5 mt-1.5 items-center">
+                {currentUser?.role === 'admin' && item.status === 'butuh_konfirmasi' && (
+                  <button onClick={async () => {
+                     await apiFetch(`/api/data/kas/${item.id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ status: 'selesai' }) });
+                     fetchData();
+                  }} className="text-[9px] text-white bg-teal-500 px-1.5 py-0.5 rounded font-bold">Konfirmasi Valid</button>
+                )}
+                {isAdminOrBendahara && (
+                  <button onClick={() => {
+                    const newNominalStr = prompt('Masukkan nominal baru (hanya angka):', item.amount);
+                    if (newNominalStr) {
+                      const newAmount = parseInt(newNominalStr.replace(/\D/g, ''), 10);
+                      if (!isNaN(newAmount) && newAmount !== item.amount) {
+                         const newStatus = currentUser?.role === 'admin' ? 'selesai' : 'butuh_konfirmasi';
+                         apiFetch(`/api/data/kas/${item.id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ amount: newAmount, status: newStatus }) }).then(fetchData);
+                      }
+                    }
+                  }} className="text-[9px] text-blue-500 underline">Edit Nominal</button>
+                )}
+                {currentUser?.role === 'admin' && (
+                  <button onClick={() => handleDeleteClick(item.id)} className="text-[9px] text-red-500 underline">Hapus</button>
+                )}
+              </div>
             </div>
           </div>
         ))}

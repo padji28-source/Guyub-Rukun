@@ -82,7 +82,7 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
                     <button onClick={() => handleUpdateStatus(item.id, 'Selesai')} className="flex-1 py-1 text-xs bg-teal-100 text-teal-700 rounded font-bold">Tandai Selesai</button>
                   </div>
                 )}
-                {(isAdminOrPengurus || item.userId === currentUser?.id) && (
+                {currentUser?.role === 'admin' && (
                   <button onClick={() => handleDeleteLaporan(item.id)} className="w-full py-1 text-xs bg-red-50 text-red-600 rounded font-bold hover:bg-red-100 transition">Hapus Laporan</button>
                 )}
               </div>

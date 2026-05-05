@@ -135,12 +135,24 @@ export function Login({ onLogin, onNavRegister }: any) {
 }
 
 export function Register({ onRegister, onNavLogin }: any) {
-  const [formData, setFormData] = useState({ username: '', nama: '', password: '', noHp: '', status: '', umur: '' });
+  const [formData, setFormData] = useState({ username: '', nama: '', password: '', noHp: '', status: '', umur: '', tglLahir: '' });
   const [blok, setBlok] = useState('');
   const [nomorRumah, setNomorRumah] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isFocusedPassword, setIsFocusedPassword] = useState(false);
+
+  const calculateAge = (dob: string) => {
+    if (!dob) return '';
+    const diff_ms = Date.now() - new Date(dob).getTime();
+    const age_dt = new Date(diff_ms); 
+    return Math.abs(age_dt.getUTCFullYear() - 1970).toString();
+  };
+
+  const handleTglLahirChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const tgl = e.target.value;
+    setFormData({...formData, tglLahir: tgl, umur: calculateAge(tgl)});
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,8 +220,12 @@ export function Register({ onRegister, onNavLogin }: any) {
             </select>
           </div>
           <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Tanggal Lahir</label>
+            <input type="date" value={formData.tglLahir} onChange={handleTglLahirChange} required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-teal-500"/>
+          </div>
+          <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1">Umur</label>
-            <input type="number" value={formData.umur} onChange={e => setFormData({...formData, umur: e.target.value})} required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-teal-500" placeholder="Masukkan Umur Anda" min="0"/>
+            <input type="number" value={formData.umur} readOnly className="w-full p-3 bg-gray-100 border border-gray-200 rounded-xl text-sm outline-none cursor-not-allowed" placeholder="Otomatis terisi" min="0"/>
           </div>
           <button type="submit" disabled={loading} className="w-full h-12 flex items-center justify-center bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition-colors mt-2">
             {loading ? (

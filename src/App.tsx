@@ -1210,8 +1210,21 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
     phone: user?.noHp || '0812-3456-7890',
     role: user?.role === 'admin' ? 'Ketua RT 01 / RW 21' : (user?.status || 'Warga RT 01 / RW 21'),
     photo: user?.photo || null as string | null,
-    umur: user?.umur || ''
+    umur: user?.umur || '',
+    tglLahir: user?.tglLahir || ''
   });
+
+  const calculateAge = (dob: string) => {
+    if (!dob) return '';
+    const diff_ms = Date.now() - new Date(dob).getTime();
+    const age_dt = new Date(diff_ms); 
+    return Math.abs(age_dt.getUTCFullYear() - 1970).toString();
+  };
+
+  const handleTglLahirChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const tgl = e.target.value;
+    setProfile({...profile, tglLahir: tgl, umur: calculateAge(tgl)});
+  };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -1361,8 +1374,12 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
                <input type="tel" value={profile.phone} onChange={e => setProfile({...profile, phone: e.target.value})} className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
             </div>
             <div>
+               <label className="block text-[10px] font-semibold text-gray-700 mb-1">Tanggal Lahir</label>
+               <input type="date" value={profile.tglLahir} onChange={handleTglLahirChange} className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+            </div>
+            <div>
                <label className="block text-[10px] font-semibold text-gray-700 mb-1">Umur</label>
-               <input type="number" value={profile.umur} onChange={e => setProfile({...profile, umur: e.target.value})} className="w-full p-2 border border-gray-200 rounded-lg text-xs" min="0" />
+               <input type="number" value={profile.umur} readOnly className="w-full p-2 border border-gray-100 bg-gray-50 rounded-lg text-xs text-gray-400 cursor-not-allowed" min="0" placeholder="Otomatis" />
             </div>
         </div>
       </div>
@@ -1461,6 +1478,8 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const prevNotifIds = React.useRef<Set<string>>(new Set());
+  const isInitialLoad = React.useRef(true);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -1472,11 +1491,26 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
     try {
       const res = await apiFetch('/api/notifications');
       const data = await res.json();
-      setNotifications(data.notifications || []);
+      const newNotifs = data.notifications || [];
+
+      if ("Notification" in window && Notification.permission === "granted" && !isInitialLoad.current) {
+        newNotifs.forEach((n: any) => {
+          if (!n.read && !prevNotifIds.current.has(n.id)) {
+             new Notification(n.title, { body: n.message });
+          }
+        });
+      }
+
+      prevNotifIds.current = new Set(newNotifs.map((n: any) => n.id));
+      isInitialLoad.current = false;
+      setNotifications(newNotifs);
     } catch(e) { console.error(e); }
   };
 
   useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 5000);
     return () => clearInterval(interval);

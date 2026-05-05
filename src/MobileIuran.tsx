@@ -393,18 +393,33 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
             </div>
             <div className="flex flex-col items-end gap-1">
               <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border 
-                ${item.status === 'verifikasi' ? 'bg-teal-50 text-teal-600 border-teal-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
-                {item.status === 'verifikasi' ? 'LUNAS' : (item.status === 'menunggu' ? 'MENUNGGU VERIFIKASI' : item.status.toUpperCase())}
+                ${item.status === 'verifikasi' ? 'bg-teal-50 text-teal-600 border-teal-100' : item.status === 'butuh_konfirmasi' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
+                {item.status === 'verifikasi' ? 'LUNAS' : (item.status === 'menunggu' ? 'MENUNGGU VERIFIKASI' : (item.status === 'butuh_konfirmasi' ? 'UPDATE NOMINAL: KONFIRMASI RT' : item.status.toUpperCase()))}
               </span>
               {isAdminOrBendahara && (
-                <div className="flex gap-1 mt-1 flex-wrap justify-end">
+                <div className="flex gap-1 mt-1 flex-wrap justify-end items-center">
                   {item.buktiUrl && (
                     <button onClick={() => setViewBuktiUrl(item.buktiUrl)} className="text-[9px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded">Lihat Bukti</button>
                   )}
-                  {item.status !== 'verifikasi' && (
+                  {item.status !== 'verifikasi' && item.status !== 'butuh_konfirmasi' && (
                     <button onClick={() => handleUpdateStatus(item.id, 'verifikasi')} className="text-[9px] bg-teal-100 text-teal-700 font-bold px-1.5 py-0.5 rounded">Verifikasi</button>
                   )}
-                  <button onClick={() => handleDeleteClick(item.id)} className="text-[9px] bg-red-100 text-red-700 font-bold px-1.5 py-0.5 rounded">Hapus</button>
+                  {currentUser?.role === 'admin' && item.status === 'butuh_konfirmasi' && (
+                    <button onClick={() => handleUpdateStatus(item.id, 'verifikasi')} className="text-[9px] bg-teal-500 text-white font-bold px-1.5 py-0.5 rounded">Sah</button>
+                  )}
+                  <button onClick={() => {
+                    const newNominalStr = prompt('Edit nominal Iuran (hanya angka):', item.amount);
+                    if (newNominalStr) {
+                      const newAmount = parseInt(newNominalStr.replace(/\D/g, ''), 10);
+                      if (!isNaN(newAmount) && newAmount !== item.amount) {
+                         const newStatus = currentUser?.role === 'admin' ? 'verifikasi' : 'butuh_konfirmasi';
+                         apiFetch(`/api/data/iuran/${item.id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ amount: newAmount, status: newStatus }) }).then(fetchData);
+                      }
+                    }
+                  }} className="text-[9px] text-blue-500 underline ml-1">Edit</button>
+                  {currentUser?.role === 'admin' && (
+                    <button onClick={() => handleDeleteClick(item.id)} className="text-[9px] bg-red-100 text-red-700 font-bold px-1.5 py-0.5 rounded ml-1">Hapus</button>
+                  )}
                 </div>
               )}
             </div>

@@ -80,7 +80,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
       }
       setShowMemberForm(false);
       setEditingMember(null);
-      setMemberForm({ name: '', role: '', age: '' });
+      setMemberForm({ name: '', role: '', age: '', tglLahir: '' });
       alert(editingMember ? 'Data anggota keluarga berhasil diubah!' : 'Data anggota keluarga berhasil ditambahkan!');
       fetchWarga();
     } catch(e) { console.error(e); }
@@ -396,29 +396,9 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                           </div>
                         </div>
                       )}
-                      {canEditFamily && (
-                        <div className="mb-3 px-1 flex gap-2 items-center">
-                          <label className="text-[9px] font-bold text-gray-800">Usia Warga Utama (Tahun):</label>
-                          <input 
-                            type="number"
-                            min="0"
-                            placeholder="Belum diisi"
-                            defaultValue={warga.umur || ''}
-                            onBlur={async (e) => {
-                              const newVal = e.target.value;
-                              if (newVal !== (warga.umur || '')) {
-                                await apiFetch(`/api/profile`, { 
-                                  method: 'PUT', 
-                                  headers: {'Content-Type': 'application/json'}, 
-                                  body: JSON.stringify({ id: warga.id, umur: newVal })
-                                });
-                                fetchWarga();
-                              }
-                            }}
-                            className="text-[9px] border rounded p-1 w-16"
-                          />
-                        </div>
-                      )}
+                      <div className="mb-2 px-1">
+                        <p className="text-[9px] font-bold text-gray-800">Usia Warga Utama: <span className="font-normal text-gray-600">{warga.umur || '-'} Tahun</span></p>
+                      </div>
                       <div className="flex justify-between items-center mb-2 px-1">
                         <p className="text-[9px] font-bold text-gray-800">Daftar Anggota Keluarga</p>
                         <div className="flex gap-2">
@@ -447,7 +427,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                                 {extractingId === warga.id ? 'Mengekstrak...' : 'Ekstrak KK'}
                               </button>
                             )}
-                            <button onClick={() => { setActiveWargaId(warga.id); setMemberForm({name:'', role:'', age:''}); setEditingMember(null); setShowMemberForm(true); }} className="text-[9px] text-teal-600 font-bold bg-teal-50 px-2 py-0.5 rounded stroke-teal-600 border border-teal-100">
+                            <button onClick={() => { setActiveWargaId(warga.id); setMemberForm({name:'', role:'', age:'', tglLahir: ''}); setEditingMember(null); setShowMemberForm(true); }} className="text-[9px] text-teal-600 font-bold bg-teal-50 px-2 py-0.5 rounded stroke-teal-600 border border-teal-100">
                               + Tambah
                             </button>
                           </>
