@@ -55,10 +55,13 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
 
   useEffect(() => {
     fetchWarga();
+    const interval = setInterval(fetchWarga, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleAddWarga = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!window.confirm("Apakah Anda yakin ingin menambahkan data warga ini?")) return;
     try {
       const alamat = `Blok ${newWargaBlok} No. ${newWargaNomor}`;
       await apiFetch('/api/register', {
@@ -77,6 +80,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
 
   const handleSaveMember = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!window.confirm("Apakah Anda yakin ingin menyimpan data anggota keluarga ini?")) return;
     try {
       if (editingMember) {
         await apiFetch(`/api/warga/${activeWargaId}/members/${editingMember.id}`, {
@@ -226,7 +230,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
             <select value={newWarga.status} onChange={e => setNewWarga({...newWarga, status: e.target.value})} required className="w-full text-xs p-2 border rounded-lg">
               <option value="">Pilih Status</option>
               <option value="Warga Tetap">Warga Tetap</option>
-              <option value="Kos/Kontrak">Kos/Kontrak</option>
+              <option value="Warga Sementara (Kontrak)">Warga Sementara (Kontrak)</option>
             </select>
             <div className="flex gap-2 mt-2">
               <button type="button" onClick={() => setShowAddWarga(false)} className="flex-1 py-2 text-xs font-bold text-gray-500 bg-gray-100 rounded-lg">Batal</button>

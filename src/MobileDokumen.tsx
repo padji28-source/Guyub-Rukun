@@ -62,6 +62,7 @@ export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: (
   };
 
   const handleSave = async () => {
+    if (!window.confirm("Apakah Anda yakin ingin menyimpan dokumen ini?")) return;
     setLoading(true);
     setSuccessMsg('');
     try {

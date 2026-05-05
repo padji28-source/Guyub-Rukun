@@ -25,6 +25,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
 
   const handleTambah = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!window.confirm("Apakah Anda yakin ingin menyimpan data ini?")) return;
     setLoading(true);
     try {
       await apiFetch('/api/data/acara', {

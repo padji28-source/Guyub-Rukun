@@ -18,6 +18,7 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!window.confirm("Apakah Anda yakin ingin mengirim laporan ini?")) return;
     setLoading(true);
     setSuccessMsg('');
     try {
@@ -43,6 +44,7 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
 
   const handleSubmitTamu = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!window.confirm("Apakah Anda yakin ingin mengirim laporan tamu ini?")) return;
     setLoading(true);
     setSuccessMsg('');
     try {

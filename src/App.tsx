@@ -724,6 +724,7 @@ const WebPengaturanPage = ({ user, onLogout }: { user: any, onLogout: () => void
   const [savingPass, setSavingPass] = useState(false);
 
   const handleUpdatePassword = async () => {
+    if (!window.confirm("Apakah Anda yakin ingin mengubah password?")) return;
     setPasswordError('');
     setPasswordMsg('');
     if (!oldPassword || !newPassword || !confirmPassword) {
@@ -1245,6 +1246,7 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
   };
 
   const handleSave = async () => {
+    if (!window.confirm("Apakah Anda yakin ingin menyimpan perubahan profil ini?")) return;
     setSaving(true);
     setSuccessMsg('');
     try {
@@ -1281,6 +1283,7 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
   };
 
   const handleUpdatePassword = async () => {
+    if (!window.confirm("Apakah Anda yakin ingin mengubah password?")) return;
     setPasswordError('');
     setPasswordMsg('');
     if (!oldPassword || !newPassword || !confirmPassword) {
@@ -1371,7 +1374,11 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
             </div>
             <div>
                <label className="block text-[10px] font-semibold text-gray-700 mb-1">Peran / Status</label>
-               <input type="text" value={profile.role} onChange={e => setProfile({...profile, role: e.target.value})} className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+               <select value={profile.role} onChange={e => setProfile({...profile, role: e.target.value})} className="w-full p-2 border border-gray-200 rounded-lg text-xs">
+                 <option value="">Pilih Status</option>
+                 <option value="Warga Tetap">Warga Tetap</option>
+                 <option value="Warga Sementara (Kontrak)">Warga Sementara (Kontrak)</option>
+               </select>
             </div>
             <div>
                <label className="block text-[10px] font-semibold text-gray-700 mb-1">Alamat Lengkap</label>

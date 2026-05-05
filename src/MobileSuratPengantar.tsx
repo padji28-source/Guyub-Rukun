@@ -24,6 +24,7 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!window.confirm("Apakah Anda yakin ingin mengajukan surat pengantar ini?")) return;
     setLoading(true);
     try {
       await apiFetch('/api/data/surat', {

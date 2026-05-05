@@ -25,6 +25,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
 
   const handleTambah = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!window.confirm("Apakah Anda yakin ingin menyimpan data UMKM ini?")) return;
     setLoading(true);
     try {
       await apiFetch('/api/data/umkm', {

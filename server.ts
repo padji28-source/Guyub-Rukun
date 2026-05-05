@@ -168,6 +168,12 @@ async function saveAppData(data: any) {
 
 export async function addNotification(title: string, message: string, updaterName: string = 'Sistem', resource?: string, resourceId?: string) {
   const notifs = await getNotifications();
+  if (notifs.length > 0) {
+    const lastNotif = notifs[0];
+    if (lastNotif.title === title && lastNotif.message === message && lastNotif.resourceId === resourceId) {
+      return;
+    }
+  }
   notifs.unshift({ id: Date.now().toString(), title, message, updaterName, resource, resourceId, time: new Date().toISOString(), read: false });
   if (notifs.length > 100) notifs.length = 100;
   await saveNotifications(notifs);

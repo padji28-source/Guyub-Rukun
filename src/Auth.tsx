@@ -216,7 +216,7 @@ export function Register({ onRegister, onNavLogin }: any) {
             <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-teal-500">
               <option value="">Pilih Status</option>
               <option value="Warga Tetap">Warga Tetap</option>
-              <option value="Kos/Kontrak">Kos/Kontrak</option>
+              <option value="Warga Sementara (Kontrak)">Warga Sementara (Kontrak)</option>
             </select>
           </div>
           <div>
