@@ -26,8 +26,21 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
   const [activeWargaId, setActiveWargaId] = useState('');
-  const [memberForm, setMemberForm] = useState({ name: '', role: '', age: '' });
+  const [memberForm, setMemberForm] = useState({ name: '', role: '', age: '', tglLahir: '' });
   const [searchQuery, setSearchQuery] = useState('');
+
+  const calculateAge = (dob: string) => {
+    if (!dob) return '';
+    const diff_ms = Date.now() - new Date(dob).getTime();
+    const age_dt = new Date(diff_ms); 
+    return Math.abs(age_dt.getUTCFullYear() - 1970).toString();
+  };
+
+  const handleTglLahirMemberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const tgl = e.target.value;
+    setMemberForm({...memberForm, tglLahir: tgl, age: calculateAge(tgl)});
+  };
+
   const [filterBlok, setFilterBlok] = useState('');
   const [previewDocs, setPreviewDocs] = useState<{docs: {url: string, title: string}[], currentIndex: number, wargaName: string} | null>(null);
   const [extractingId, setExtractingId] = useState<string | null>(null);
@@ -234,7 +247,8 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
               <option value="Orang Tua">Orang Tua</option>
               <option value="Kerabat">Kerabat</option>
             </select>
-            <input type="text" placeholder="Usia (Cth: 12 Thn atau 12)" value={memberForm.age} onChange={e => setMemberForm({...memberForm, age: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
+            <input type="date" value={memberForm.tglLahir} onChange={handleTglLahirMemberChange} required className="w-full text-xs p-2 border rounded-lg" />
+            <input type="text" placeholder="Usia (Tahun) - Otomatis" value={memberForm.age} readOnly className="w-full text-xs p-2 border border-gray-100 bg-gray-50 rounded-lg cursor-not-allowed" />
             <div className="flex gap-2 mt-2">
               <button type="button" onClick={() => setShowMemberForm(false)} className="flex-1 py-2 text-xs font-bold text-gray-500 bg-gray-100 rounded-lg">Batal</button>
               <button type="submit" className="flex-1 py-2 text-xs font-bold text-white bg-teal-600 rounded-lg">Simpan</button>
@@ -452,10 +466,10 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                               </div>
                               
                               <div className="flex items-center gap-2">
-                                <span className="text-[9px] font-medium text-gray-600">{member.age}</span>
+                                <span className="text-[9px] font-medium text-gray-600">{member.age} Tahun</span>
                                 {canEditFamily && (
                                   <div className="flex gap-1 ml-2">
-                                    <button onClick={() => { setActiveWargaId(warga.id); setEditingMember(member); setMemberForm(member); setShowMemberForm(true); }} className="p-1 text-blue-500 hover:bg-blue-50 rounded"><icons.edit className="w-3 h-3"/></button>
+                                    <button onClick={() => { setActiveWargaId(warga.id); setEditingMember(member); setMemberForm({ ...member, tglLahir: member.tglLahir || '', age: member.age || '' }); setShowMemberForm(true); }} className="p-1 text-blue-500 hover:bg-blue-50 rounded"><icons.edit className="w-3 h-3"/></button>
                                     <button onClick={() => handleDeleteMember(warga.id, member.id)} className="p-1 text-red-500 hover:bg-red-50 rounded"><icons.delete className="w-3 h-3"/></button>
                                   </div>
                                 )}
