@@ -1497,6 +1497,10 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
         newNotifs.forEach((n: any) => {
           if (!n.read && !prevNotifIds.current.has(n.id)) {
              new Notification(n.title, { body: n.message });
+             try {
+                const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+                audio.play().catch(e => console.log('Autoplay blocked:', e));
+             } catch (e) {}
           }
         });
       }
@@ -1679,13 +1683,25 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
 import { Login, Register } from './Auth';
 
 export default function App() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(() => {
+    try {
+      const saved = localStorage.getItem('auth_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
 
   const handleUpdateUser = (updatedData: any) => {
-    setUser({ ...user, ...updatedData });
+    const newUser = { ...user, ...updatedData };
+    setUser(newUser);
+    localStorage.setItem('auth_user', JSON.stringify(newUser));
   };
   
+  const handleLogin = (userData: any) => {
+    setUser(userData);
+    localStorage.setItem('auth_user', JSON.stringify(userData));
+  };
+
   useEffect(() => {
     if (!user?.id) return;
     
@@ -1697,15 +1713,8 @@ export default function App() {
       apiFetch('/api/ping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: user.id }) });
     }, 5000);
     
-    const handleUnload = () => {
-      const blob = new Blob([JSON.stringify({ id: user.id })], { type: 'application/json' });
-      navigator.sendBeacon('/api/logout', blob);
-    };
-    window.addEventListener('beforeunload', handleUnload);
-    
     return () => {
       clearInterval(interval);
-      window.removeEventListener('beforeunload', handleUnload);
     };
   }, [user]);
 
@@ -1716,13 +1725,14 @@ export default function App() {
       } catch (e) {}
     }
     setUser(null);
+    localStorage.removeItem('auth_user');
   };
 
   if (!user) {
     if (authView === 'login') {
-      return <Login onLogin={setUser} onNavRegister={() => setAuthView('register')} />;
+      return <Login onLogin={handleLogin} onNavRegister={() => setAuthView('register')} />;
     }
-    return <Register onRegister={setUser} onNavLogin={() => setAuthView('login')} />;
+    return <Register onRegister={handleLogin} onNavLogin={() => setAuthView('login')} />;
   }
 
   return <MainApp user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />;
