@@ -78,7 +78,7 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
        
        {loading && <p className="text-xs text-center text-teal-600 mb-4 font-bold">Mengunggah...</p>}
        
-       <div className="grid grid-cols-2 gap-2">
+       <div className="grid grid-cols-3 gap-2">
           {media.reverse().map(item => (
             <div key={item.id} className="aspect-square bg-gray-200 rounded-xl overflow-hidden relative group cursor-pointer" onClick={() => setViewImage(item.imageUrl)}>
                <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
@@ -99,7 +99,7 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
             </div>
           ))}
           {media.length === 0 && (
-             <div className="col-span-2 text-center py-10 opacity-50">
+             <div className="col-span-3 text-center py-10 opacity-50">
                <icons.media className="w-10 h-10 mx-auto text-gray-400 mb-2"/>
                <p className="text-xs text-gray-500 font-medium">Belum ada foto kegiatan.</p>
              </div>

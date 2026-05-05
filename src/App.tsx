@@ -66,12 +66,12 @@ const fontStyle = '"Plus Jakarta Sans", sans-serif';
 
 // --- Web UI Components (Dashboard Admin) ---
 const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (tab: string) => void }) => (
-  <aside className="w-[16rem] h-screen bg-white border-r border-gray-100 flex flex-col p-6 fixed left-0 top-0">
-    <div className="flex items-center mb-10 gap-2">
+  <aside className="w-20 lg:w-[16rem] h-screen bg-white border-r border-gray-100 flex flex-col p-4 lg:p-6 fixed left-0 top-0 transition-all duration-300 z-50">
+    <div className="flex items-center mb-10 gap-2 justify-center lg:justify-start">
       <LogoCommunityIcon size="24"/>
-      <span className="text-xl font-bold" style={{ color: themeColors.primary, fontFamily: fontStyle }}>GUYUB RUKUN</span>
+      <span className="hidden lg:inline text-xl font-bold line-clamp-1" style={{ color: themeColors.primary, fontFamily: fontStyle }}>GUYUB RUKUN</span>
     </div>
-    <nav className="flex-grow space-y-4">
+    <nav className="flex-grow space-y-2 overflow-y-auto w-full no-scrollbar">
       {[
         { name: 'Dashboard', icon: icons.dashboard },
         { name: 'Warga', icon: icons.warga },
@@ -88,13 +88,14 @@ const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange
         <button 
           key={item.name} 
           onClick={() => onTabChange(item.name)}
-          className={`w-full flex items-center gap-3 p-3 rounded-xl text-sm font-medium transition-colors ${activeTab === item.name ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:bg-gray-50'}`}>
-          <item.icon className={`w-5 h-5 ${activeTab === item.name ? 'text-teal-600' : 'text-gray-400'}`} />
-          {item.name}
+          title={item.name}
+          className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl text-sm font-medium transition-colors ${activeTab === item.name ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:bg-gray-50'}`}>
+          <item.icon className={`w-6 h-6 lg:w-5 lg:h-5 shrink-0 ${activeTab === item.name ? 'text-teal-600' : 'text-gray-400'}`} />
+          <span className="hidden lg:inline">{item.name}</span>
         </button>
       ))}
     </nav>
-    <div className="w-full mt-auto flex items-center justify-center h-24 p-2 bg-gray-50 rounded-lg overflow-hidden relative">
+    <div className="hidden lg:flex w-full mt-auto items-center justify-center h-24 p-2 bg-gray-50 rounded-lg overflow-hidden relative">
       <IllustrationFamilyGroup/>
     </div>
   </aside>
@@ -113,10 +114,10 @@ const WebHeader = ({ user, onLogout, onUpdateUser }: { user?: any; onLogout?: ()
 
   return (
     <>
-      <header className="flex items-center justify-between p-6 bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm" style={{ marginLeft: '16rem' }}>
+      <header className="flex items-center justify-between py-4 px-6 lg:p-6 bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm ml-20 lg:ml-[16rem] transition-all duration-300">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: fontStyle }}>Halo, {user?.nama || 'Admin RT 01'}!</h1>
-          <p className="text-xs text-gray-500 mt-1">Website Guyub Rukun Admin Dashboard (Web View)</p>
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900" style={{ fontFamily: fontStyle }}>Halo, {user?.nama || 'Admin RT 01'}!</h1>
+          <p className="hidden md:block text-xs text-gray-500 mt-1">Website Guyub Rukun Admin Dashboard (Web View)</p>
         </div>
         <div className="flex items-center gap-6">
           <div 
@@ -300,7 +301,7 @@ const WebStatsCards = () => {
   const saldoFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-6 mb-8">
       {[
         { title: 'KK', value: formatter.format(stats.warga), unit: '', icon: icons.warga, accent: '#60A5FA', isWarga: true },
         { title: 'Total Warga', value: formatter.format(stats.totalWarga), unit: 'Orang', icon: icons.warga, accent: '#10B981' },
@@ -545,29 +546,31 @@ const WebLaporanTable = () => {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-900">Laporan Warga Terbaru</h3>
       </div>
-      <table className="w-full text-left text-xs">
-        <thead>
-          <tr className="text-gray-500 border-b border-gray-100">
-            <th className="pb-2 font-medium">Pelapor</th>
-            <th className="pb-2 font-medium">Judul</th>
-            <th className="pb-2 font-medium text-right">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {laporanWargaData.map((item, index) => (
-            <tr key={index} className={index < laporanWargaData.length - 1 ? 'border-b border-gray-50' : ''}>
-              <td className="py-3 font-medium text-gray-800">{item.nama || 'Warga'}</td>
-              <td className="py-3 text-gray-600 truncate max-w-[200px]">{item.judul}</td>
-              <td className="py-3 text-right">
-                <span className={`px-2 py-1 rounded-md ${item.status === 'selesai' ? 'bg-teal-50 text-teal-700' : (item.status === 'diproses' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700')}`}>{item.status || 'menunggu'}</span>
-              </td>
+      <div className="overflow-x-auto w-full">
+        <table className="w-full min-w-[400px] text-left text-xs">
+          <thead>
+            <tr className="text-gray-500 border-b border-gray-100">
+              <th className="pb-2 font-medium">Pelapor</th>
+              <th className="pb-2 font-medium">Judul</th>
+              <th className="pb-2 font-medium text-right">Status</th>
             </tr>
-          ))}
-          {laporanWargaData.length === 0 && (
-            <tr><td colSpan={3} className="text-center py-4 text-gray-400">Belum ada laporan</td></tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {laporanWargaData.map((item, index) => (
+              <tr key={index} className={index < laporanWargaData.length - 1 ? 'border-b border-gray-50' : ''}>
+                <td className="py-3 font-medium text-gray-800">{item.nama || 'Warga'}</td>
+                <td className="py-3 text-gray-600 truncate max-w-[200px]">{item.judul}</td>
+                <td className="py-3 text-right">
+                  <span className={`px-2 py-1 rounded-md ${item.status === 'selesai' ? 'bg-teal-50 text-teal-700' : (item.status === 'diproses' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700')}`}>{item.status || 'menunggu'}</span>
+                </td>
+              </tr>
+            ))}
+            {laporanWargaData.length === 0 && (
+              <tr><td colSpan={3} className="text-center py-4 text-gray-400">Belum ada laporan</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
@@ -1498,11 +1501,11 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
 
       {/* --- DESKTOP ADMIN VIEW --- */}
       {!isMobile ? (
-      <div className="hidden md:flex relative z-10 w-full h-full flex-col">
+      <div className="hidden md:flex relative z-10 w-full h-full">
         <WebSidebar activeTab={activeWebTab} onTabChange={setActiveWebTab} />
-        <div className="flex flex-col flex-grow w-full">
+        <div className="flex flex-col flex-grow w-full h-full overflow-hidden">
           <WebHeader user={user} onLogout={onLogout} onUpdateUser={onUpdateUser} />
-          <main className="flex-grow p-8 overflow-y-auto" style={{ marginLeft: '16rem', backgroundColor: themeColors.neutral.bg }}>
+          <main className="flex-grow p-4 lg:p-8 overflow-y-auto ml-20 lg:ml-[16rem] transition-all duration-300" style={{ backgroundColor: themeColors.neutral.bg }}>
             {!user.isApproved ? (
               <div className="flex flex-col items-center justify-center p-12 mt-20 text-center bg-white rounded-2xl shadow-sm border border-gray-100 max-w-lg mx-auto">
                 <icons.dokumen className="w-20 h-20 text-gray-300 mb-6" />
