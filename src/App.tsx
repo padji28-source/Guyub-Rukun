@@ -303,6 +303,11 @@ const WebStatsCards = () => {
       }
     };
     fetchStats();
+    const handleUpdate = () => {
+      fetchStats();
+    };
+    window.addEventListener('app_data_update', handleUpdate);
+    return () => window.removeEventListener('app_data_update', handleUpdate);
   }, []);
 
   const formatter = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
@@ -1531,8 +1536,17 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
       Notification.requestPermission();
     }
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 5000);
-    return () => clearInterval(interval);
+    
+    const source = new EventSource('/api/stream');
+    source.addEventListener('update', (e) => {
+      const data = JSON.parse(e.data);
+      if (data.type === 'notifications') {
+        fetchNotifications();
+      }
+      window.dispatchEvent(new CustomEvent('app_data_update', { detail: data.type }));
+    });
+    
+    return () => source.close();
   }, []);
 
   const handleShowNotifications = async () => {

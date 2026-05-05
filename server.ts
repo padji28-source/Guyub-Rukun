@@ -122,6 +122,18 @@ async function initDb() {
   }
 }
 
+const clients = new Set<any>();
+
+function broadcastEvent(event: string, data: any) {
+  for (const client of clients) {
+    try {
+      client.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    } catch(e) {
+      clients.delete(client);
+    }
+  }
+}
+
 async function getUsers() {
   const data = await getDocData('users');
   return data && data.list ? data.list : [];
@@ -129,6 +141,7 @@ async function getUsers() {
 
 async function saveUsers(users: any) {
   await setDocData('users', { list: users });
+  broadcastEvent('update', { type: 'users' });
 }
 
 async function getNotifications() {
@@ -138,6 +151,7 @@ async function getNotifications() {
 
 async function saveNotifications(notifs: any) {
   await setDocData('notifications', { list: notifs });
+  broadcastEvent('update', { type: 'notifications' });
 }
 
 async function getAppData() {
@@ -164,6 +178,7 @@ async function getAppData() {
 
 async function saveAppData(data: any) {
   await setDocData('app_data', { data });
+  broadcastEvent('update', { type: 'app_data' });
 }
 
 export async function addNotification(title: string, message: string, updaterName: string = 'Sistem', resource?: string, resourceId?: string) {
@@ -215,6 +230,20 @@ app.post("/api/register", async (req, res) => {
 
 const activeSessions = new Map<string, number>();
 
+setInterval(() => {
+  const now = Date.now();
+  let changed = false;
+  for (const [id, lastSeen] of activeSessions.entries()) {
+    if (now - lastSeen > 15000) {
+      activeSessions.delete(id);
+      changed = true;
+    }
+  }
+  if (changed) {
+    broadcastEvent('update', { type: 'online_status' });
+  }
+}, 5000);
+
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
 
@@ -243,7 +272,11 @@ app.post("/api/login", async (req, res) => {
 app.post("/api/ping", (req, res) => {
   const { id } = req.body;
   if (id) {
+    const wasOnline = activeSessions.has(id);
     activeSessions.set(id, Date.now());
+    if (!wasOnline) {
+       broadcastEvent('update', { type: 'online_status' });
+    }
   }
   res.json({ success: true });
 });
@@ -252,8 +285,22 @@ app.post("/api/logout", (req, res) => {
   const { id } = req.body;
   if (id) {
     activeSessions.delete(id);
+    broadcastEvent('update', { type: 'online_status' });
   }
   res.json({ success: true });
+});
+
+app.get("/api/stream", (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  clients.add(res);
+
+  req.on('close', () => {
+    clients.delete(res);
+  });
 });
 
 app.put("/api/password", async (req, res) => {

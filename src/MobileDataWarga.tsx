@@ -55,8 +55,13 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
 
   useEffect(() => {
     fetchWarga();
-    const interval = setInterval(fetchWarga, 5000);
-    return () => clearInterval(interval);
+    const handleUpdate = (e: any) => {
+      if (e.detail === 'users' || e.detail === 'online_status') {
+        fetchWarga();
+      }
+    };
+    window.addEventListener('app_data_update', handleUpdate);
+    return () => window.removeEventListener('app_data_update', handleUpdate);
   }, []);
 
   const handleAddWarga = async (e: React.FormEvent) => {
