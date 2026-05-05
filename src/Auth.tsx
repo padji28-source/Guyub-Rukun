@@ -58,7 +58,9 @@ export function Login({ onLogin, onNavRegister }: any) {
 }
 
 export function Register({ onRegister, onNavLogin }: any) {
-  const [formData, setFormData] = useState({ username: '', nama: '', password: '', alamat: '', noHp: '', status: '', umur: '' });
+  const [formData, setFormData] = useState({ username: '', nama: '', password: '', noHp: '', status: '', umur: '' });
+  const [blok, setBlok] = useState('');
+  const [nomorRumah, setNomorRumah] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -66,10 +68,11 @@ export function Register({ onRegister, onNavLogin }: any) {
     e.preventDefault();
     setLoading(true);
     try {
+      const alamat = `Blok ${blok} No. ${nomorRumah}`;
       const res = await apiFetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({...formData, alamat})
       });
       const data = await res.json();
       if (res.ok) {
@@ -106,8 +109,12 @@ export function Register({ onRegister, onNavLogin }: any) {
             <input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-teal-500" placeholder="Masukkan password"/>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Alamat</label>
-            <textarea value={formData.alamat} onChange={e => setFormData({...formData, alamat: e.target.value})} required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-teal-500 h-20" placeholder="Blok A / No. 12"></textarea>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Blok Rumah</label>
+            <input type="text" value={blok} onChange={e => setBlok(e.target.value)} required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-teal-500" placeholder="Cth: Blok A" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Nomor Rumah</label>
+            <input type="text" value={nomorRumah} onChange={e => setNomorRumah(e.target.value)} required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-teal-500" placeholder="Cth: 12" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1">No. HP</label>

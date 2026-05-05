@@ -1439,7 +1439,14 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
         <div className="flex flex-col flex-grow w-full">
           <WebHeader user={user} onLogout={onLogout} onUpdateUser={onUpdateUser} />
           <main className="flex-grow p-8 overflow-y-auto" style={{ marginLeft: '16rem', backgroundColor: themeColors.neutral.bg }}>
-            {activeWebTab === 'Dashboard' && (
+            {!user.isApproved ? (
+              <div className="flex flex-col items-center justify-center p-12 mt-20 text-center bg-white rounded-2xl shadow-sm border border-gray-100 max-w-lg mx-auto">
+                <icons.dokumen className="w-20 h-20 text-gray-300 mb-6" />
+                <h2 className="text-2xl font-bold text-teal-600 mb-3">Akun Belum Aktif</h2>
+                <p className="text-sm text-gray-500 leading-relaxed mb-8">Akun Anda sedang diverifikasi atau dinonaktifkan oleh Ketua RT. Harap hubungi Ketua RT untuk akses fitur dalam aplikasi.</p>
+                <button onClick={() => window.open(`https://wa.me/`, '_blank')} className="px-8 py-3 bg-teal-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-teal-700 transition">Hubungi Pengurus / RT</button>
+              </div>
+            ) : activeWebTab === 'Dashboard' && (
               <>
                 <WebStatsCards/>
                 <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
@@ -1449,15 +1456,15 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                 </div>
               </>
             )}
-            {activeWebTab === 'Warga' && <WebWargaPage user={user} />}
-            {activeWebTab === 'Iuran' && <WebIuranPage user={user} />}
-            {activeWebTab === 'Kas' && <WebKasPage user={user} />}
-            {activeWebTab === 'Dokumen' && <WebDokumenPage user={user} onUpdateUser={onUpdateUser} />}
-            {activeWebTab === 'Laporan' && <WebLaporanPage user={user} />}
-            {activeWebTab === 'Pengumuman' && <WebPengumumanPage user={user} />}
-            {activeWebTab === 'UMKM' && <WebUMKMPage user={user} />}
-            {activeWebTab === 'Tamu' && <WebTamuPage user={user} />}
-            {activeWebTab === 'Pengaturan' && <WebPengaturanPage user={user} onLogout={onLogout} />}
+            {user.isApproved && activeWebTab === 'Warga' && <WebWargaPage user={user} />}
+            {user.isApproved && activeWebTab === 'Iuran' && <WebIuranPage user={user} />}
+            {user.isApproved && activeWebTab === 'Kas' && <WebKasPage user={user} />}
+            {user.isApproved && activeWebTab === 'Dokumen' && <WebDokumenPage user={user} onUpdateUser={onUpdateUser} />}
+            {user.isApproved && activeWebTab === 'Laporan' && <WebLaporanPage user={user} />}
+            {user.isApproved && activeWebTab === 'Pengumuman' && <WebPengumumanPage user={user} />}
+            {user.isApproved && activeWebTab === 'UMKM' && <WebUMKMPage user={user} />}
+            {user.isApproved && activeWebTab === 'Tamu' && <WebTamuPage user={user} />}
+            {user.isApproved && activeWebTab === 'Pengaturan' && <WebPengaturanPage user={user} onLogout={onLogout} />}
           </main>
         </div>
       </div>
@@ -1476,48 +1483,56 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
               transition={{ duration: 0.2, ease: "easeInOut" }}
               className="h-full overflow-y-auto pb-24"
             >
-              {activeMobileTab === 'Beranda' && (
-                <>
-                  <section className="px-4 mb-4 mt-2 relative z-10 transition-all hidden">
-                    <div className="flex items-center gap-3 bg-white p-3 rounded-full shadow-sm border border-gray-100">
-                      <icons.home className="w-5 h-5 text-gray-400" />
-                      <input type="text" placeholder="Search for actions..." className="text-xs text-gray-700 flex-grow outline-none bg-transparent" />
-                      <ProfileAvatar size="8" />
-                    </div>
-                  </section>
-                  <MobileSaldoCard/>
-                  <MobileQuickActions onActionClick={setActiveMobileTab}/>
-                  <MobileEvents onActionClick={setActiveMobileTab} />
-                </>
-              )}
-
-              {activeMobileTab === 'Acara' && <MobileAcaraPage currentUser={user} />}
-              {activeMobileTab === 'Laporan' && (
-                  <MobileLaporan onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />
-              )}
-              {activeMobileTab === 'Profil' && <MobileProfilPage user={user} onLogout={onLogout} onUpdateUser={onUpdateUser} />}
-              {activeMobileTab === 'Surat' && <MobileSuratPengantar onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-              {activeMobileTab === 'Surat Pengantar' && <MobileSuratPengantar onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-              {activeMobileTab === 'Iuran' && <MobileIuran onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-              {activeMobileTab === 'Kas' && <MobileKas onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-              {activeMobileTab === 'Sedekah' && <MobileSedekah onBack={() => setActiveMobileTab('Beranda')} user={user} />}
-              {activeMobileTab === 'UMKM Warga' && <MobileUMKM onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-              {activeMobileTab === 'UMKM' && <MobileUMKM onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-              {activeMobileTab === 'Lapor RT' && <MobileLaporRT onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-              {activeMobileTab === 'Data Warga' && <MobileDataWarga onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-              {activeMobileTab === 'Media' && <MobileMedia onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-              {activeMobileTab === 'Darurat' && <MobileDarurat onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-              {activeMobileTab === 'Dokumen' && <MobileDokumen onBack={() => setActiveMobileTab('Beranda')} currentUser={user} onUpdateUser={onUpdateUser} />}
-              {activeMobileTab === 'Tamu' && <MobileTamu onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-
-              {/* Fallback for unrecognized tabs */}
-              {!['Beranda', 'Acara', 'Laporan', 'Profil', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu'].includes(activeMobileTab) && (
-                <div className="flex flex-col items-center justify-center h-full opacity-50 py-20">
-                  <icons.dashboard className="w-12 h-12 text-gray-300 mb-3" />
-                  <h2 className="text-lg font-semibold text-gray-500">Halaman {activeMobileTab}</h2>
-                  <p className="text-xs text-gray-400 mb-4">Fitur ini dalam pengembangan.</p>
-                  <button className="px-4 py-2 border rounded-full text-xs text-gray-600" onClick={() => setActiveMobileTab('Beranda')}>Kembali</button>
+              {activeMobileTab === 'Profil' ? (
+                <MobileProfilPage user={user} onLogout={onLogout} onUpdateUser={onUpdateUser} />
+              ) : !user.isApproved ? (
+                <div className="flex flex-col items-center justify-center p-8 mt-20 text-center">
+                  <icons.dokumen className="w-16 h-16 text-gray-300 mb-4" />
+                  <h2 className="text-lg font-bold text-teal-600 mb-2">Akun Belum Aktif</h2>
+                  <p className="text-xs text-gray-500 leading-relaxed max-w-[200px] mb-6">Akun Anda sedang diverifikasi atau dinonaktifkan oleh Ketua RT. Harap hubungi Ketua RT untuk akses fitur warga.</p>
+                  <button onClick={() => window.open(`https://wa.me/`, '_blank')} className="w-full max-w-[200px] py-3 bg-teal-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-teal-700 transition">Hubungi Pengurus / RT</button>
                 </div>
+              ) : (
+                <>
+                  {activeMobileTab === 'Beranda' && (
+                    <>
+                      <section className="px-4 mb-4 mt-2 relative z-10 transition-all hidden">
+                        <div className="flex items-center gap-3 bg-white p-3 rounded-full shadow-sm border border-gray-100">
+                          <icons.home className="w-5 h-5 text-gray-400" />
+                          <input type="text" placeholder="Search for actions..." className="text-xs text-gray-700 flex-grow outline-none bg-transparent" />
+                          <ProfileAvatar size="8" />
+                        </div>
+                      </section>
+                      <MobileSaldoCard/>
+                      <MobileQuickActions onActionClick={setActiveMobileTab}/>
+                      <MobileEvents onActionClick={setActiveMobileTab} />
+                    </>
+                  )}
+
+                  {activeMobileTab === 'Acara' && <MobileAcaraPage currentUser={user} />}
+                  {activeMobileTab === 'Laporan' && <MobileLaporan onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                  {activeMobileTab === 'Surat' || activeMobileTab === 'Surat Pengantar' ? <MobileSuratPengantar onBack={() => setActiveMobileTab('Beranda')} currentUser={user} /> : null}
+                  {activeMobileTab === 'Iuran' && <MobileIuran onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                  {activeMobileTab === 'Kas' && <MobileKas onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                  {activeMobileTab === 'Sedekah' && <MobileSedekah onBack={() => setActiveMobileTab('Beranda')} user={user} />}
+                  {activeMobileTab === 'UMKM' || activeMobileTab === 'UMKM Warga' ? <MobileUMKM onBack={() => setActiveMobileTab('Beranda')} currentUser={user} /> : null}
+                  {activeMobileTab === 'Lapor RT' && <MobileLaporRT onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                  {activeMobileTab === 'Data Warga' && <MobileDataWarga onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                  {activeMobileTab === 'Media' && <MobileMedia onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                  {activeMobileTab === 'Darurat' && <MobileDarurat onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                  {activeMobileTab === 'Dokumen' && <MobileDokumen onBack={() => setActiveMobileTab('Beranda')} currentUser={user} onUpdateUser={onUpdateUser} />}
+                  {activeMobileTab === 'Tamu' && <MobileTamu onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+
+                  {/* Fallback for unrecognized tabs */}
+                  {!['Beranda', 'Acara', 'Laporan', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu'].includes(activeMobileTab) && (
+                    <div className="flex flex-col items-center justify-center h-full opacity-50 py-20">
+                      <icons.dashboard className="w-12 h-12 text-gray-300 mb-3" />
+                      <h2 className="text-lg font-semibold text-gray-500">Halaman {activeMobileTab}</h2>
+                      <p className="text-xs text-gray-400 mb-4">Fitur ini dalam pengembangan.</p>
+                      <button className="px-4 py-2 border rounded-full text-xs text-gray-600" onClick={() => setActiveMobileTab('Beranda')}>Kembali</button>
+                    </div>
+                  )}
+                </>
               )}
             </motion.div>
           </AnimatePresence>

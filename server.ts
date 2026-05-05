@@ -193,6 +193,8 @@ app.post("/api/register", async (req, res) => {
     alamat,
     noHp,
     status,
+    role: "warga",
+    isApproved: false,
     umur,
     members: []
   };
@@ -200,7 +202,7 @@ app.post("/api/register", async (req, res) => {
   users.push(newUser);
   await saveUsers(users);
 
-  await addNotification("Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan.`);
+  await addNotification("Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan. Menunggu verifikasi.`);
 
   res.json({ message: "Registrasi berhasil", user: { ...newUser, role: "warga" } });
 });
@@ -218,6 +220,14 @@ app.post("/api/login", async (req, res) => {
       return res.status(409).json({ error: "User sedang digunakan di perangkat lain" });
     }
     activeSessions.set(user.id, Date.now());
+    
+    // Auto-approve admin and dummy users if they don't have isApproved set
+    if (user.role === 'admin' && user.isApproved === undefined) {
+      user.isApproved = true;
+    } else if (user.isApproved === undefined) {
+      user.isApproved = true; // Auto approve existing legacy users
+    }
+
     res.json({ message: "Login berhasil", user });
   } else {
     res.status(401).json({ error: "Username atau password salah" });
@@ -284,7 +294,11 @@ app.put("/api/profile", async (req, res) => {
 
 app.get("/api/warga", async (req, res) => {
   const users = await getUsers();
-  res.json({ users });
+  const usersWithOnlineStatus = users.map((u: any) => ({
+    ...u,
+    isOnline: activeSessions.has(u.id) && Date.now() - activeSessions.get(u.id)! < 15000
+  }));
+  res.json({ users: usersWithOnlineStatus });
 });
 
 app.delete("/api/warga/:id", async (req, res) => {
@@ -352,6 +366,19 @@ app.put("/api/warga/:id/role", async (req, res) => {
     res.json({ message: "Role updated successfully", user: users[userIndex] });
   } else {
     res.status(400).json({ error: "Gagal update role" });
+  }
+});
+
+app.put("/api/warga/:id/approval", async (req, res) => {
+  const { isApproved } = req.body;
+  const users = await getUsers();
+  const userIndex = users.findIndex((u: any) => u.id === req.params.id);
+  if (userIndex !== -1 && users[userIndex].id !== "admin") {
+    users[userIndex].isApproved = isApproved;
+    await saveUsers(users);
+    res.json({ message: "Status approval updated successfully", user: users[userIndex] });
+  } else {
+    res.status(400).json({ error: "Gagal update status approval" });
   }
 });
 

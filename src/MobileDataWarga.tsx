@@ -19,13 +19,16 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
 
   // Forms states
   const [showAddWarga, setShowAddWarga] = useState(false);
-  const [newWarga, setNewWarga] = useState({ username: '', nama: '', password: '', alamat: '', noHp: '', status: '', umur: '' });
+  const [newWarga, setNewWarga] = useState({ username: '', nama: '', password: '', noHp: '', status: '', umur: '' });
+  const [newWargaBlok, setNewWargaBlok] = useState('');
+  const [newWargaNomor, setNewWargaNomor] = useState('');
 
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [editingMember, setEditingMember] = useState<any>(null);
   const [activeWargaId, setActiveWargaId] = useState('');
   const [memberForm, setMemberForm] = useState({ name: '', role: '', age: '' });
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterBlok, setFilterBlok] = useState('');
   const [previewDocs, setPreviewDocs] = useState<{docs: {url: string, title: string}[], currentIndex: number, wargaName: string} | null>(null);
   const [extractingId, setExtractingId] = useState<string | null>(null);
 
@@ -44,13 +47,16 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
   const handleAddWarga = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const alamat = `Blok ${newWargaBlok} No. ${newWargaNomor}`;
       await apiFetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newWarga)
+        body: JSON.stringify({...newWarga, alamat})
       });
       setShowAddWarga(false);
-      setNewWarga({ username: '', nama: '', password: '', alamat: '', noHp: '', status: '', umur: '' });
+      setNewWarga({ username: '', nama: '', password: '', noHp: '', status: '', umur: '' });
+      setNewWargaBlok('');
+      setNewWargaNomor('');
       alert('Warga berhasil ditambahkan!');
       fetchWarga();
     } catch(e) { console.error(e); }
@@ -198,7 +204,10 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
             <input type="text" placeholder="Username" value={newWarga.username} onChange={e => setNewWarga({...newWarga, username: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
             <input type="text" placeholder="Nama Lengkap" value={newWarga.nama} onChange={e => setNewWarga({...newWarga, nama: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
             <input type="password" placeholder="Password Login" value={newWarga.password} onChange={e => setNewWarga({...newWarga, password: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
-            <input type="text" placeholder="Alamat (Cth: Blok A/1)" value={newWarga.alamat} onChange={e => setNewWarga({...newWarga, alamat: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
+            <div className="flex gap-2">
+               <input type="text" placeholder="Blok Rumah (Cth: A)" value={newWargaBlok} onChange={e => setNewWargaBlok(e.target.value)} required className="w-1/2 text-xs p-2 border rounded-lg" />
+               <input type="text" placeholder="Nomor (Cth: 12)" value={newWargaNomor} onChange={e => setNewWargaNomor(e.target.value)} required className="w-1/2 text-xs p-2 border rounded-lg" />
+            </div>
             <input type="tel" placeholder="No HP" value={newWarga.noHp} onChange={e => setNewWarga({...newWarga, noHp: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
             <input type="number" placeholder="Usia (Tahun)" value={newWarga.umur} onChange={e => setNewWarga({...newWarga, umur: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
             <select value={newWarga.status} onChange={e => setNewWarga({...newWarga, status: e.target.value})} required className="w-full text-xs p-2 border rounded-lg">
@@ -272,22 +281,36 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
             </button>
           )}
 
-          <div className="mb-4 relative">
-            <icons.search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-            <input 
-              type="text" 
-              placeholder="Cari nama warga / keluarga..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl"
-            />
+          <div className="mb-4 flex gap-2">
+            <div className="relative flex-grow">
+              <icons.search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+              <input 
+                type="text" 
+                placeholder="Cari nama warga / keluarga..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl"
+              />
+            </div>
+            <select
+              value={filterBlok}
+              onChange={(e) => setFilterBlok(e.target.value)}
+              className="px-3 py-2 text-xs border border-gray-200 rounded-xl bg-white outline-none"
+            >
+              <option value="">Semua Blok</option>
+              {Array.from(new Set(wargaData.map(w => w.alamat?.match(/Blok\s+([a-zA-Z0-9]+)/i)?.[1]).filter(Boolean))).sort().map(b => (
+                <option key={String(b)} value={String(b)}>Blok {String(b)}</option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-3">
-            {wargaData.filter(w => 
-              w.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
-              (w.members || []).some((m: any) => m.name.toLowerCase().includes(searchQuery.toLowerCase()))
-            ).map((warga) => {
+            {wargaData.filter(w => {
+              const matchName = w.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                (w.members || []).some((m: any) => m.name.toLowerCase().includes(searchQuery.toLowerCase()));
+              const matchBlok = !filterBlok || w.alamat?.match(/Blok\s+([a-zA-Z0-9]+)/i)?.[1] === filterBlok;
+              return matchName && matchBlok;
+            }).map((warga) => {
               const members = warga.members || [];
               const canEditFamily = isAdmin || currentUser?.id === warga.id;
               
@@ -302,7 +325,15 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                       {warga.nama.charAt(0)}
                     </div>
                     <div>
-                      <h5 className="text-xs font-bold text-gray-800">{warga.nama} {currentUser?.id === warga.id && "(Anda)"}</h5>
+                      <div className="flex items-center gap-1.5">
+                        <h5 className="text-xs font-bold text-gray-800">{warga.nama} {currentUser?.id === warga.id && "(Anda)"}</h5>
+                        {warga.isOnline && (
+                          <div className="flex items-center gap-1 bg-green-50 px-1.5 py-0.5 rounded-full border border-green-100" title="Online">
+                             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                             <span className="text-[7px] font-bold text-green-700 uppercase tracking-wider">Online</span>
+                          </div>
+                        )}
+                      </div>
                       <p className="text-[9px] text-gray-500 mt-0.5">{warga.alamat} • <span className="font-medium text-gray-700">{members.length} Anggota</span></p>
                       <div className="mt-1">
                         {(warga.dokumenKk || (Array.isArray(warga.dokumenKtp) ? warga.dokumenKtp.length > 0 : warga.dokumenKtp)) ? (
@@ -333,20 +364,36 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                       className="pt-3 mt-3 border-t border-gray-50"
                     >
                       {isAdmin && warga.id !== currentUser?.id && (
-                        <div className="mb-3 px-1 flex gap-2 items-center">
-                          <label className="text-[9px] font-bold text-gray-800">Role:</label>
-                          <select 
-                            value={warga.role || 'warga'} 
-                            onChange={async (e) => {
-                              await apiFetch(`/api/warga/${warga.id}/role`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({role: e.target.value})});
-                              fetchWarga();
-                            }}
-                            className="text-[9px] border rounded p-1"
-                          >
-                            <option value="warga">Warga</option>
-                            <option value="pengurus">Pengurus</option>
-                            <option value="bendahara">Bendahara</option>
-                          </select>
+                        <div className="mb-3 px-1 flex flex-col gap-2">
+                          <div className="flex gap-2 items-center">
+                            <label className="text-[9px] font-bold text-gray-800">Role:</label>
+                            <select 
+                              value={warga.role || 'warga'} 
+                              onChange={async (e) => {
+                                await apiFetch(`/api/warga/${warga.id}/role`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({role: e.target.value})});
+                                fetchWarga();
+                              }}
+                              className="text-[9px] border rounded p-1"
+                            >
+                              <option value="warga">Warga</option>
+                              <option value="pengurus">Pengurus</option>
+                              <option value="bendahara">Bendahara</option>
+                            </select>
+                          </div>
+                          <div className="flex gap-2 items-center">
+                            <label className="text-[9px] font-bold text-gray-800">Status Akun:</label>
+                            <select 
+                              value={warga.isApproved ? 'aktif' : 'tidak_aktif'} 
+                              onChange={async (e) => {
+                                await apiFetch(`/api/warga/${warga.id}/approval`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({isApproved: e.target.value === 'aktif'})});
+                                fetchWarga();
+                              }}
+                              className="text-[9px] border rounded p-1"
+                            >
+                              <option value="aktif">Aktif</option>
+                              <option value="tidak_aktif">Tidak Aktif</option>
+                            </select>
+                          </div>
                         </div>
                       )}
                       {canEditFamily && (
