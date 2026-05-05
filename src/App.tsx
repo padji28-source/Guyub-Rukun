@@ -80,6 +80,7 @@ const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange
         { name: 'Dokumen', icon: icons.dokumen },
         { name: 'Laporan', icon: icons.laporan },
         { name: 'Pengumuman', icon: icons.pengumuman },
+        { name: 'Media', icon: icons.media },
         { name: 'UMKM', icon: icons.umkm },
         { name: 'Tamu', icon: icons.warga },
         { name: 'Pengaturan', icon: icons.pengaturan },
@@ -476,6 +477,61 @@ const WebDateWidget = () => {
   );
 };
 
+const WebMediaSlider = () => {
+  const [media, setMedia] = useState<any[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    apiFetch('/api/data/media').then(r => r.json()).then(d => {
+      setMedia(d.data || []);
+    }).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (media.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % media.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [media.length]);
+
+  if (media.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative w-full h-64 md:h-80 mb-6">
+      <AnimatePresence mode="wait">
+        <motion.img
+          key={currentIndex}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          src={media[currentIndex].imageUrl}
+          alt={media[currentIndex].title}
+          className="w-full h-full object-cover absolute inset-0"
+        />
+      </AnimatePresence>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
+      <div className="absolute bottom-6 left-6 right-6 z-10 flex flex-col items-start">
+        <span className="bg-teal-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm mb-2 uppercase tracking-wide">Galeri RT</span>
+        <h3 className="text-white font-bold text-xl md:text-2xl line-clamp-1 filter drop-shadow-md">{media[currentIndex].title}</h3>
+        {media[currentIndex].uploaderName && (
+          <p className="text-white/90 text-xs mt-1 md:text-sm font-medium drop-shadow">{media[currentIndex].uploaderName} • {new Date(media[currentIndex].createdAt).toLocaleDateString()}</p>
+        )}
+      </div>
+      <div className="absolute bottom-6 right-6 z-10 flex gap-1.5 items-center">
+        {media.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrentIndex(idx)}
+            className={`h-2 rounded-full transition-all shadow-sm ${idx === currentIndex ? 'bg-white w-6' : 'bg-white/50 hover:bg-white/80 w-2'}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const WebLaporanTable = () => {
   const [laporanWargaData, setLaporanWargaData] = useState<any[]>([]);
   useEffect(() => {
@@ -616,6 +672,14 @@ const WebUMKMPage = ({ user }: { user: any }) => (
   <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
     <div className="p-4 md:p-8">
       <MobileUMKM onBack={() => {}} currentUser={user} />
+    </div>
+  </div>
+);
+
+const WebMediaPage = ({ user }: { user: any }) => (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
+    <div className="p-4 md:p-8 min-h-screen">
+      <MobileMedia onBack={() => {}} currentUser={user} />
     </div>
   </div>
 );
@@ -1449,6 +1513,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
             ) : activeWebTab === 'Dashboard' && (
               <>
                 <WebStatsCards/>
+                <WebMediaSlider/>
                 <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
                   <WebDateWidget/>
                   <WebLaporanTable/>
@@ -1462,6 +1527,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
             {user.isApproved && activeWebTab === 'Dokumen' && <WebDokumenPage user={user} onUpdateUser={onUpdateUser} />}
             {user.isApproved && activeWebTab === 'Laporan' && <WebLaporanPage user={user} />}
             {user.isApproved && activeWebTab === 'Pengumuman' && <WebPengumumanPage user={user} />}
+            {user.isApproved && activeWebTab === 'Media' && <WebMediaPage user={user} />}
             {user.isApproved && activeWebTab === 'UMKM' && <WebUMKMPage user={user} />}
             {user.isApproved && activeWebTab === 'Tamu' && <WebTamuPage user={user} />}
             {user.isApproved && activeWebTab === 'Pengaturan' && <WebPengaturanPage user={user} onLogout={onLogout} />}
