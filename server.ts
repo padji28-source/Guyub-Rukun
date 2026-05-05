@@ -166,9 +166,9 @@ async function saveAppData(data: any) {
   await setDocData('app_data', { data });
 }
 
-export async function addNotification(title: string, message: string, updaterName: string = 'Sistem') {
+export async function addNotification(title: string, message: string, updaterName: string = 'Sistem', resource?: string, resourceId?: string) {
   const notifs = await getNotifications();
-  notifs.unshift({ id: Date.now().toString(), title, message, updaterName, time: new Date().toISOString(), read: false });
+  notifs.unshift({ id: Date.now().toString(), title, message, updaterName, resource, resourceId, time: new Date().toISOString(), read: false });
   if (notifs.length > 100) notifs.length = 100;
   await saveNotifications(notifs);
 }
@@ -202,7 +202,7 @@ app.post("/api/register", async (req, res) => {
   users.push(newUser);
   await saveUsers(users);
 
-  await addNotification("Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan. Menunggu verifikasi.`);
+  await addNotification("Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan. Menunggu verifikasi.`, req.body.updaterName || nama, "warga", newUser.id);
 
   res.json({ message: "Registrasi berhasil", user: { ...newUser, role: "warga" } });
 });
@@ -286,6 +286,8 @@ app.put("/api/profile", async (req, res) => {
       dokumenKtp: dokumenKtp !== undefined ? dokumenKtp : users[userIndex].dokumenKtp
     };
     await saveUsers(users);
+    const updater = req.body.updaterName || nama || users[userIndex].nama || 'Sistem';
+    await addNotification("Profil Diperbarui", `Warga ${users[userIndex].nama} memperbarui profil.`, updater, "warga", id);
     res.json({ message: "Profile updated successfully", user: users[userIndex] });
   } else {
     res.status(404).json({ error: "User not found" });
@@ -306,7 +308,7 @@ app.delete("/api/warga/:id", async (req, res) => {
   const user = users.find((u: any) => u.id === req.params.id);
   const newUsers = users.filter((u: any) => u.id !== req.params.id);
   await saveUsers(newUsers);
-  if (user) await addNotification("Warga Dihapus", `Data warga ${user.nama} telah dihapus.`);
+  if (user) await addNotification("Warga Dihapus", `Data warga ${user.nama} telah dihapus.`, req.body.updaterName || 'Admin', "warga", req.params.id);
   res.json({ message: "User deleted" });
 });
 
@@ -319,7 +321,7 @@ app.post("/api/warga/:id/members", async (req, res) => {
     const newMember = { id: Date.now().toString(), name, role, age };
     user.members.push(newMember);
     await saveUsers(users);
-    await addNotification("Anggota Keluarga Bertambah", `Anggota baru ${name} ditambahkan ke KK ${user.nama}.`);
+    await addNotification("Anggota Keluarga Bertambah", `Anggota baru ${name} ditambahkan ke KK ${user.nama}.`, req.body.updaterName || user.nama, "warga", user.id);
     res.json({ message: "Family member added", member: newMember, user });
   } else {
     res.status(404).json({ error: "User not found" });
@@ -335,6 +337,8 @@ app.put("/api/warga/:id/members/:memberId", async (req, res) => {
     if (memberIndex !== -1) {
       user.members[memberIndex] = { ...user.members[memberIndex], name, role, age };
       await saveUsers(users);
+      const updater = req.body.updaterName || user.nama || 'Sistem';
+      await addNotification("Anggota Keluarga Diperbarui", `Data anggota ${name} di KK ${user.nama} diperbarui.`, updater, "warga", user.id);
       res.json({ message: "Family member updated", user });
     } else {
       res.status(404).json({ error: "Member not found" });
@@ -348,8 +352,11 @@ app.delete("/api/warga/:id/members/:memberId", async (req, res) => {
   const users = await getUsers();
   const user = users.find((u: any) => u.id === req.params.id);
   if (user && user.members) {
+    const member = user.members.find((m: any) => m.id === req.params.memberId);
     user.members = user.members.filter((m: any) => m.id !== req.params.memberId);
     await saveUsers(users);
+    const updater = req.body.updaterName || user.nama || 'Sistem';
+    if (member) await addNotification("Anggota Keluarga Dihapus", `Anggota ${member.name} dihapus dari KK ${user.nama}.`, updater, "warga", user.id);
     res.json({ message: "Family member deleted", user });
   } else {
     res.status(404).json({ error: "User or member not found" });
@@ -363,6 +370,8 @@ app.put("/api/warga/:id/role", async (req, res) => {
   if (userIndex !== -1 && users[userIndex].id !== "admin") {
     users[userIndex].role = role;
     await saveUsers(users);
+    const updater = req.body.updaterName || 'Admin';
+    await addNotification("Peran Warga Diperbarui", `Peran warga ${users[userIndex].nama} diubah menjadi ${role}.`, updater, "warga", users[userIndex].id);
     res.json({ message: "Role updated successfully", user: users[userIndex] });
   } else {
     res.status(400).json({ error: "Gagal update role" });
@@ -376,6 +385,9 @@ app.put("/api/warga/:id/approval", async (req, res) => {
   if (userIndex !== -1 && users[userIndex].id !== "admin") {
     users[userIndex].isApproved = isApproved;
     await saveUsers(users);
+    const updater = req.body.updaterName || 'Admin';
+    const statusText = isApproved ? 'disetujui' : 'dibatalkan';
+    await addNotification("Status Warga Diperbarui", `Status warga ${users[userIndex].nama} ${statusText}.`, updater, "warga", users[userIndex].id);
     res.json({ message: "Status approval updated successfully", user: users[userIndex] });
   } else {
     res.status(400).json({ error: "Gagal update status approval" });
@@ -420,6 +432,18 @@ app.post("/api/data/:resource", async (req, res) => {
   const newItem = { id: Date.now().toString(), createdAt: new Date().toISOString(), ...req.body };
   data[resource].push(newItem);
   await saveAppData(data);
+  
+  const creator = req.body.nama || req.body.name || req.body.uploaderName || req.body.pembuat || req.body.updaterName || 'Sistem';
+  let title = `Input Baru: ${resource}`;
+  if (resource === 'laporan') title = 'Laporan Baru';
+  if (resource === 'iuran') title = 'Iuran Baru';
+  if (resource === 'kas') title = 'Kas Baru';
+  if (resource === 'darurat') title = 'Panggilan Darurat';
+  if (resource === 'acara') title = 'Acara Baru';
+  if (resource === 'surat') title = 'Surat Keluar Baru';
+  
+  await addNotification(title, `Terdapat data baru pada modul ${resource} oleh ${creator}.`, creator, resource, newItem.id);
+
   res.json({ message: "Created successfully", item: newItem });
 });
 
@@ -436,13 +460,11 @@ app.put("/api/data/:resource/:id", async (req, res) => {
     await saveAppData(data);
 
     if (resource === 'surat' && oldItem.status !== newItem.status && newItem.status === 'selesai') {
-      await addNotification('Surat Selesai', `Surat pengajuan untuk ${newItem.keperluan || 'anda'} sudah bisa diambil.`, req.body.updaterName || 'Admin');
-    }
-    if (resource === 'laporan' && oldItem.status !== newItem.status) {
-      await addNotification('Update Laporan', `Laporan ${newItem.judul || 'warga'} kini berstatus: ${newItem.status}.`, req.body.updaterName || 'Admin');
-    }
-    if (resource === 'iuran' && oldItem.status !== newItem.status && newItem.status === 'verifikasi') {
-      await addNotification('Iuran Diverifikasi', `Iuran dari ${newItem.nama || 'warga'} sebesar Rp ${newItem.nominal} telah diverifikasi dan masuk kas.`, req.body.updaterName || 'Admin');
+      await addNotification('Surat Selesai', `Surat pengajuan untuk ${newItem.keperluan || 'anda'} sudah bisa diambil.`, req.body.updaterName || 'Admin', resource, newItem.id);
+    } else if (resource === 'laporan' && oldItem.status !== newItem.status) {
+      await addNotification('Update Laporan', `Laporan ${newItem.judul || 'warga'} kini berstatus: ${newItem.status}.`, req.body.updaterName || 'Admin', resource, newItem.id);
+    } else if (resource === 'iuran' && oldItem.status !== newItem.status && newItem.status === 'verifikasi') {
+      await addNotification('Iuran Diverifikasi', `Iuran dari ${newItem.nama || 'warga'} sebesar Rp ${newItem.nominal} telah diverifikasi dan masuk kas.`, req.body.updaterName || 'Admin', resource, newItem.id);
       const nominal = parseInt(newItem.nominal || '0', 10);
       const isSplit = nominal >= 5000;
       const danaKematianAmount = isSplit ? 5000 : 0;
@@ -473,6 +495,9 @@ app.put("/api/data/:resource/:id", async (req, res) => {
         });
       }
       await saveAppData(data);
+    } else {
+      const updater = req.body.updaterName || 'Sistem';
+      await addNotification(`Data Diupdate: ${resource}`, `Terdapat perubahan data pada modul ${resource} oleh ${updater}.`, updater, resource, newItem.id);
     }
 
     res.json({ message: "Updated successfully", item: newItem });
@@ -501,6 +526,8 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
 
   data[resource] = data[resource].filter((item: any) => item.id !== req.params.id);
   await saveAppData(data);
+  const updater = req.body?.updaterName || 'Sistem';
+  await addNotification(`Data Dihapus: ${resource}`, `Terdapat penghapusan data pada modul ${resource} oleh ${updater}.`, updater);
   res.json({ message: "Deleted successfully" });
 });
 

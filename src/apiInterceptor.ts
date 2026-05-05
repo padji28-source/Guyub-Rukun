@@ -44,7 +44,24 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
     }
   }
 
-  const fetchPromise = fetch(input, init).then(async (res) => {
+  const modifiedInit = { ...init };
+
+  // Append updaterName to POST/PUT payloads automatically
+  if (!isGet && modifiedInit.body && typeof modifiedInit.body === 'string') {
+    try {
+      const parsed = JSON.parse(modifiedInit.body);
+      if (typeof parsed === 'object' && !parsed.updaterName) {
+        const authUser = localStorage.getItem('auth_user');
+        if (authUser) {
+          const userObj = JSON.parse(authUser);
+          parsed.updaterName = userObj.nama || userObj.username || 'Admin';
+          modifiedInit.body = JSON.stringify(parsed);
+        }
+      }
+    } catch(e) {}
+  }
+
+  const fetchPromise = fetch(input, modifiedInit).then(async (res) => {
     if (isGet && res.ok) {
       const clonedForCache = res.clone();
       try {

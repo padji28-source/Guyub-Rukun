@@ -101,16 +101,11 @@ const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange
   </aside>
 );
 
-const WebHeader = ({ user, onLogout, onUpdateUser }: { user?: any; onLogout?: () => void; onUpdateUser?: (data: any) => void }) => {
+const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNotifications, onNotificationClick }: { user?: any; onLogout?: () => void; onUpdateUser?: (data: any) => void; notifications?: any[]; onShowNotifications?: () => void; onNotificationClick?: (n: any) => void; }) => {
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifs, setNotifs] = useState<any[]>([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
-
-  useEffect(() => {
-    apiFetch('/api/notifications').then(r => r.json()).then(d => {
-      setNotifs(d.notifications || []);
-    }).catch(console.error);
-  }, []);
+  
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <>
@@ -136,13 +131,16 @@ const WebHeader = ({ user, onLogout, onUpdateUser }: { user?: any; onLogout?: ()
           </div>
           <div className="relative">
             <button 
-              onClick={() => setShowNotifications(!showNotifications)} 
+              onClick={() => {
+                 setShowNotifications(!showNotifications);
+                 if (!showNotifications && onShowNotifications) onShowNotifications();
+              }} 
               className={`relative p-2 rounded-full transition-colors ${showNotifications ? 'bg-teal-50 text-teal-600' : 'hover:bg-gray-100 text-gray-500'}`}
             >
               <icons.pengumuman className="w-6 h-6" />
-              {notifs.length > 0 && (
+              {unreadCount > 0 && (
                 <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold ring-2 ring-white">
-                  {notifs.length}
+                  {unreadCount}
                 </span>
               )}
             </button>
@@ -158,18 +156,28 @@ const WebHeader = ({ user, onLogout, onUpdateUser }: { user?: any; onLogout?: ()
                 >
                   <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
                     <h4 className="font-bold text-gray-800 text-sm">Notifikasi</h4>
-                    <span className="text-[10px] uppercase font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">{notifs.length} Baru</span>
+                    <span className="text-[10px] uppercase font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">{unreadCount} Baru</span>
                   </div>
                   <div className="max-h-72 overflow-y-auto">
-                    {notifs.length > 0 ? notifs.map((n, i) => (
-                      <div key={i} className="p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
+                    {notifications.length > 0 ? notifications.map((n, i) => (
+                      <div 
+                        key={i} 
+                        onClick={() => {
+                          if (onNotificationClick) {
+                             onNotificationClick(n);
+                          } else {
+                             alert(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
+                          }
+                          setShowNotifications(false);
+                        }}
+                        className="p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group"
+                      >
                         <div className="flex items-start justify-between">
                            <p className="text-xs font-bold text-gray-800 group-hover:text-teal-600 transition-colors">{n.title}</p>
                            {!n.read && <span className="w-2 h-2 rounded-full bg-red-500 mt-1 flex-shrink-0"></span>}
                         </div>
-                        <p className="text-[10px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">{n.message}</p>
+                        <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">{n.message}</p>
                         <p className="text-[9px] text-gray-400 mt-2 font-medium uppercase tracking-wider">{new Date(n.time || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                          {n.updaterName && <span className="ml-2 font-bold text-teal-600">oleh: {n.updaterName}</span>}
                         </p>
                       </div>
                     )) : (
@@ -1542,7 +1550,21 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
       <div className="hidden md:flex relative z-10 w-full h-full">
         <WebSidebar activeTab={activeWebTab} onTabChange={setActiveWebTab} />
         <div className="flex flex-col flex-grow w-full h-full overflow-hidden">
-          <WebHeader user={user} onLogout={onLogout} onUpdateUser={onUpdateUser} />
+          <WebHeader 
+            user={user} 
+            onLogout={onLogout} 
+            onUpdateUser={onUpdateUser} 
+            notifications={notifications} 
+            onShowNotifications={handleShowNotifications} 
+            onNotificationClick={(n) => {
+               alert(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
+               if (n.resource) {
+                  const mod = n.resource.charAt(0).toUpperCase() + n.resource.slice(1);
+                  setActiveWebTab(mod === 'Surat' ? 'Surat Pengantar' : mod);
+                  setActiveMobileTab(mod === 'Surat' ? 'Layanan' : mod);
+               }
+            }}
+          />
           <main className="flex-grow p-4 lg:p-8 overflow-y-auto ml-20 lg:ml-[16rem] transition-all duration-300" style={{ backgroundColor: themeColors.neutral.bg }}>
             {!user.isApproved ? (
               <div className="flex flex-col items-center justify-center p-12 mt-20 text-center bg-white rounded-2xl shadow-sm border border-gray-100 max-w-lg mx-auto">
@@ -1656,7 +1678,19 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                </div>
                <div className="overflow-y-auto p-4 space-y-3 pb-8">
                   {notifications.map(n => (
-                    <div key={n.id} className="p-3 bg-white border border-gray-100 rounded-xl shadow-sm flex items-start gap-3">
+                    <div 
+                      key={n.id} 
+                      onClick={() => {
+                         alert(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
+                         if (n.resource && typeof setActiveMobileTab === 'function') {
+                            const mod = n.resource.charAt(0).toUpperCase() + n.resource.slice(1);
+                            setActiveWebTab(mod === 'Surat' ? 'Surat Pengantar' : mod);
+                            setActiveMobileTab(mod === 'Surat' ? 'Layanan' : mod);
+                         }
+                         setShowNotifications(false);
+                      }}
+                      className="p-3 bg-white border border-gray-100 rounded-xl shadow-sm flex items-start gap-3 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                    >
                        <div className="p-2 bg-teal-50 text-teal-600 rounded-full shrink-0">
                          <icons.bell className="w-4 h-4"/>
                        </div>
@@ -1665,7 +1699,6 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                          <p className="text-[10px] text-gray-600 mt-0.5">{n.message}</p>
                          <span className="text-[8px] font-medium text-gray-400 mt-1 block">
                            {new Date(n.time || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                           {n.updaterName && <span className="ml-1 text-teal-600 font-bold bg-teal-50 px-1 py-0.5 rounded">oleh: {n.updaterName}</span>}
                          </span>
                        </div>
                     </div>
