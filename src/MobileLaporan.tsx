@@ -30,6 +30,17 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
     } catch(e) { console.error(e); }
   };
 
+  const handleDeleteLaporan = async (id: string) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus laporan ini?')) return;
+    try {
+      await apiFetch(`/api/data/laporan/${id}`, { method: 'DELETE' });
+      fetchData();
+    } catch (e) {
+      console.error(e);
+      alert('Gagal menghapus laporan');
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -62,14 +73,19 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
               </div>
               <p className="text-[10px] text-gray-600 mb-3">{item.keterangan}</p>
               
-              {isAdminOrPengurus && item.status !== 'Selesai' && (
-                <div className="flex gap-2">
-                  {item.status === 'Pending' && (
-                    <button onClick={() => handleUpdateStatus(item.id, 'Proses')} className="flex-1 py-1 text-xs bg-blue-100 text-blue-700 rounded font-bold">Terima / Proses</button>
-                  )}
-                  <button onClick={() => handleUpdateStatus(item.id, 'Selesai')} className="flex-1 py-1 text-xs bg-teal-100 text-teal-700 rounded font-bold">Tandai Selesai</button>
-                </div>
-              )}
+              <div className="flex flex-col gap-2">
+                {isAdminOrPengurus && item.status !== 'Selesai' && (
+                  <div className="flex gap-2">
+                    {item.status === 'Pending' && (
+                      <button onClick={() => handleUpdateStatus(item.id, 'Proses')} className="flex-1 py-1 text-xs bg-blue-100 text-blue-700 rounded font-bold">Terima / Proses</button>
+                    )}
+                    <button onClick={() => handleUpdateStatus(item.id, 'Selesai')} className="flex-1 py-1 text-xs bg-teal-100 text-teal-700 rounded font-bold">Tandai Selesai</button>
+                  </div>
+                )}
+                {(isAdminOrPengurus || item.userId === currentUser?.id) && (
+                  <button onClick={() => handleDeleteLaporan(item.id)} className="w-full py-1 text-xs bg-red-50 text-red-600 rounded font-bold hover:bg-red-100 transition">Hapus Laporan</button>
+                )}
+              </div>
             </div>
           ))}
           {data.filter(d => isAdminOrPengurus || d.userId === currentUser?.id).length === 0 && (
