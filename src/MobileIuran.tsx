@@ -1,5 +1,17 @@
 import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+
+// --- Kumpulan Ikon ---
+const Icons = {
+  back: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>,
+  receipt: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+  check: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>,
+  clock: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  alert: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
+  search: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
+  upload: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+};
 
 export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
   const [data, setData] = useState<any[]>([]);
@@ -33,7 +45,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   
   const tagihanList = data.filter(d => d.userId === currentUser?.id && d.status === 'belum dibayar');
   const totalTagihan = tagihanList.reduce((sum, item) => sum + Number(item.nominal || 0), 0);
-  const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' });
+  const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
 
   const [adminStatus, setAdminStatus] = useState('verifikasi');
 
@@ -95,7 +107,6 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     }
     setLoading(true);
     const period = `${bulan} ${tahun}`;
-    // Check if there is an existing tagihan (belum dibayar) for this month
     const existing = tagihanList.find(t => t.bulan === period);
 
     try {
@@ -103,27 +114,16 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
         await apiFetch(`/api/data/iuran/${existing.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            nominal,
-            status: 'menunggu',
-            buktiUrl: buktiBase64
-          })
+          body: JSON.stringify({ nominal, status: 'menunggu', buktiUrl: buktiBase64 })
         });
       } else {
         await apiFetch('/api/data/iuran', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            nominal, 
-            bulan: period,
-            status: 'menunggu', // menunggu verifikasi
-            userId: currentUser?.id,
-            nama: currentUser?.nama,
-            buktiUrl: buktiBase64
-          })
+          body: JSON.stringify({ nominal, bulan: period, status: 'menunggu', userId: currentUser?.id, nama: currentUser?.nama, buktiUrl: buktiBase64 })
         });
       }
-      alert('Pembayaran iuran berhasil dicatat! Menunggu verifikasi pengurus.');
+      alert('✅ Pembayaran iuran berhasil dicatat! Menunggu verifikasi pengurus.');
       setShowBayarForm(false);
       setBuktiBase64('');
       fetchData();
@@ -133,7 +133,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
   const handleTambahAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin menyimpan data ini?")) return;
+    if (!window.confirm("Simpan data iuran warga?")) return;
     if (!adminSelectedUserId) return;
     
     setLoading(true);
@@ -159,22 +159,17 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
         });
       }
 
-      alert('Iuran berhasil ditambahkan.');
+      alert('✨ Data iuran berhasil ditambahkan.');
       setShowTambahIuran(false);
-      setNominal('50000');
       fetchData();
     } catch(e) { console.error(e) }
     setLoading(false);
   };
 
   const [showConfirmVerify, setShowConfirmVerify] = useState<{id: string, status: string} | null>(null);
-
   const handleUpdateStatus = async (id: string, newStatus: string) => {
-    if (newStatus === 'verifikasi') {
-      setShowConfirmVerify({ id, status: newStatus });
-    } else {
-      await updateStatus(id, newStatus);
-    }
+    if (newStatus === 'verifikasi') setShowConfirmVerify({ id, status: newStatus });
+    else await updateStatus(id, newStatus);
   };
 
   const updateStatus = async (id: string, newStatus: string) => {
@@ -194,16 +189,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     setShowConfirmVerify(null);
   };
 
-  const cancelVerify = () => {
-    setShowConfirmVerify(null);
-  };
-
   const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
-
-  const handleDeleteClick = (id: string) => {
-    setShowConfirmDelete(id);
-  };
-
   const confirmDelete = async () => {
     if (!showConfirmDelete) return;
     try {
@@ -213,282 +199,365 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     setShowConfirmDelete(null);
   };
 
-  const cancelDelete = () => {
-    setShowConfirmDelete(null);
-  };
-
   if (showBayarForm) {
     return (
-      <div className="p-4 pb-24">
-        <button onClick={() => setShowBayarForm(false)} className="text-[10px] text-teal-600 mb-4 font-bold inline-flex items-center gap-1 bg-teal-50 px-2 py-1 rounded">← Kembali</button>
-        <div className="bg-white p-5 rounded-2xl shadow-md border border-gray-100">
-          <h3 className="font-bold text-gray-800 text-sm mb-4 border-b pb-2">Pembayaran Iuran</h3>
-          <div className="mb-4">
-            <p className="text-xs text-gray-600 mb-2">Silahkan transfer Tagihan ke bank berikut:</p>
-            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 mb-4">
-              <p className="text-xs font-bold text-gray-800">Bank BCA</p>
-              <p className="text-sm font-mono text-teal-700 tracking-wider">1234 5678 90</p>
-              <p className="text-[10px] text-gray-500 uppercase">A.N. Bendahara RT 01</p>
+      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-5 pb-28 min-h-screen bg-slate-50">
+        <div className="flex items-center mb-6">
+          <button onClick={() => setShowBayarForm(false)} className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+            <Icons.back className="w-5 h-5" />
+          </button>
+          <h2 className="ml-4 text-lg font-extrabold text-slate-800 tracking-tight">Form Pembayaran</h2>
+        </div>
+
+        <div className="bg-white p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 space-y-6">
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Tujuan Transfer</p>
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-2xl text-white shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-white opacity-10 rounded-full translate-x-8 -translate-y-8"></div>
+              <p className="text-sm font-medium opacity-90">Bank BCA</p>
+              <p className="text-2xl font-extrabold tracking-widest mt-1 mb-1">1234 5678 90</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">A.N. Bendahara RT 01</p>
             </div>
-            <label className="block text-xs font-semibold text-gray-700 mb-2">Nominal Transfer (Rp)</label>
-            <input type="number" value={nominal} onChange={e => setNominal(e.target.value)} disabled={loading} className="w-full p-2 text-xs border rounded-xl outline-none" />
           </div>
-          <div className="mb-4">
-            <label className="block text-xs font-semibold text-gray-700 mb-2">Pilih Bulan</label>
-            <div className="flex gap-2">
-              <select value={bulan} onChange={e => setBulan(e.target.value)} disabled={loading} className="w-1/2 p-2 text-xs border rounded-xl outline-none">
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1">Nominal Transfer (Rp)</label>
+            <input type="number" value={nominal} onChange={e => setNominal(e.target.value)} disabled={loading} className="w-full p-3 text-sm font-extrabold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none transition-all" />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1">Periode Pembayaran</label>
+            <div className="flex gap-3">
+              <select value={bulan} onChange={e => setBulan(e.target.value)} disabled={loading} className="w-1/2 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none transition-all">
                 {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(m => (
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
-              <select value={tahun} onChange={e => setTahun(e.target.value)} disabled={loading} className="w-1/2 p-2 text-xs border rounded-xl outline-none">
+              <select value={tahun} onChange={e => setTahun(e.target.value)} disabled={loading} className="w-1/2 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none transition-all">
                 {[2024, 2025, 2026, 2027, 2028].map(y => (
                   <option key={y} value={y}>{y}</option>
                 ))}
               </select>
             </div>
           </div>
-          <div className="mb-6">
-            <label className="block text-xs font-semibold text-gray-700 mb-2">Upload Bukti Transfer</label>
-            <input type="file" accept="image/*" onChange={handleFileChange} disabled={loading} className="w-full text-xs file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" />
-            {buktiBase64 && (
-              <div className="mt-3 aspect-video bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
-                <img src={buktiBase64} alt="Bukti" className="w-full h-full object-contain" />
-              </div>
-            )}
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1">Upload Bukti Transfer</label>
+            <div className={`border-2 border-dashed rounded-2xl p-4 text-center transition-colors ${buktiBase64 ? 'border-teal-500 bg-teal-50' : 'border-slate-300 bg-slate-50'}`}>
+              <input type="file" id="fileUpload" accept="image/*" onChange={handleFileChange} disabled={loading} className="hidden" />
+              <label htmlFor="fileUpload" className="cursor-pointer flex flex-col items-center justify-center">
+                {!buktiBase64 ? (
+                  <>
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-2 text-teal-600">
+                      <Icons.upload className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs font-bold text-teal-600">Pilih Foto Bukti Transaksi</span>
+                    <span className="text-[10px] text-slate-400 mt-1">Maksimal 5MB (JPG/PNG)</span>
+                  </>
+                ) : (
+                  <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-sm">
+                    <img src={buktiBase64} alt="Bukti" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <span className="text-white text-xs font-bold bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-sm">Ganti Foto</span>
+                    </div>
+                  </div>
+                )}
+              </label>
+            </div>
           </div>
-          <button onClick={submitPembayaran} disabled={loading || !buktiBase64} className="w-full py-3 bg-teal-600 text-white rounded-xl text-xs font-bold disabled:opacity-50">
-            {loading ? 'Menyimpan...' : 'Kirim Bukti Pembayaran'}
+
+          <button onClick={submitPembayaran} disabled={loading || !buktiBase64} className="w-full py-4 bg-teal-600 text-white rounded-xl text-sm font-extrabold shadow-md hover:bg-teal-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]">
+            {loading ? 'Memproses...' : 'Kirim Bukti Pembayaran'}
           </button>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="p-4 pb-24">
-      <button onClick={onBack} className="text-[10px] text-teal-600 mb-4 font-bold inline-flex items-center gap-1 bg-teal-50 px-2 py-1 rounded">← Beranda</button>
-      
-      <div className="bg-teal-600 p-5 rounded-2xl text-white mb-6 shadow-md relative overflow-hidden">
-        <div className="flex justify-between items-start mb-4 relative z-10">
-          <div>
-            <p className="text-[10px] opacity-80 uppercase">Total Tagihan Belum Dibayar</p>
-            <h4 className="text-xl font-bold">{formatter.format(totalTagihan)}</h4>
-          </div>
-          <button onClick={() => {
-            if (tagihanList.length > 0) {
-              const [b, t] = tagihanList[0].bulan.split(' ');
-              setBulan(b);
-              setTahun(t);
-              setNominal(tagihanList[0].nominal);
-            }
-            setShowBayarForm(true);
-          }} disabled={loading} className="px-3 py-1 bg-white text-teal-600 rounded-lg text-xs font-bold shadow-sm">Bayar</button>
-        </div>
-        {tagihanList.length > 0 ? (
-          <p className="text-[10px] opacity-90 font-medium">Ada {tagihanList.length} tagihan menunggu pembayaran.</p>
-        ) : (
-          <p className="text-[10px] opacity-80">Tidak ada tagihan tertunggak. Anda dapat menginput pembayaran secara mandiri.</p>
-        )}
+    <div className="min-h-screen bg-slate-50 p-5 pb-28">
+      {/* HEADER NAV */}
+      <div className="flex items-center mb-6">
+        <button onClick={onBack} className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+          <Icons.back className="w-5 h-5" />
+        </button>
+        <h2 className="ml-4 text-lg font-extrabold text-slate-800 tracking-tight">Iuran Warga</h2>
       </div>
-
-      {isAdminOrBendahara && (
-        !showTambahIuran ? (
-          <button 
-            onClick={() => setShowTambahIuran(true)} 
-            className="w-full mb-6 bg-teal-600 text-white font-bold text-xs py-3 rounded-xl shadow-sm hover:bg-teal-700 transition-colors"
-          >
-            + Buatkan Iuran Warga
-          </button>
-        ) : (
-        <form onSubmit={handleTambahAdmin} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 space-y-3 relative">
-          <button 
-            type="button" 
-            onClick={() => setShowTambahIuran(false)} 
-            className="absolute top-3 right-3 text-gray-400 font-bold text-[10px] bg-gray-50 px-2 py-1 rounded-full border border-gray-200"
-          >
-            Tutup
-          </button>
-          <h4 className="font-bold text-gray-800 text-xs border-b pb-2 mr-10">Buatkan Iuran Warga</h4>
+      
+      {/* KARTU TAGIHAN UTAMA */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 p-6 rounded-[2rem] text-white shadow-xl shadow-teal-200 mb-6 relative overflow-hidden"
+      >
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white opacity-10 rounded-full translate-x-12 -translate-y-12"></div>
+        <div className="absolute bottom-0 right-10 w-24 h-24 bg-teal-900 opacity-20 rounded-full translate-y-10"></div>
+        
+        <div className="relative z-10 flex justify-between items-start mb-2">
           <div>
-            <label className="block text-[10px] font-semibold text-gray-700 mb-1">Nama Warga</label>
-            <select value={adminSelectedUserId} onChange={e => setAdminSelectedUserId(e.target.value)} required className="w-full p-2 text-xs border rounded">
-              <option value="" disabled>Pilih Warga</option>
-              <option value="all">Semua Warga</option>
-              {wargaList.map(w => (
-                <option key={w.id} value={w.id}>{w.nama}</option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 mb-2 w-max">
+              <Icons.receipt className="w-4 h-4" />
+              <p className="text-[10px] font-bold uppercase tracking-wider">Tagihan Saya</p>
+            </div>
+            <h4 className="text-3xl font-extrabold tracking-tight drop-shadow-sm">{formatter.format(totalTagihan)}</h4>
           </div>
-          <div className="flex gap-2">
-            <div className="w-1/4">
-              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Status</label>
-              <select value={adminStatus} onChange={e => setAdminStatus(e.target.value)} required className="w-full p-2 text-xs border rounded">
-                <option value="verifikasi">Lunas</option>
-                <option value="belum dibayar">Tagihan</option>
-              </select>
-            </div>
-            <div className="w-1/4">
-              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Bulan</label>
-              <select value={bulan} onChange={e => setBulan(e.target.value)} required className="w-full p-2 text-xs border rounded">
-                {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-            <div className="w-1/4">
-              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Tahun</label>
-              <select value={tahun} onChange={e => setTahun(e.target.value)} required className="w-full p-2 text-xs border rounded">
-                {[2024, 2025, 2026, 2027, 2028].map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-            <div className="w-1/4">
-              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Nominal (Rp)</label>
-              <input type="number" placeholder="Nominal" value={nominal} onChange={e => setNominal(e.target.value)} required className="w-full p-2 text-xs border rounded" />
-            </div>
-          </div>
-          <button type="submit" disabled={loading} className="w-full py-2 bg-teal-600 text-white rounded text-xs font-bold">{loading ? 'Menyimpan...' : 'Simpan Iuran'}</button>
-        </form>
-        )
+          <button 
+            onClick={() => {
+              if (tagihanList.length > 0) {
+                const [b, t] = tagihanList[0].bulan.split(' ');
+                setBulan(b); setTahun(t); setNominal(tagihanList[0].nominal);
+              }
+              setShowBayarForm(true);
+            }} 
+            disabled={loading} 
+            className="px-5 py-2.5 bg-white text-teal-700 rounded-full text-xs font-extrabold shadow-md hover:scale-105 transition-transform"
+          >
+            Bayar
+          </button>
+        </div>
+        <p className="relative z-10 text-[11px] opacity-90 font-medium mt-4">
+          {tagihanList.length > 0 
+            ? `⚠️ Anda memiliki ${tagihanList.length} tagihan tertunggak.` 
+            : '✅ Semua tagihan lunas. Anda dapat bayar mandiri.'}
+        </p>
+      </motion.div>
+
+      {/* ADMIN CONTROLS */}
+      {isAdminOrBendahara && (
+        <AnimatePresence mode="wait">
+          {!showTambahIuran ? (
+            <motion.button 
+              key="btn-tambah" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowTambahIuran(true)} 
+              className="w-full mb-6 bg-slate-800 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-md hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <span className="text-lg leading-none">+</span> Buatkan Tagihan Iuran
+            </motion.button>
+          ) : (
+            <motion.form 
+              key="form-tambah" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+              onSubmit={handleTambahAdmin} className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6 relative overflow-hidden"
+            >
+              <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-3">
+                <h4 className="font-extrabold text-slate-800 text-sm">Form Tagihan Warga</h4>
+                <button type="button" onClick={() => setShowTambahIuran(false)} className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200 transition-colors">
+                  <Icons.back className="w-4 h-4 rotate-180" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Pilih Warga</label>
+                  <select value={adminSelectedUserId} onChange={e => setAdminSelectedUserId(e.target.value)} required className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none">
+                    <option value="" disabled>-- Silakan Pilih --</option>
+                    <option value="all">Semua Warga Terdaftar</option>
+                    {wargaList.map(w => <option key={w.id} value={w.id}>{w.nama}</option>)}
+                  </select>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Status</label>
+                    <select value={adminStatus} onChange={e => setAdminStatus(e.target.value)} required className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none">
+                      <option value="belum dibayar">Tagihan Baru</option>
+                      <option value="verifikasi">Lunas Langsung</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Nominal (Rp)</label>
+                    <input type="number" value={nominal} onChange={e => setNominal(e.target.value)} required className="w-full mt-1 p-3 text-sm font-bold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Bulan</label>
+                    <select value={bulan} onChange={e => setBulan(e.target.value)} required className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none">
+                      {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Tahun</label>
+                    <select value={tahun} onChange={e => setTahun(e.target.value)} required className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none">
+                      {[2024, 2025, 2026, 2027, 2028].map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <button type="submit" disabled={loading} className="w-full py-3.5 bg-teal-600 text-white rounded-xl text-sm font-extrabold shadow-md hover:bg-teal-700 transition-all active:scale-[0.98]">{loading ? 'Menyimpan...' : 'Simpan Iuran'}</button>
+              </div>
+            </motion.form>
+          )}
+        </AnimatePresence>
       )}
 
-      <div className="mb-4 relative">
-        <input 
-          type="text" 
-          placeholder="Cari nama warga / bulan..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl"
-        />
-      </div>
-
-      <div className="flex justify-between items-end mb-3 px-1">
-        <h4 className="font-bold text-gray-800 text-xs">Riwayat Iuran {isAdminOrBendahara ? 'Warga' : 'Saya'}</h4>
-        <div className="flex gap-1 flex-wrap justify-end pl-2">
-          {['Semua', 'Belum Bayar', 'Verifikasi', 'Lunas'].map(f => (
-            <button key={f} onClick={() => setFilterStatus(f)} className={`text-[8px] px-2 py-1 rounded font-bold border ${filterStatus === f ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-200'}`}>
-              {f}
-            </button>
-          ))}
+      {/* FILTER & SEARCH */}
+      <div className="mb-5 flex flex-col gap-3">
+        <div className="relative">
+          <Icons.search className="w-5 h-5 text-slate-400 absolute left-3.5 top-3" />
+          <input 
+            type="text" 
+            placeholder="Cari warga atau bulan..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 text-sm font-medium bg-white border border-slate-200 rounded-2xl focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none shadow-sm transition-all"
+          />
+        </div>
+        
+        <div className="overflow-x-auto no-scrollbar pb-1 -mx-5 px-5">
+          <div className="flex gap-2 w-max">
+            {['Semua', 'Belum Bayar', 'Verifikasi', 'Lunas'].map(f => (
+              <button 
+                key={f} 
+                onClick={() => setFilterStatus(f)} 
+                className={`text-xs px-4 py-2 rounded-full font-bold transition-colors shadow-sm border ${filterStatus === f ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-      <div className="space-y-2">
-        {data.filter(d => {
-          if (!isAdminOrBendahara && d.userId !== currentUser?.id) return false;
-          if (filterStatus === 'Belum Bayar') return d.status === 'belum dibayar';
-          if (filterStatus === 'Verifikasi') return d.status === 'menunggu';
-          if (filterStatus === 'Lunas') return d.status === 'verifikasi';
-          if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            const matchName = d.nama?.toLowerCase().includes(query);
-            const matchBulan = d.bulan?.toLowerCase().includes(query);
-            if (!matchName && !matchBulan) return false;
-          }
-          return true;
-        }).reverse().map((item) => (
-          <div key={item.id} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
-            <div>
-              <p className="font-bold text-xs text-gray-800">{item.nama} - {item.bulan}</p>
-              <p className="text-[9px] text-gray-500 mt-0.5">Nominal: Rp {item.nominal}</p>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border 
-                ${item.status === 'verifikasi' ? 'bg-teal-50 text-teal-600 border-teal-100' : item.status === 'butuh_konfirmasi' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
-                {item.status === 'verifikasi' ? 'LUNAS' : (item.status === 'menunggu' ? 'MENUNGGU VERIFIKASI' : (item.status === 'butuh_konfirmasi' ? 'UPDATE NOMINAL: KONFIRMASI RT' : item.status.toUpperCase()))}
-              </span>
+
+      <h4 className="font-extrabold text-slate-800 text-base mb-3 px-1">Riwayat Iuran {isAdminOrBendahara ? 'Warga' : 'Saya'}</h4>
+      
+      {/* DAFTAR RIWAYAT */}
+      <div className="space-y-3">
+        <AnimatePresence>
+          {data.filter(d => {
+            if (!isAdminOrBendahara && d.userId !== currentUser?.id) return false;
+            if (filterStatus === 'Belum Bayar') return d.status === 'belum dibayar';
+            if (filterStatus === 'Verifikasi') return d.status === 'menunggu';
+            if (filterStatus === 'Lunas') return d.status === 'verifikasi';
+            if (searchQuery) {
+              const query = searchQuery.toLowerCase();
+              return d.nama?.toLowerCase().includes(query) || d.bulan?.toLowerCase().includes(query);
+            }
+            return true;
+          }).reverse().map((item) => {
+            
+            // Determine Status UI
+            let statusConfig = { color: 'bg-slate-100 text-slate-600', icon: <div/>, label: item.status };
+            if (item.status === 'verifikasi') statusConfig = { color: 'bg-emerald-50 text-emerald-600', icon: <Icons.check className="w-4 h-4" />, label: 'LUNAS' };
+            else if (item.status === 'menunggu') statusConfig = { color: 'bg-amber-50 text-amber-600', icon: <Icons.clock className="w-4 h-4" />, label: 'MENUNGGU VERIFIKASI' };
+            else if (item.status === 'belum dibayar') statusConfig = { color: 'bg-rose-50 text-rose-600', icon: <Icons.alert className="w-4 h-4" />, label: 'BELUM DIBAYAR' };
+            else if (item.status === 'butuh_konfirmasi') statusConfig = { color: 'bg-purple-50 text-purple-600', icon: <Icons.alert className="w-4 h-4" />, label: 'KONFIRMASI NOMINAL' };
+
+            return (
+            <motion.div 
+              key={item.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white p-4 rounded-3xl border border-slate-100 shadow-[0_4px_15px_rgba(0,0,0,0.02)] flex flex-col gap-3"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${statusConfig.color}`}>
+                    {statusConfig.icon}
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-slate-800">{item.bulan}</p>
+                    <p className="text-[10px] text-slate-500 font-medium">{isAdminOrBendahara ? item.nama : 'Tagihan Saya'}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                   <p className="font-extrabold text-slate-800 text-sm">{formatter.format(item.nominal)}</p>
+                   <span className={`inline-block text-[8px] font-bold px-2 py-0.5 rounded-full mt-1 ${statusConfig.color} border border-current/10`}>
+                      {statusConfig.label}
+                   </span>
+                </div>
+              </div>
+
+              {/* Aksi Tambahan untuk Admin */}
               {isAdminOrBendahara && (
-                <div className="flex gap-1 mt-1 flex-wrap justify-end items-center">
+                <div className="flex gap-2 pt-3 border-t border-slate-50 flex-wrap">
                   {item.buktiUrl && (
-                    <button onClick={() => setViewBuktiUrl(item.buktiUrl)} className="text-[9px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded">Lihat Bukti</button>
+                    <button onClick={() => setViewBuktiUrl(item.buktiUrl)} className="text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-3 py-1.5 rounded-xl transition-colors">Lihat Bukti</button>
                   )}
                   {item.status !== 'verifikasi' && item.status !== 'butuh_konfirmasi' && (
-                    <button onClick={() => handleUpdateStatus(item.id, 'verifikasi')} className="text-[9px] bg-teal-100 text-teal-700 font-bold px-1.5 py-0.5 rounded">Verifikasi</button>
+                    <button onClick={() => handleUpdateStatus(item.id, 'verifikasi')} className="text-[10px] bg-teal-50 text-teal-600 hover:bg-teal-100 font-bold px-3 py-1.5 rounded-xl transition-colors">Verifikasi Lunas</button>
                   )}
                   {currentUser?.role === 'admin' && item.status === 'butuh_konfirmasi' && (
-                    <button onClick={() => handleUpdateStatus(item.id, 'verifikasi')} className="text-[9px] bg-teal-500 text-white font-bold px-1.5 py-0.5 rounded">Sah</button>
+                    <button onClick={() => handleUpdateStatus(item.id, 'verifikasi')} className="text-[10px] bg-teal-500 text-white hover:bg-teal-600 font-bold px-3 py-1.5 rounded-xl transition-colors shadow-sm">Sah Lunas</button>
                   )}
                   <button onClick={() => {
-                    const newNominalStr = prompt('Edit nominal Iuran (hanya angka):', item.amount);
+                    const newNominalStr = prompt('Koreksi nominal Iuran (angka saja):', item.nominal);
                     if (newNominalStr) {
                       const newAmount = parseInt(newNominalStr.replace(/\D/g, ''), 10);
-                      if (!isNaN(newAmount) && newAmount !== item.amount) {
+                      if (!isNaN(newAmount)) {
                          const newStatus = currentUser?.role === 'admin' ? 'verifikasi' : 'butuh_konfirmasi';
-                         apiFetch(`/api/data/iuran/${item.id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ amount: newAmount, status: newStatus }) }).then(fetchData);
+                         apiFetch(`/api/data/iuran/${item.id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ nominal: newAmount, status: newStatus }) }).then(fetchData);
                       }
                     }
-                  }} className="text-[9px] text-blue-500 underline ml-1">Edit</button>
+                  }} className="text-[10px] text-slate-500 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl font-bold transition-colors ml-auto">Koreksi</button>
                   {currentUser?.role === 'admin' && (
-                    <button onClick={() => handleDeleteClick(item.id)} className="text-[9px] bg-red-100 text-red-700 font-bold px-1.5 py-0.5 rounded ml-1">Hapus</button>
+                    <button onClick={() => handleDeleteClick(item.id)} className="text-[10px] bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold px-3 py-1.5 rounded-xl transition-colors">Hapus</button>
                   )}
                 </div>
               )}
-            </div>
+            </motion.div>
+            );
+          })}
+        </AnimatePresence>
+
+        {data.length === 0 && (
+          <div className="bg-white rounded-3xl p-8 text-center border border-dashed border-slate-200 mt-4">
+             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Icons.receipt className="w-8 h-8 text-slate-300" />
+             </div>
+             <p className="text-sm font-bold text-slate-600">Belum Ada Riwayat Iuran</p>
+             <p className="text-xs text-slate-400 mt-1">Data tagihan atau pembayaran akan tampil di sini.</p>
           </div>
-        ))}
-        {data.filter(d => {
-          if (!isAdminOrBendahara && d.userId !== currentUser?.id) return false;
-          if (filterStatus === 'Belum Bayar') return d.status === 'belum dibayar';
-          if (filterStatus === 'Verifikasi') return d.status === 'menunggu';
-          if (filterStatus === 'Lunas') return d.status === 'verifikasi';
-          if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            const matchName = d.nama?.toLowerCase().includes(query);
-            const matchBulan = d.bulan?.toLowerCase().includes(query);
-            if (!matchName && !matchBulan) return false;
-          }
-          return true;
-        }).length === 0 && (
-          <p className="text-xs text-center text-gray-400 py-4">Belum ada riwayat iuran.</p>
         )}
       </div>
 
-      {viewBuktiUrl && (
-        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden relative shadow-lg">
-            <button onClick={() => setViewBuktiUrl(null)} className="absolute top-2 right-2 bg-black/50 text-white w-6 h-6 rounded-full flex justify-center items-center font-bold text-xs hover:bg-black/70 transition">X</button>
-            <div className="p-3 border-b border-gray-100"><h3 className="text-sm border-0 m-0 font-bold text-center">Bukti Pembayaran</h3></div>
-            <div className="p-4 flex justify-center bg-gray-50">
-              <img src={viewBuktiUrl} alt="Bukti" className="max-h-[60vh] object-contain rounded-xl shadow-sm border border-gray-200" />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* MODAL: LIHAT BUKTI */}
+      <AnimatePresence>
+        {viewBuktiUrl && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-5"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden relative shadow-2xl"
+            >
+              <button onClick={() => setViewBuktiUrl(null)} className="absolute top-4 right-4 bg-slate-100 text-slate-500 w-8 h-8 rounded-full flex justify-center items-center font-bold hover:bg-slate-200 transition-colors z-10">X</button>
+              <div className="p-5 border-b border-slate-50"><h3 className="text-sm font-extrabold text-slate-800 text-center uppercase tracking-wide">Bukti Pembayaran</h3></div>
+              <div className="p-5 flex justify-center bg-slate-50">
+                <img src={viewBuktiUrl} alt="Bukti" className="max-h-[60vh] object-contain rounded-2xl shadow-sm border border-slate-200" />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {showConfirmVerify && (
-        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-2xl w-full max-w-sm text-center shadow-lg">
-            <h3 className="font-bold text-gray-800 text-lg mb-2">Verifikasi Iuran?</h3>
-            <p className="text-xs text-gray-600 mb-6">Iuran yang diverifikasi akan masuk ke Kas RT dan/atau Dana Kematian, dan tidak dapat dibatalkan. Lanjutkan?</p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={cancelVerify} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold text-xs flex-1 hover:bg-gray-200 transition">
-                Batal
-              </button>
-              <button onClick={confirmVerify} className="px-4 py-2 bg-teal-600 text-white rounded-xl font-bold text-xs flex-1 hover:bg-teal-700 transition">
-                Ya, Verifikasi
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* MODAL: KONFIRMASI VERIFIKASI */}
+      <AnimatePresence>
+        {showConfirmVerify && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-5">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 rounded-[2rem] w-full max-w-sm text-center shadow-2xl">
+              <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-4"><Icons.check className="w-8 h-8 text-teal-500" /></div>
+              <h3 className="font-extrabold text-slate-800 text-lg mb-2">Verifikasi Iuran?</h3>
+              <p className="text-sm text-slate-500 mb-8 leading-relaxed">Iuran yang diverifikasi akan dinyatakan <span className="font-bold text-teal-600">LUNAS</span> dan masuk ke buku kas. Lanjutkan?</p>
+              <div className="flex gap-3 justify-center">
+                <button onClick={cancelVerify} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm flex-1 hover:bg-slate-200 transition-colors">Batal</button>
+                <button onClick={confirmVerify} className="px-5 py-3 bg-teal-600 text-white rounded-xl font-bold text-sm flex-1 hover:bg-teal-700 transition-colors shadow-md shadow-teal-200">Ya, Verifikasi</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {showConfirmDelete && (
-        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-2xl w-full max-w-sm text-center shadow-lg">
-            <h3 className="font-bold text-gray-800 text-lg mb-2">Hapus Data Iuran?</h3>
-            <p className="text-xs text-gray-600 mb-6">Data yang dihapus tidak dapat dipulihkan. Lanjutkan?</p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={cancelDelete} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold text-xs flex-1 hover:bg-gray-200 transition">
-                Batal
-              </button>
-              <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-xs flex-1 hover:bg-red-700 transition">
-                Ya, Hapus
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* MODAL: KONFIRMASI HAPUS */}
+      <AnimatePresence>
+        {showConfirmDelete && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-5">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 rounded-[2rem] w-full max-w-sm text-center shadow-2xl">
+              <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4"><Icons.alert className="w-8 h-8 text-rose-500" /></div>
+              <h3 className="font-extrabold text-slate-800 text-lg mb-2">Hapus Data Iuran?</h3>
+              <p className="text-sm text-slate-500 mb-8 leading-relaxed">Data yang telah dihapus tidak dapat dipulihkan. Yakin ingin menghapus?</p>
+              <div className="flex gap-3 justify-center">
+                <button onClick={cancelDelete} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm flex-1 hover:bg-slate-200 transition-colors">Batal</button>
+                <button onClick={confirmDelete} className="px-5 py-3 bg-rose-600 text-white rounded-xl font-bold text-sm flex-1 hover:bg-rose-700 transition-colors shadow-md shadow-rose-200">Ya, Hapus</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

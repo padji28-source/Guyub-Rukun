@@ -1,6 +1,6 @@
 import { apiFetch } from './apiInterceptor';
-import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App';
 
 export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
@@ -12,7 +12,9 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
       const res = await apiFetch('/api/data/laporan');
       const json = await res.json();
       setData(json.data || []);
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+      console.error(e); 
+    }
   };
 
   useEffect(() => {
@@ -27,7 +29,9 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
         body: JSON.stringify({ status: newStatus, updaterName: currentUser?.nama })
       });
       fetchData();
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+      console.error(e); 
+    }
   };
 
   const handleDeleteLaporan = async (id: string) => {
@@ -41,60 +45,132 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
     }
   };
 
+  // Menggunakan useMemo agar filter & reverse tidak dihitung ulang berkali-kali pada tiap render
+  const filteredData = useMemo(() => {
+    return data
+      .filter(d => isAdminOrPengurus || d.userId === currentUser?.id)
+      .reverse();
+  }, [data, isAdminOrPengurus, currentUser?.id]);
+
+  // Helper untuk warna badge status
+  const getStatusStyle = (status: string) => {
+    const s = status?.toLowerCase();
+    if (s === 'selesai') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (s === 'proses') return 'bg-sky-100 text-sky-700 border-sky-200';
+    return 'bg-amber-100 text-amber-700 border-amber-200'; // Pending
+  };
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="p-4 pb-24 bg-gray-50 min-h-screen"
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="bg-slate-50 min-h-screen pb-24 w-full"
     >
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="p-2 bg-white rounded-full shadow-sm text-gray-600 hover:bg-gray-100">
-          <icons.arrowLeft className="w-5 h-5" />
-        </button>
-        <h2 className="text-xl font-bold text-gray-900">Riwayat Laporan</h2>
-      </div>
+      {/* Wrapper responsif untuk layar lebar */}
+      <div className="max-w-xl mx-auto w-full">
+        
+        {/* Sticky Header ala iOS (Glassmorphism) */}
+        <div className="sticky top-0 z-20 backdrop-blur-lg bg-white/70 border-b border-slate-200/50 px-4 py-4 flex items-center gap-4">
+          <button 
+            onClick={onBack} 
+            className="p-2.5 bg-white rounded-full shadow-sm border border-slate-100 text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
+          >
+            <icons.arrowLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-xl font-bold text-slate-800 tracking-tight">Riwayat Laporan</h2>
+        </div>
 
-      {(isAdminOrPengurus || data.some(d => d.userId === currentUser?.id)) ? (
-        <div className="space-y-3">
-          {data.filter(d => isAdminOrPengurus || d.userId === currentUser?.id).reverse().map(item => (
-            <div key={item.id} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-              <div className="flex justify-between items-start mb-2 border-b border-gray-50 pb-2">
-                <div>
-                  <h5 className="text-xs font-semibold text-gray-800">{item.judul}</h5>
-                  <p className="text-[9px] text-gray-500 mt-0.5">Pelapor: {item.userName}</p>
-                </div>
-                <span className={`px-2 py-1 rounded border text-[9px] font-bold 
-                  ${item.status === 'Selesai' ? 'bg-teal-50 text-teal-700 border-teal-100' : 
-                    item.status === 'Proses' ? 'bg-blue-50 text-blue-700 border-blue-100' : 
-                    'bg-orange-50 text-orange-700 border-orange-100'}`}>
-                  {item.status?.toUpperCase() || 'PENDING'}
-                </span>
-              </div>
-              <p className="text-[10px] text-gray-600 mb-3">{item.keterangan}</p>
-              
-              <div className="flex flex-col gap-2">
-                {isAdminOrPengurus && item.status !== 'Selesai' && (
-                  <div className="flex gap-2">
-                    {item.status === 'Pending' && (
-                      <button onClick={() => handleUpdateStatus(item.id, 'Proses')} className="flex-1 py-1 text-xs bg-blue-100 text-blue-700 rounded font-bold">Terima / Proses</button>
+        <div className="p-4 mt-2">
+          {filteredData.length > 0 ? (
+            <div className="space-y-4">
+              <AnimatePresence>
+                {filteredData.map((item) => (
+                  <motion.div 
+                    key={item.id}
+                    layout // Animasi saat item bergeser karena ada yang dihapus/ditambah
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                    className="bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] flex flex-col gap-3"
+                  >
+                    {/* Bagian Judul & Status */}
+                    <div className="flex justify-between items-start gap-3 border-b border-slate-50 pb-3">
+                      <div className="flex-1">
+                        <h5 className="text-sm font-bold text-slate-800 leading-tight">{item.judul}</h5>
+                        <p className="text-xs font-medium text-slate-500 mt-1 flex items-center gap-1">
+                          <span className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center text-[8px]">👤</span>
+                          {item.userName}
+                        </p>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wider shrink-0 ${getStatusStyle(item.status)}`}>
+                        {item.status || 'PENDING'}
+                      </span>
+                    </div>
+
+                    {/* Keterangan */}
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      {item.keterangan}
+                    </p>
+                    
+                    {/* Action Buttons */}
+                    {(isAdminOrPengurus || currentUser?.role === 'admin') && (
+                      <div className="flex flex-col sm:flex-row gap-2 mt-2 pt-3 border-t border-slate-50">
+                        {isAdminOrPengurus && item.status !== 'Selesai' && (
+                          <div className="flex gap-2 flex-1 w-full">
+                            {item.status !== 'Proses' && (
+                              <button 
+                                onClick={() => handleUpdateStatus(item.id, 'Proses')} 
+                                className="flex-1 py-2 px-3 text-xs bg-sky-50 text-sky-600 rounded-xl font-bold hover:bg-sky-100 active:bg-sky-200 transition-colors"
+                              >
+                                Terima / Proses
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => handleUpdateStatus(item.id, 'Selesai')} 
+                              className="flex-1 py-2 px-3 text-xs bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-100 active:bg-emerald-200 transition-colors"
+                            >
+                              Tandai Selesai
+                            </button>
+                          </div>
+                        )}
+                        {currentUser?.role === 'admin' && (
+                          <button 
+                            onClick={() => handleDeleteLaporan(item.id)} 
+                            className="w-full sm:w-auto py-2 px-4 text-xs bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-100 active:bg-rose-200 transition-colors"
+                          >
+                            Hapus
+                          </button>
+                        )}
+                      </div>
                     )}
-                    <button onClick={() => handleUpdateStatus(item.id, 'Selesai')} className="flex-1 py-1 text-xs bg-teal-100 text-teal-700 rounded font-bold">Tandai Selesai</button>
-                  </div>
-                )}
-                {currentUser?.role === 'admin' && (
-                  <button onClick={() => handleDeleteLaporan(item.id)} className="w-full py-1 text-xs bg-red-50 text-red-600 rounded font-bold hover:bg-red-100 transition">Hapus Laporan</button>
-                )}
-              </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
-          ))}
-          {data.filter(d => isAdminOrPengurus || d.userId === currentUser?.id).length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-4">Belum ada laporan keluhan.</p>
+          ) : (
+            /* Empty State yang lebih menarik */
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              className="flex flex-col items-center justify-center py-20 px-6 text-center"
+            >
+              <div className="w-20 h-20 mb-4 bg-slate-100 text-slate-300 rounded-full flex items-center justify-center">
+                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-800 mb-1">Tidak ada laporan</h3>
+              <p className="text-sm text-slate-500">
+                {isAdminOrPengurus 
+                  ? "Belum ada laporan keluhan yang masuk ke sistem."
+                  : "Anda belum pernah membuat laporan keluhan."}
+              </p>
+            </motion.div>
           )}
         </div>
-      ) : (
-        <p className="text-xs text-gray-400 text-center py-4">Anda belum memiliki riwayat laporan keluhan.</p>
-      )}
+      </div>
     </motion.div>
   );
 };

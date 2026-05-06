@@ -1,22 +1,25 @@
 import { apiFetch } from './apiInterceptor';
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { icons } from './App'; // Sesuaikan jika perlu
 
 export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () => void, currentUser: any, defaultTab?: 'Keluhan' | 'Tamu' }) => {
   const [judul, setJudul] = useState('');
   const [keterangan, setKeterangan] = useState('');
   
+  // Tab Management
+  // Jika tidak ada defaultTab, kita buat 'Keluhan' sebagai default agar layarnya tidak kosong
+  const [activeTab, setActiveTab] = useState<'Keluhan' | 'Tamu'>(defaultTab || 'Keluhan');
+  
   // Tamu states
-  const [showFormTamu, setShowFormTamu] = useState(defaultTab === 'Tamu');
   const [hubunganTamu, setHubunganTamu] = useState('');
   const [jumlahTamu, setJumlahTamu] = useState('');
   const [waktuMenginap, setWaktuMenginap] = useState('');
 
   const [successMsg, setSuccessMsg] = useState('');
-
   const [loading, setLoading] = useState(false);
-  const [showForm, setShowForm] = useState(defaultTab === 'Keluhan' || !defaultTab);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitKeluhan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!window.confirm("Apakah Anda yakin ingin mengirim laporan ini?")) return;
     setLoading(true);
@@ -37,8 +40,10 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
       setKeterangan('');
       setSuccessMsg('Laporan Keluhan berhasil dikirim!');
       setTimeout(() => setSuccessMsg(''), 3000);
-      setShowForm(false);
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+      console.error(e); 
+      alert('Gagal mengirim keluhan');
+    }
     setLoading(false);
   };
 
@@ -66,100 +71,201 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
       setWaktuMenginap('');
       setSuccessMsg('Laporan Tamu berhasil dikirim!');
       setTimeout(() => setSuccessMsg(''), 3000);
-      setShowFormTamu(false);
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+      console.error(e); 
+      alert('Gagal mengirim laporan tamu');
+    }
     setLoading(false);
   };
 
-  return (
-    <div className="p-4 pb-24">
-      <button onClick={onBack} className="text-[10px] text-teal-600 mb-4 font-bold inline-flex items-center gap-1 bg-teal-50 px-2 py-1 rounded">← Kembali</button>
-      
-      {successMsg && (
-        <div className="bg-green-100 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-4 text-sm font-medium animate-in fade-in slide-in-from-top-2">
-          {successMsg}
-        </div>
-      )}
-
-      <div className="mb-6 space-y-3">
-        {!defaultTab && <h3 className="font-bold text-gray-800 text-sm mb-1">Pilih Jenis Laporan</h3>}
+  // Helper untuk rendering tab button agar rapi
+  const renderTabButton = (tabName: 'Keluhan' | 'Tamu', iconPath: string, title: string) => {
+    const isActive = activeTab === tabName;
+    return (
+      <button
+        type="button"
+        onClick={() => setActiveTab(tabName)}
+        className={`flex-1 relative py-3 px-2 flex flex-col items-center justify-center gap-2 rounded-2xl transition-all duration-300 ${
+          isActive ? 'bg-teal-600 text-white shadow-md shadow-teal-200' : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm'
+        }`}
+      >
+        <svg className={`w-6 h-6 ${isActive ? 'text-white' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d={iconPath} />
+        </svg>
+        <span className="text-xs font-bold">{title}</span>
         
-        {(!defaultTab || defaultTab === 'Keluhan') && (
-          <>
-            {!defaultTab && (
-              <button 
-                onClick={() => { setShowForm(!showForm); setShowFormTamu(false); }} 
-                className="w-full py-3 bg-teal-50 text-teal-600 rounded-xl text-xs font-bold border border-teal-100 flex justify-between items-center px-4 shadow-sm"
-              >
-                <span>Lapor Keluhan</span>
-                <span className="text-lg leading-none">{showForm ? '−' : '+'}</span>
-              </button>
-            )}
-            {showForm && (
-              <form onSubmit={handleSubmit} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-700 mb-1">Judul Laporan</label>
-                  <input type="text" placeholder="Contoh: Lampu Jalan Mati" value={judul} onChange={e => setJudul(e.target.value)} required className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-700 mb-1">Keterangan / Lokasi</label>
-                  <textarea placeholder="Tulis keluhan..." value={keterangan} onChange={e => setKeterangan(e.target.value)} required className="w-full p-2 border border-gray-200 rounded-lg text-xs h-16"></textarea>
-                </div>
-                <button type="submit" disabled={loading} className="w-full py-2.5 mt-2 bg-teal-600 text-white rounded-lg text-xs font-semibold">{loading ? 'Mengirim...' : 'Kirim Laporan Keluhan'}</button>
-              </form>
-            )}
-          </>
+        {/* Indikator Active Tab */}
+        {isActive && (
+          <motion.div layoutId="active-tab-indicator" className="absolute -bottom-1.5 w-1.5 h-1.5 bg-teal-800 rounded-full" />
         )}
+      </button>
+    );
+  };
 
-        {(!defaultTab || defaultTab === 'Tamu') && (
-          <>
-            {!defaultTab && (
-              <button 
-                onClick={() => { setShowFormTamu(!showFormTamu); setShowForm(false); }} 
-                className="w-full py-3 bg-teal-50 text-teal-600 rounded-xl text-xs font-bold border border-teal-100 flex justify-between items-center px-4 shadow-sm"
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="bg-slate-50 min-h-screen pb-24 w-full"
+    >
+      <div className="max-w-xl mx-auto w-full">
+        
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-30 backdrop-blur-lg bg-white/70 border-b border-slate-200/50 px-4 py-4 flex items-center gap-4">
+          <button 
+            onClick={onBack} 
+            className="p-2.5 bg-white rounded-full shadow-sm border border-slate-100 text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
+          >
+            <icons.arrowLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-xl font-bold text-slate-800 tracking-tight">Lapor RT</h2>
+        </div>
+
+        <div className="p-4 mt-2">
+          
+          {/* Pesan Sukses Mengambang */}
+          <AnimatePresence>
+            {successMsg && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                className="mb-5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3.5 rounded-2xl flex items-center gap-3 shadow-sm"
               >
-                <span>Lapor Tamu</span>
-                <span className="text-lg leading-none">{showFormTamu ? '−' : '+'}</span>
-              </button>
+                <div className="bg-emerald-100 p-1.5 rounded-full shrink-0">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold">{successMsg}</h4>
+                  <p className="text-xs text-emerald-600/80 mt-0.5">Laporan Anda telah masuk ke sistem.</p>
+                </div>
+              </motion.div>
             )}
-            {showFormTamu && (
-              <form onSubmit={handleSubmitTamu} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-700 mb-1">Nama Pelapor</label>
-                  <input type="text" value={currentUser?.nama || ''} disabled className="w-full p-2 border border-gray-200 rounded-lg text-xs bg-gray-50 text-gray-500" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-700 mb-1">Alamat Pelapor</label>
-                  <input type="text" value={currentUser?.alamat || ''} disabled className="w-full p-2 border border-gray-200 rounded-lg text-xs bg-gray-50 text-gray-500" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-700 mb-1">Hubungan dengan Tamu</label>
-                  <select value={hubunganTamu} onChange={e => setHubunganTamu(e.target.value)} required className="w-full p-2 border border-gray-200 rounded-lg text-xs bg-white">
-                     <option value="">Pilih Hubungan</option>
-                     <option value="Orang Tua">Orang Tua</option>
-                     <option value="Saudara">Saudara</option>
-                     <option value="Kerabat Jauh">Kerabat Jauh</option>
-                     <option value="Teman">Teman</option>
-                     <option value="Lainnya">Lainnya</option>
-                  </select>
-                </div>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="block text-[10px] font-semibold text-gray-700 mb-1">Jumlah Tamu</label>
-                    <input type="number" min="1" placeholder="Contoh: 2" value={jumlahTamu} onChange={e => setJumlahTamu(e.target.value)} required className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+          </AnimatePresence>
+
+          {/* Tab Navigation (Hanya tampil jika tidak ada defaultTab yang dikunci dari luar) */}
+          {!defaultTab && (
+            <div className="flex gap-3 mb-6 bg-slate-100/50 p-1.5 rounded-3xl">
+              {renderTabButton('Keluhan', 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z', 'Lapor Keluhan')}
+              {renderTabButton('Tamu', 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z', 'Lapor Tamu')}
+            </div>
+          )}
+
+          {/* Form Area */}
+          <div className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100">
+            
+            {/* Header Form */}
+            <div className="flex items-center gap-3 mb-5 border-b border-slate-50 pb-4">
+              <div className="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 shrink-0">
+                {activeTab === 'Keluhan' ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                )}
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm">
+                  {activeTab === 'Keluhan' ? 'Formulir Keluhan Warga' : 'Formulir Laporan Tamu (1x24 Jam)'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {activeTab === 'Keluhan' ? 'Sampaikan masalah di lingkungan Anda.' : 'Wajib lapor jika ada tamu menginap.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Content Form Berdasarkan Tab */}
+            <AnimatePresence mode="wait">
+              {activeTab === 'Keluhan' ? (
+                <motion.form 
+                  key="form-keluhan"
+                  initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ duration: 0.2 }}
+                  onSubmit={handleSubmitKeluhan} 
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Judul Laporan</label>
+                    <input 
+                      type="text" placeholder="Contoh: Lampu Jalan Mati di Gg. Mawar" value={judul} onChange={e => setJudul(e.target.value)} required 
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-400" 
+                    />
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-[10px] font-semibold text-gray-700 mb-1">Waktu Menginap (Hari)</label>
-                    <input type="number" min="1" placeholder="Contoh: 3" value={waktuMenginap} onChange={e => setWaktuMenginap(e.target.value)} required className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Keterangan & Lokasi Detail</label>
+                    <textarea 
+                      placeholder="Ceritakan detail masalahnya..." value={keterangan} onChange={e => setKeterangan(e.target.value)} required 
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm h-28 resize-none focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-400"
+                    ></textarea>
                   </div>
-                </div>
-                <button type="submit" disabled={loading} className="w-full py-2.5 mt-2 bg-teal-600 text-white rounded-lg text-xs font-semibold">{loading ? 'Mengirim...' : 'Kirim Laporan Tamu'}</button>
-              </form>
-            )}
-          </>
-        )}
+                  <button type="submit" disabled={loading || !judul.trim() || !keterangan.trim()} className="w-full py-3.5 mt-2 bg-teal-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-teal-200 hover:bg-teal-700 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 transition-all flex items-center justify-center gap-2">
+                    {loading ? 'Mengirim...' : 'Kirim Laporan Keluhan'}
+                  </button>
+                </motion.form>
+              ) : (
+                <motion.form 
+                  key="form-tamu"
+                  initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}
+                  onSubmit={handleSubmitTamu} 
+                  className="space-y-4"
+                >
+                  {/* Data Pelapor (Readonly) disembunyikan dalam grup agar rapi */}
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 mb-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Data Pelapor (Otomatis)</p>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-bold text-slate-700">{currentUser?.nama || 'Nama Tidak Diketahui'}</span>
+                      <span className="text-xs text-slate-500">{currentUser?.alamat || 'Alamat belum diisi di profil'}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Hubungan dengan Tamu</label>
+                    <div className="relative">
+                      <select 
+                        value={hubunganTamu} onChange={e => setHubunganTamu(e.target.value)} required 
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                      >
+                         <option value="" disabled>Pilih status hubungan...</option>
+                         <option value="Orang Tua">Keluarga (Orang Tua)</option>
+                         <option value="Saudara">Keluarga (Saudara)</option>
+                         <option value="Kerabat Jauh">Kerabat Jauh</option>
+                         <option value="Teman">Teman / Rekan Kerja</option>
+                         <option value="Lainnya">Lainnya</option>
+                      </select>
+                      {/* Custom dropdown arrow */}
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Jumlah Tamu</label>
+                      <div className="relative">
+                        <input type="number" min="1" placeholder="Misal: 2" value={jumlahTamu} onChange={e => setJumlahTamu(e.target.value)} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-400" />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">Orang</span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Rencana Inap</label>
+                      <div className="relative">
+                        <input type="number" min="1" placeholder="Misal: 3" value={waktuMenginap} onChange={e => setWaktuMenginap(e.target.value)} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-400" />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">Hari</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button type="submit" disabled={loading || !hubunganTamu || !jumlahTamu || !waktuMenginap} className="w-full py-3.5 mt-4 bg-teal-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-teal-200 hover:bg-teal-700 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 transition-all flex items-center justify-center gap-2">
+                    {loading ? 'Mengirim...' : 'Kirim Laporan Tamu'}
+                  </button>
+                </motion.form>
+              )}
+            </AnimatePresence>
+
+          </div>
+        </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
-

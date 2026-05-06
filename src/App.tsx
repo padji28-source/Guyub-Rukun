@@ -14,32 +14,167 @@ import { MobileIuran } from './MobileIuran';
 import { MobileKas } from './MobileKas';
 import { MobileUMKM } from './MobileUMKM';
 
-// --- Simplified Mock Data & Icons ---
+// --- Modern Icons Set ---
 export const icons = {
-  dashboard: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>,
-  warga: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
-  iuran: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-  laporan: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
-  pengumuman: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>,
-  umkm: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>,
-  pengaturan: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
-  // Mobile Quick Action icons (simplified)
-  surat: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
-  laporanrt: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
-  media: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
-  kas: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>,
-  sedekah: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>,
-  darurat: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>,
-  lainnya: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" /></svg>,
-  search: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
-  // Mobile Nav Icons (simplified)
-  events: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
-  home: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>,
-  profil: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
-  bell: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>,
-  dokumen: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
-  arrowLeft: (props: any) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+  dashboard: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="9" rx="1.5" />
+      <rect x="14" y="3" width="7" height="5" rx="1.5" />
+      <rect x="14" y="12" width="7" height="9" rx="1.5" />
+      <rect x="3" y="16" width="7" height="5" rx="1.5" />
+    </svg>
+  ),
+  warga: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
+  iuran: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2" />
+      <path d="M6 12h.01M18 12h.01" />
+    </svg>
+  ),
+  laporan: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+      <path d="M16 13H8M16 17H8M10 9H8" />
+    </svg>
+  ),
+  pengumuman: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 11V9a2 2 0 0 1 2-2h3.93a2 2 0 0 0 1.66-.9l1.1-1.65A2 2 0 0 1 13.35 3h2.15a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2.15a2 2 0 0 1-1.66-.89l-1.1-1.65a2 2 0 0 0-1.66-.9H5a2 2 0 0 1-2-2v-2Z" />
+      <path d="M22 9a6 6 0 0 1 0 6" />
+    </svg>
+  ),
+  umkm: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  ),
+  pengaturan: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  ),
+  surat: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7.00005L10.2 11.65C11.2667 12.45 12.7333 12.45 13.8 11.65L20 7" />
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+    </svg>
+  ),
+  laporanrt: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+      <path d="M12 8v4M12 16h.01" />
+    </svg>
+  ),
+  media: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+  ),
+  kas: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+      <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+      <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+    </svg>
+  ),
+  sedekah: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+    </svg>
+  ),
+  darurat: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  ),
+  lainnya: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="6" height="6" rx="1" />
+      <rect x="14" y="4" width="6" height="6" rx="1" />
+      <rect x="4" y="14" width="6" height="6" rx="1" />
+      <rect x="14" y="14" width="6" height="6" rx="1" />
+    </svg>
+  ),
+  search: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  ),
+  events: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" />
+    </svg>
+  ),
+  home: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  ),
+  profil: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  ),
+  bell: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  ),
+  dokumen: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  ),
+  arrowLeft: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+  ),
+  edit: (props: any) => (
+    <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+  )
 };
+
+// --- Logo Komunitas Modern ---
+// Menggunakan desain gradien yang elegan dan bentuk rumah/orang abstrak bersatu
+const LogoCommunityIcon = ({ size = '32', colorAccent = themeColors.accent, colorPrimary = themeColors.primary }) => (
+  <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="48" height="48" rx="14" fill="url(#logo-gradient)" />
+    <path d="M24 12L10 24V36C10 37.1046 10.8954 38 12 38H36C37.1046 38 38 37.1046 38 36V24L24 12Z" fill="white" fillOpacity="0.1" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M18 38V26C18 24.3431 19.3431 23 21 23H27C28.6569 23 30 24.3431 30 26V38" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="24" cy="18" r="3.5" fill="white" />
+    <defs>
+      <linearGradient id="logo-gradient" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+        <stop stopColor={colorPrimary} />
+        <stop offset="1" stopColor="#0F766E" /> {/* Warna hijau tua estetik */}
+      </linearGradient>
+    </defs>
+  </svg>
+);
 
 const laporanWargaData = [
   { nama: 'Jalan Rusak', status_laporan: 'Tergenang', status_jalan: 'Normal' },
@@ -1082,15 +1217,6 @@ const MobileBottomNav = ({ activeTab, onTabChange }: { activeTab: string, onTabC
 import { MobileMedia } from './MobileMedia';
 
 // --- Simplified Inline Illustrations (as functional components) ---
-const LogoCommunityIcon = ({ size = '24', colorAccent = themeColors.accent, colorPrimary = themeColors.primary }) => (
-  <svg width={size} height={size} viewBox="0 0 100 100">
-    <circle cx="50" cy="50" r="45" fill={colorAccent} stroke={colorPrimary} strokeWidth="2"/>
-    <path d="M50 20 Q60 40, 50 60 Q40 40, 50 20" fill={colorPrimary} />
-    <circle cx="35" cy="40" r="10" fill={colorPrimary}/>
-    <circle cx="65" cy="40" r="10" fill={colorPrimary}/>
-    <path d="M40 75 Q50 65, 60 75" stroke={colorPrimary} strokeWidth="3" fill="none" strokeLinecap="round"/>
-  </svg>
-);
 
 const IllustrationFamilyGroup = () => (
   <svg viewBox="0 0 200 150" className="w-full h-full object-cover">
@@ -1235,7 +1361,6 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
   const [profileBlok, setProfileBlok] = useState(parsedBlokMatch ? parsedBlokMatch[1] : '');
   const [profileNomor, setProfileNomor] = useState(parsedNoMatch ? parsedNoMatch[1] : '');
 
-  // Update profile address when blok or nomor changes
   useEffect(() => {
     if (profileBlok || profileNomor) {
       setProfile(prev => ({...prev, address: `Blok ${profileBlok} No. ${profileNomor}`}));
@@ -1291,7 +1416,7 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
            umur: profile.umur
         });
         setIsEditing(false);
-        setSuccessMsg('Profil berhasil disimpan!');
+        setSuccessMsg('✅ Profil berhasil diperbarui!');
         setTimeout(() => setSuccessMsg(''), 3000);
       }
     } catch(e) {
@@ -1322,7 +1447,7 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
         setOldPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        setSuccessMsg('Password berhasil diganti');
+        setSuccessMsg('🔒 Password berhasil diganti');
         setTimeout(() => setSuccessMsg(''), 3000);
       } else {
         setPasswordError(data.error || 'Gagal mengubah password');
@@ -1333,145 +1458,233 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
     setSavingPass(false);
   };
 
+  // ================= VIEW: UBAH PASSWORD =================
   if (isChangingPass) {
     return (
-      <div className="p-4 flex flex-col space-y-4 pb-24">
-        <div className="flex items-center justify-between mb-2">
-          <button onClick={() => setIsChangingPass(false)} className="text-[10px] text-teal-600 font-bold inline-flex items-center gap-1 bg-teal-50 px-2 py-1 rounded">Batal</button>
-          <button onClick={handleUpdatePassword} disabled={savingPass} className="text-[10px] text-white font-bold inline-flex items-center gap-1 bg-teal-600 px-3 py-1 rounded">{savingPass ? 'Menyimpan...' : 'Simpan Password'}</button>
+      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-5 pb-32 min-h-[80vh] bg-slate-50 w-full relative">
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={() => setIsChangingPass(false)} className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+            <icons.arrowLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">Keamanan Akun</h2>
+          <div className="w-10"></div> {/* Spacer */}
         </div>
         
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3">
-           <h3 className="font-bold text-gray-800 text-sm border-b pb-2">Ubah Password</h3>
-           {passwordError && <div className="p-2 bg-red-100 text-red-700 text-[10px] rounded-lg">{passwordError}</div>}
+        <div className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 space-y-5">
+           <div className="text-center mb-6">
+             <div className="w-16 h-16 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-3">
+               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+             </div>
+             <h3 className="font-extrabold text-slate-800 text-lg">Buat Password Baru</h3>
+             <p className="text-xs text-slate-500 mt-1 font-medium">Gunakan kombinasi yang aman dan mudah diingat.</p>
+           </div>
+
+           {passwordError && (
+             <div className="p-3 bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold rounded-xl text-center">
+               {passwordError}
+             </div>
+           )}
+
            <div>
-              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Password Lama</label>
-              <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Password Lama</label>
+              <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-semibold outline-none transition-all" />
            </div>
            <div>
-              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Password Baru</label>
-              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Password Baru</label>
+              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-semibold outline-none transition-all" />
            </div>
            <div>
-              <label className="block text-[10px] font-semibold text-gray-700 mb-1">Konfirmasi Password Baru</label>
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Ulangi Password Baru</label>
+              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-semibold outline-none transition-all" />
            </div>
+
+           <button onClick={handleUpdatePassword} disabled={savingPass} className="w-full mt-4 py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl text-sm font-extrabold shadow-md hover:shadow-lg transition-all disabled:opacity-50 active:scale-[0.98]">
+             {savingPass ? 'Memproses...' : 'Simpan Password'}
+           </button>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
+  // ================= VIEW: EDIT PROFIL =================
   if (isEditing) {
     return (
-      <div className="p-4 flex flex-col space-y-4 pb-24">
-        <div className="flex items-center justify-between mb-2">
-          <button onClick={() => setIsEditing(false)} className="text-[10px] text-teal-600 font-bold inline-flex items-center gap-1 bg-teal-50 px-2 py-1 rounded">Batal</button>
-          <button onClick={handleSave} disabled={saving} className="text-[10px] text-white font-bold inline-flex items-center gap-1 bg-teal-600 px-3 py-1 rounded">{saving ? 'Menyimpan...' : 'Simpan'}</button>
+      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-5 pb-32 min-h-screen bg-slate-50 w-full relative">
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={() => setIsEditing(false)} className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+            <icons.arrowLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">Edit Profil</h2>
+          <button onClick={handleSave} disabled={saving} className="text-xs text-white bg-teal-600 px-4 py-2 rounded-full font-bold shadow-sm active:scale-95 transition-transform disabled:opacity-50">
+            {saving ? '...' : 'Simpan'}
+          </button>
         </div>
         
-        <div className="flex flex-col items-center">
-          <div className="relative">
-            {profile.photo ? (
-               <img src={profile.photo} alt="Profile" className="w-20 h-20 rounded-full border border-gray-200 object-cover" />
-            ) : (
-               <ProfileAvatar size="20"/>
-            )}
-            <label className="absolute bottom-0 right-0 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center cursor-pointer shadow-sm">
-               <icons.media className="w-3 h-3 text-teal-600"/>
+        <div className="flex flex-col items-center mb-6">
+          <div className="relative group">
+            <div className="w-24 h-24 rounded-full border-4 border-white shadow-xl overflow-hidden bg-slate-100 relative">
+               {profile.photo ? (
+                  <img src={profile.photo} alt="Profile" className="w-full h-full object-cover" />
+               ) : (
+                  <ProfileAvatar size="24"/>
+               )}
+               {/* Overlay Camera Icon on Hover */}
+               <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                 <icons.media className="w-6 h-6 text-white"/>
+               </div>
+            </div>
+            <label className="absolute bottom-0 right-0 w-8 h-8 bg-teal-600 border-2 border-white rounded-full flex items-center justify-center cursor-pointer shadow-md hover:bg-teal-700 transition-colors">
+               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
             </label>
           </div>
-          <p className="text-[10px] text-teal-600 font-medium mt-2">Ubah Foto Profil</p>
+          <p className="text-[10px] font-bold text-slate-400 mt-3 uppercase tracking-wider">Ubah Foto Anda</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3">
+        <div className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 space-y-4">
             <div>
-               <label className="block text-[10px] font-semibold text-gray-700 mb-1">Nama Lengkap</label>
-               <input type="text" value={profile.name} onChange={e => setProfile({...profile, name: e.target.value})} className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Nama Lengkap</label>
+               <input type="text" value={profile.name} onChange={e => setProfile({...profile, name: e.target.value})} className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-bold text-slate-800 outline-none transition-all" />
             </div>
             <div>
-               <label className="block text-[10px] font-semibold text-gray-700 mb-1">Peran / Status</label>
-               <select value={profile.role} onChange={e => setProfile({...profile, role: e.target.value})} className="w-full p-2 border border-gray-200 rounded-lg text-xs">
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Peran / Status</label>
+               <select value={profile.role} onChange={e => setProfile({...profile, role: e.target.value})} className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-bold text-slate-800 outline-none appearance-none transition-all">
                  <option value="">Pilih Status</option>
                  <option value="Warga Tetap">Warga Tetap</option>
                  <option value="Warga Sementara (Kontrak)">Warga Sementara (Kontrak)</option>
                </select>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
                <div className="flex-1">
-                 <label className="block text-[10px] font-semibold text-gray-700 mb-1">Blok Rumah</label>
-                 <select value={profileBlok} onChange={e => setProfileBlok(e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg text-xs">
-                   <option value="">Pilih Blok</option>
-                   <option value="A">Blok A</option>
-                   <option value="B">Blok B</option>
-                   <option value="C">Blok C</option>
-                   <option value="D">Blok D</option>
-                   <option value="E">Blok E</option>
-                   <option value="F">Blok F</option>
-                   <option value="G">Blok G</option>
+                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Blok Rumah</label>
+                 <select value={profileBlok} onChange={e => setProfileBlok(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-bold text-slate-800 outline-none appearance-none transition-all">
+                   <option value="">Pilih</option>
+                   {['A','B','C','D','E','F','G'].map(b => <option key={b} value={b}>Blok {b}</option>)}
                  </select>
                </div>
                <div className="flex-1">
-                 <label className="block text-[10px] font-semibold text-gray-700 mb-1">No. Rumah</label>
-                 <input type="text" value={profileNomor} onChange={e => setProfileNomor(e.target.value)} placeholder="Cth: 12" className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">No. Rumah</label>
+                 <input type="text" value={profileNomor} onChange={e => setProfileNomor(e.target.value)} placeholder="Cth: 12" className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-bold text-slate-800 outline-none transition-all" />
                </div>
             </div>
             <div>
-               <label className="block text-[10px] font-semibold text-gray-700 mb-1">Nomor Ponsel</label>
-               <input type="tel" value={profile.phone} onChange={e => setProfile({...profile, phone: e.target.value})} className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Nomor Ponsel</label>
+               <input type="tel" value={profile.phone} onChange={e => setProfile({...profile, phone: e.target.value})} className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-bold text-slate-800 outline-none transition-all" />
             </div>
-            <div>
-               <label className="block text-[10px] font-semibold text-gray-700 mb-1">Tanggal Lahir</label>
-               <input type="date" value={profile.tglLahir} onChange={handleTglLahirChange} className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
-            </div>
-            <div>
-               <label className="block text-[10px] font-semibold text-gray-700 mb-1">Umur</label>
-               <input type="number" value={profile.umur} readOnly className="w-full p-2 border border-gray-100 bg-gray-50 rounded-lg text-xs text-gray-400 cursor-not-allowed" min="0" placeholder="Otomatis" />
+            <div className="flex gap-3">
+              <div className="flex-[2]">
+                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Tanggal Lahir</label>
+                 <input type="date" value={profile.tglLahir} onChange={handleTglLahirChange} className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-bold text-slate-800 outline-none transition-all" />
+              </div>
+              <div className="flex-1">
+                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Umur</label>
+                 <input type="text" value={profile.umur ? `${profile.umur} th` : ''} readOnly className="w-full p-3.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-slate-500 outline-none cursor-not-allowed text-center" placeholder="-" />
+              </div>
             </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
+  // ================= VIEW: PROFIL UTAMA =================
   return (
-    <div className="p-4 flex flex-col items-center space-y-4 pb-24">
-      {successMsg && (
-        <div className="bg-green-100 border border-green-200 text-green-700 px-4 py-3 rounded-xl w-full text-sm font-medium text-center animate-in fade-in slide-in-from-top-2">
-          {successMsg}
-        </div>
-      )}
-      <div className="w-full flex justify-end gap-2">
-         <button onClick={() => setIsChangingPass(true)} className="text-[10px] text-gray-600 font-bold inline-flex items-center gap-1 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">Ubah Password</button>
-         <button onClick={() => setIsEditing(true)} className="text-[10px] text-teal-600 font-bold inline-flex items-center gap-1 bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-100">Edit Profil</button>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col w-full min-h-screen bg-slate-50 pb-28">
+      
+      {/* Absolute Header Background */}
+      <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 rounded-b-[3rem] shadow-lg overflow-hidden">
+         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-[0.05] rounded-full translate-x-20 -translate-y-20 blur-2xl"></div>
+         <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-300 opacity-20 rounded-full -translate-x-16 translate-y-16 blur-2xl"></div>
       </div>
-      <div className="relative mt-2">
-        {profile.photo ? (
-           <img src={profile.photo} alt="Profile" className="w-20 h-20 rounded-full border-2 border-white shadow-sm object-cover" />
-        ) : (
-           <ProfileAvatar size="20"/>
-        )}
-        <div className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
-      </div>
-      <div className="text-center">
-        <h2 className="text-lg font-bold text-gray-900" style={{ fontFamily: fontStyle }}>{profile.name}</h2>
-        <p className="text-xs font-semibold text-teal-600 mt-1 bg-teal-50 inline-block px-2 py-0.5 rounded-full border border-teal-100">{profile.role}</p>
-      </div>
-      <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-50 mt-4">
-        <div className="p-3 flex justify-between items-center bg-gray-50 rounded-t-xl">
-          <span className="text-[10px] font-medium text-gray-500">Alamat Lengkap</span>
+
+      <div className="relative z-10 px-5 pt-8 flex flex-col items-center">
+        {/* Sukses Alert Dinamis */}
+        <AnimatePresence>
+          {successMsg && (
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="absolute top-2 left-5 right-5 bg-white/90 backdrop-blur-md border border-emerald-100 shadow-xl text-emerald-700 px-4 py-3 rounded-2xl text-sm font-bold text-center z-50">
+              {successMsg}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Profil Avatar (Hero) */}
+        <div className="relative mt-8">
+          <div className="w-28 h-28 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-slate-100">
+             {profile.photo ? (
+                <img src={profile.photo} alt="Profile" className="w-full h-full object-cover" />
+             ) : (
+                <ProfileAvatar size="28"/>
+             )}
+          </div>
+          <div className="absolute bottom-1 right-2 w-6 h-6 bg-emerald-400 border-2 border-white rounded-full flex items-center justify-center shadow-sm">
+             <div className="w-full h-full bg-emerald-400 rounded-full animate-ping opacity-75"></div>
+          </div>
         </div>
-        <div className="p-3 text-xs text-gray-800 font-medium leading-relaxed">{profile.address}</div>
-        <div className="p-3 flex justify-between items-center bg-gray-50">
-          <span className="text-[10px] font-medium text-gray-500">Umur</span>
-        </div>
-        <div className="p-3 text-xs text-gray-800 font-medium">{profile.umur ? `${profile.umur} Tahun` : '-'}</div>
-        <div className="p-3 flex justify-between items-center">
-          <span className="text-xs font-medium text-gray-700">Nomor Ponsel</span>
-          <span className="text-xs text-gray-500 font-medium">{profile.phone}</span>
+
+        {/* Info Singkat */}
+        <div className="text-center mt-5 text-white drop-shadow-md">
+          <h2 className="text-2xl font-extrabold tracking-tight">{profile.name}</h2>
+          <div className="inline-flex items-center gap-1.5 mt-2 bg-white/20 backdrop-blur-sm px-3.5 py-1 rounded-full border border-white/20">
+             <svg className="w-3.5 h-3.5 text-teal-100" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+             <span className="text-xs font-bold uppercase tracking-wider">{profile.role}</span>
+          </div>
         </div>
       </div>
-      <button onClick={onLogout} className="w-full py-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold mt-4 border border-red-100">Keluar Akun</button>
-    </div>
+
+      {/* Konten Data Profil (Kartu Melayang) */}
+      <div className="relative z-10 px-5 w-full mt-8">
+        
+        {/* Tombol Aksi Cepat */}
+        <div className="flex gap-3 mb-6">
+           <button onClick={() => setIsEditing(true)} className="flex-1 py-3.5 bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-teal-600 font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors border border-slate-100">
+             <icons.edit className="w-4 h-4"/> Edit Profil
+           </button>
+           <button onClick={() => setIsChangingPass(true)} className="flex-1 py-3.5 bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-slate-700 font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors border border-slate-100">
+             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg> 
+             Password
+           </button>
+        </div>
+
+        {/* Kartu Informasi Lengkap */}
+        <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden divide-y divide-slate-50">
+          <div className="p-4 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+            <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center shrink-0">
+               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            </div>
+            <div className="flex-grow min-w-0">
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alamat Lengkap</p>
+               <p className="text-sm font-extrabold text-slate-800 truncate mt-0.5">{profile.address || 'Belum diatur'}</p>
+            </div>
+          </div>
+          
+          <div className="p-4 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center shrink-0">
+               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+            </div>
+            <div className="flex-grow min-w-0">
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nomor Ponsel</p>
+               <p className="text-sm font-extrabold text-slate-800 mt-0.5">{profile.phone || '-'}</p>
+            </div>
+          </div>
+
+          <div className="p-4 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+            <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shrink-0">
+               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2h12z"/></svg>
+            </div>
+            <div className="flex-grow min-w-0">
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Umur</p>
+               <p className="text-sm font-extrabold text-slate-800 mt-0.5">{profile.umur ? `${profile.umur} Tahun` : 'Belum diatur'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tombol Logout */}
+        <button onClick={onLogout} className="w-full mt-6 py-4 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-2xl text-sm font-extrabold transition-colors shadow-sm flex justify-center items-center gap-2">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          Keluar Aplikasi
+        </button>
+      </div>
+
+    </motion.div>
   );
 };
 
