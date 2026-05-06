@@ -201,7 +201,16 @@ export function Register({ onRegister, onNavLogin }: any) {
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1">Blok Rumah</label>
-            <input type="text" value={blok} onChange={e => setBlok(e.target.value)} onFocus={() => setIsFocusedPassword(false)} required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-teal-500" placeholder="Cth: Blok A" />
+            <select value={blok} onChange={e => setBlok(e.target.value)} onFocus={() => setIsFocusedPassword(false)} required className="w-full p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:border-teal-500">
+              <option value="">Pilih Blok</option>
+              <option value="A">Blok A</option>
+              <option value="B">Blok B</option>
+              <option value="C">Blok C</option>
+              <option value="D">Blok D</option>
+              <option value="E">Blok E</option>
+              <option value="F">Blok F</option>
+              <option value="G">Blok G</option>
+            </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1">Nomor Rumah</label>

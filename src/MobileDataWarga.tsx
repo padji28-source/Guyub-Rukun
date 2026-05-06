@@ -66,7 +66,6 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
 
   const handleAddWarga = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin menambahkan data warga ini?")) return;
     try {
       const alamat = `Blok ${newWargaBlok} No. ${newWargaNomor}`;
       await apiFetch('/api/register', {
@@ -85,7 +84,6 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
 
   const handleSaveMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin menyimpan data anggota keluarga ini?")) return;
     try {
       if (editingMember) {
         await apiFetch(`/api/warga/${activeWargaId}/members/${editingMember.id}`, {
@@ -109,7 +107,6 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
   };
 
   const handleDeleteMember = async (wargaId: string, memberId: string) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
     try {
       await apiFetch(`/api/warga/${wargaId}/members/${memberId}`, { method: 'DELETE' });
       alert('Data anggota keluarga berhasil dihapus!');
@@ -227,7 +224,16 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
             <input type="text" placeholder="Nama Lengkap" value={newWarga.nama} onChange={e => setNewWarga({...newWarga, nama: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
             <input type="password" placeholder="Password Login" value={newWarga.password} onChange={e => setNewWarga({...newWarga, password: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
             <div className="flex gap-2">
-               <input type="text" placeholder="Blok Rumah (Cth: A)" value={newWargaBlok} onChange={e => setNewWargaBlok(e.target.value)} required className="w-1/2 text-xs p-2 border rounded-lg" />
+               <select value={newWargaBlok} onChange={e => setNewWargaBlok(e.target.value)} required className="w-1/2 text-xs p-2 border rounded-lg bg-white">
+                 <option value="">Pilih Blok</option>
+                 <option value="A">Blok A</option>
+                 <option value="B">Blok B</option>
+                 <option value="C">Blok C</option>
+                 <option value="D">Blok D</option>
+                 <option value="E">Blok E</option>
+                 <option value="F">Blok F</option>
+                 <option value="G">Blok G</option>
+               </select>
                <input type="text" placeholder="Nomor (Cth: 12)" value={newWargaNomor} onChange={e => setNewWargaNomor(e.target.value)} required className="w-1/2 text-xs p-2 border rounded-lg" />
             </div>
             <input type="tel" placeholder="No HP" value={newWarga.noHp} onChange={e => setNewWarga({...newWarga, noHp: e.target.value})} required className="w-full text-xs p-2 border rounded-lg" />
@@ -371,7 +377,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                     <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border bg-teal-50 text-teal-600 border-teal-100`}>{warga.role === 'admin' ? 'Admin' : (warga.role === 'pengurus' ? 'Pengurus' : warga.status)}</span>
                     <span className="text-[9px] text-gray-400 font-medium flex items-center gap-0.5">
                       {isAdmin && warga.id !== currentUser?.id && (
-                        <button onClick={(e) => { e.stopPropagation(); if (window.confirm('Apakah Anda yakin ingin menghapus warga ini?')) { apiFetch(`/api/warga/${warga.id}`,{method:'DELETE'}).then(()=> { alert('Warga berhasil dihapus!'); fetchWarga(); }); } }} className="text-red-500 mr-2 p-1 bg-red-50 rounded text-[8px]">Hapus</button>
+                        <button onClick={(e) => { e.stopPropagation(); apiFetch(`/api/warga/${warga.id}`,{method:'DELETE'}).then(()=> { alert('Warga berhasil dihapus!'); fetchWarga(); }); }} className="text-red-500 mr-2 p-1 bg-red-50 rounded text-[8px]">Hapus</button>
                       )}
                       {expandedId === warga.id ? 'Tutup' : 'Lihat'} <icons.lainnya className={`w-3 h-3 ${expandedId === warga.id ? 'rotate-180' : ''}`} />
                     </span>

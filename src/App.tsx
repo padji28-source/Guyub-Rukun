@@ -177,8 +177,11 @@ const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNot
                            {!n.read && <span className="w-2 h-2 rounded-full bg-red-500 mt-1 flex-shrink-0"></span>}
                         </div>
                         <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">{n.message}</p>
-                        <p className="text-[9px] text-gray-400 mt-2 font-medium uppercase tracking-wider">{new Date(n.time || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                        <p className="text-[9px] text-gray-400 mt-2 font-medium flex items-center gap-1 uppercase tracking-wider">
+  {new Date(n.time || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+  <span className="normal-case tracking-normal">•</span>
+  <span className="text-teal-600 font-bold capitalize tracking-normal">{n.updaterName || 'Sistem'}</span>
+</p>
                       </div>
                     )) : (
                       <div className="p-8 flex flex-col items-center justify-center text-center">
@@ -729,7 +732,6 @@ const WebPengaturanPage = ({ user, onLogout }: { user: any, onLogout: () => void
   const [savingPass, setSavingPass] = useState(false);
 
   const handleUpdatePassword = async () => {
-    if (!window.confirm("Apakah Anda yakin ingin mengubah password?")) return;
     setPasswordError('');
     setPasswordMsg('');
     if (!oldPassword || !newPassword || !confirmPassword) {
@@ -1220,13 +1222,25 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
 
   const [profile, setProfile] = useState({
     name: user?.nama || 'Admin RT',
-    address: user?.alamat || 'Jl. Bahagia No. 12, Kompleks Rukun, Kota Tegal',
+    address: user?.alamat || '',
     phone: user?.noHp || '0812-3456-7890',
-    role: user?.role === 'admin' ? 'Ketua RT 01 / RW 21' : (user?.status || 'Warga RT 01 / RW 21'),
+    role: user?.role === 'admin' ? 'Ketua RT 01 / RW 21' : (user?.status || 'Warga Tetap'),
     photo: user?.photo || null as string | null,
     umur: user?.umur || '',
     tglLahir: user?.tglLahir || ''
   });
+
+  const parsedBlokMatch = (user?.alamat || '').match(/Blok\s+([a-zA-Z0-9]+)/i);
+  const parsedNoMatch = (user?.alamat || '').match(/No\.\s+([a-zA-Z0-9]+)/i);
+  const [profileBlok, setProfileBlok] = useState(parsedBlokMatch ? parsedBlokMatch[1] : '');
+  const [profileNomor, setProfileNomor] = useState(parsedNoMatch ? parsedNoMatch[1] : '');
+
+  // Update profile address when blok or nomor changes
+  useEffect(() => {
+    if (profileBlok || profileNomor) {
+      setProfile(prev => ({...prev, address: `Blok ${profileBlok} No. ${profileNomor}`}));
+    }
+  }, [profileBlok, profileNomor]);
 
   const calculateAge = (dob: string) => {
     if (!dob) return '';
@@ -1251,7 +1265,6 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
   };
 
   const handleSave = async () => {
-    if (!window.confirm("Apakah Anda yakin ingin menyimpan perubahan profil ini?")) return;
     setSaving(true);
     setSuccessMsg('');
     try {
@@ -1288,7 +1301,6 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
   };
 
   const handleUpdatePassword = async () => {
-    if (!window.confirm("Apakah Anda yakin ingin mengubah password?")) return;
     setPasswordError('');
     setPasswordMsg('');
     if (!oldPassword || !newPassword || !confirmPassword) {
@@ -1385,9 +1397,24 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
                  <option value="Warga Sementara (Kontrak)">Warga Sementara (Kontrak)</option>
                </select>
             </div>
-            <div>
-               <label className="block text-[10px] font-semibold text-gray-700 mb-1">Alamat Lengkap</label>
-               <textarea value={profile.address} onChange={e => setProfile({...profile, address: e.target.value})} className="w-full p-2 border border-gray-200 rounded-lg text-xs h-16"></textarea>
+            <div className="flex gap-2">
+               <div className="flex-1">
+                 <label className="block text-[10px] font-semibold text-gray-700 mb-1">Blok Rumah</label>
+                 <select value={profileBlok} onChange={e => setProfileBlok(e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg text-xs">
+                   <option value="">Pilih Blok</option>
+                   <option value="A">Blok A</option>
+                   <option value="B">Blok B</option>
+                   <option value="C">Blok C</option>
+                   <option value="D">Blok D</option>
+                   <option value="E">Blok E</option>
+                   <option value="F">Blok F</option>
+                   <option value="G">Blok G</option>
+                 </select>
+               </div>
+               <div className="flex-1">
+                 <label className="block text-[10px] font-semibold text-gray-700 mb-1">No. Rumah</label>
+                 <input type="text" value={profileNomor} onChange={e => setProfileNomor(e.target.value)} placeholder="Cth: 12" className="w-full p-2 border border-gray-200 rounded-lg text-xs" />
+               </div>
             </div>
             <div>
                <label className="block text-[10px] font-semibold text-gray-700 mb-1">Nomor Ponsel</label>
@@ -1581,8 +1608,8 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                alert(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
                if (n.resource) {
                   const mod = n.resource.charAt(0).toUpperCase() + n.resource.slice(1);
-                  setActiveWebTab(mod === 'Surat' ? 'Surat Pengantar' : mod);
-                  setActiveMobileTab(mod === 'Surat' ? 'Layanan' : mod);
+                  setActiveWebTab(mod === 'Warga' ? 'Data Warga' : mod === 'Surat' ? 'Surat Pengantar' : mod);
+                  setActiveMobileTab(mod === 'Warga' ? 'Data Warga' : mod === 'Surat' ? 'Layanan' : mod);
                }
             }}
           />
@@ -1705,8 +1732,8 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                          alert(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
                          if (n.resource && typeof setActiveMobileTab === 'function') {
                             const mod = n.resource.charAt(0).toUpperCase() + n.resource.slice(1);
-                            setActiveWebTab(mod === 'Surat' ? 'Surat Pengantar' : mod);
-                            setActiveMobileTab(mod === 'Surat' ? 'Layanan' : mod);
+                            setActiveWebTab(mod === 'Warga' ? 'Data Warga' : mod === 'Surat' ? 'Surat Pengantar' : mod);
+                            setActiveMobileTab(mod === 'Warga' ? 'Data Warga' : mod === 'Surat' ? 'Layanan' : mod);
                          }
                          setShowNotifications(false);
                       }}
@@ -1718,8 +1745,10 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                        <div>
                          <h5 className="text-xs font-bold text-gray-800">{n.title}</h5>
                          <p className="text-[10px] text-gray-600 mt-0.5">{n.message}</p>
-                         <span className="text-[8px] font-medium text-gray-400 mt-1 block">
+                         <span className="text-[8px] font-medium text-gray-400 mt-1 flex items-center gap-1">
                            {new Date(n.time || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                           <span>•</span>
+                           <span className="text-teal-600 font-bold capitalize">{n.updaterName || 'Sistem'}</span>
                          </span>
                        </div>
                     </div>
