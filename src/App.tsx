@@ -236,6 +236,7 @@ const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange
   </aside>
 );
 
+// --- 1. UPDATE: WebHeader ---
 const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNotifications, onNotificationClick }: { user?: any; onLogout?: () => void; onUpdateUser?: (data: any) => void; notifications?: any[]; onShowNotifications?: () => void; onNotificationClick?: (n: any) => void; }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -244,110 +245,130 @@ const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNot
 
   return (
     <>
-      <header className="flex items-center justify-between py-4 px-6 lg:p-6 bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm ml-20 lg:ml-[16rem] transition-all duration-300">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-bold text-gray-900" style={{ fontFamily: fontStyle }}>Halo, {user?.nama || 'Admin RT 01'}!</h1>
-          <p className="hidden md:block text-xs text-gray-500 mt-1">Website Guyub Rukun Admin Dashboard (Web View)</p>
-        </div>
-        <div className="flex items-center gap-6">
-          <div 
-            onClick={() => setShowProfileModal(true)}
-            className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors"
+      <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-gray-100/50 shadow-sm ml-20 lg:ml-[16rem] transition-all duration-300">
+        <div className="flex items-center justify-between py-3 px-6 lg:px-8">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex flex-col"
           >
-            {user?.photo ? (
-               <img src={user.photo} alt="Profile" className="w-10 h-10 rounded-full border border-gray-200 object-cover" />
-            ) : (
-               <ProfileAvatar size="10"/>
-            )}
-            <div className="text-right">
-              <span className="font-semibold text-sm text-gray-800 block leading-tight">{user?.nama || 'Admin'}</span>
-              <span className="text-[10px] text-gray-500 uppercase tracking-wider">{user?.role === 'admin' ? 'Ketua RT' : 'Pengurus RT'}</span>
-            </div>
-          </div>
-          <div className="relative">
-            <button 
-              onClick={() => {
-                 setShowNotifications(!showNotifications);
-                 if (!showNotifications && onShowNotifications) onShowNotifications();
-              }} 
-              className={`relative p-2 rounded-full transition-colors ${showNotifications ? 'bg-teal-50 text-teal-600' : 'hover:bg-gray-100 text-gray-500'}`}
-            >
-              <icons.pengumuman className="w-6 h-6" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold ring-2 ring-white">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-            
-            <AnimatePresence>
-              {showNotifications && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }} 
-                  animate={{ opacity: 1, y: 0, scale: 1 }} 
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }} 
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 transform origin-top-right"
-                >
-                  <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
-                    <h4 className="font-bold text-gray-800 text-sm">Notifikasi</h4>
-                    <span className="text-[10px] uppercase font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">{unreadCount} Baru</span>
-                  </div>
-                  <div className="max-h-72 overflow-y-auto">
-                    {notifications.length > 0 ? notifications.map((n, i) => (
-                      <div 
-                        key={i} 
-                        onClick={() => {
-                          if (onNotificationClick) {
-                             onNotificationClick(n);
-                          } else {
-                             alert(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
-                          }
-                          setShowNotifications(false);
-                        }}
-                        className="p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group"
-                      >
-                        <div className="flex items-start justify-between">
-                           <p className="text-xs font-bold text-gray-800 group-hover:text-teal-600 transition-colors">{n.title}</p>
-                           {!n.read && <span className="w-2 h-2 rounded-full bg-red-500 mt-1 flex-shrink-0"></span>}
+            <h1 className="text-xl lg:text-2xl font-extrabold text-gray-800 tracking-tight" style={{ fontFamily: fontStyle }}>
+              Halo, <span className="text-teal-600">{user?.nama || 'Admin'}</span>! 👋
+            </h1>
+            <p className="hidden md:block text-xs text-gray-500 font-medium mt-0.5">Pusat Kendali Guyub Rukun RT 01</p>
+          </motion.div>
+
+          <div className="flex items-center gap-4 lg:gap-6">
+            {/* Notification Bell */}
+            <div className="relative">
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                   setShowNotifications(!showNotifications);
+                   if (!showNotifications && onShowNotifications) onShowNotifications();
+                }} 
+                className={`relative p-2.5 rounded-full transition-all duration-300 ${showNotifications ? 'bg-teal-50 text-teal-600 shadow-inner' : 'bg-gray-50/80 hover:bg-teal-50 text-gray-500 hover:text-teal-600 shadow-sm border border-gray-100'}`}
+              >
+                <icons.bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] flex items-center justify-center font-bold ring-2 ring-white animate-pulse">
+                    {unreadCount}
+                  </span>
+                )}
+              </motion.button>
+              
+              <AnimatePresence>
+                {showNotifications && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 15, scale: 0.9 }} 
+                    animate={{ opacity: 1, y: 0, scale: 1 }} 
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }} 
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    className="absolute right-0 mt-4 w-80 lg:w-96 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 origin-top-right"
+                  >
+                    <div className="p-4 border-b border-gray-100 bg-white/50 flex justify-between items-center">
+                      <h4 className="font-extrabold text-gray-800 text-sm">Notifikasi</h4>
+                      {unreadCount > 0 && <span className="text-[10px] uppercase font-bold text-teal-700 bg-teal-100 px-2.5 py-1 rounded-full shadow-sm">{unreadCount} Baru</span>}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto no-scrollbar">
+                      {notifications.length > 0 ? notifications.map((n, i) => (
+                        <motion.div 
+                          key={i} 
+                          whileHover={{ backgroundColor: "rgba(249, 250, 251, 0.8)" }}
+                          onClick={() => {
+                            if (onNotificationClick) {
+                               onNotificationClick(n);
+                            } else {
+                               alert(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
+                            }
+                            setShowNotifications(false);
+                          }}
+                          className="p-4 border-b border-gray-50 cursor-pointer group transition-all"
+                        >
+                          <div className="flex items-start gap-3">
+                             <div className={`w-2 h-2 mt-1.5 rounded-full flex-shrink-0 ${n.read ? 'bg-gray-200' : 'bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.6)]'}`}></div>
+                             <div>
+                               <p className="text-sm font-bold text-gray-800 group-hover:text-teal-600 transition-colors leading-tight">{n.title}</p>
+                               <p className="text-xs text-gray-500 mt-1 leading-relaxed">{n.message}</p>
+                               <p className="text-[10px] text-gray-400 mt-2 font-medium flex items-center gap-1.5">
+                                  {new Date(n.time || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                  <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                  <span className="text-teal-600 font-bold capitalize">{n.updaterName || 'Sistem'}</span>
+                               </p>
+                             </div>
+                          </div>
+                        </motion.div>
+                      )) : (
+                        <div className="p-10 flex flex-col items-center justify-center text-center opacity-70">
+                          <icons.laporan className="w-12 h-12 text-gray-300 mb-3" />
+                          <p className="text-sm text-gray-500 font-medium">Hore! Semua notifikasi sudah dibaca.</p>
                         </div>
-                        <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">{n.message}</p>
-                        <p className="text-[9px] text-gray-400 mt-2 font-medium flex items-center gap-1 uppercase tracking-wider">
-  {new Date(n.time || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-  <span className="normal-case tracking-normal">•</span>
-  <span className="text-teal-600 font-bold capitalize tracking-normal">{n.updaterName || 'Sistem'}</span>
-</p>
-                      </div>
-                    )) : (
-                      <div className="p-8 flex flex-col items-center justify-center text-center">
-                        <icons.laporan className="w-10 h-10 text-gray-200 mb-2" />
-                        <p className="text-xs text-gray-500 font-medium">Belum ada notifikasi</p>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Profile Dropdown Trigger */}
+            <motion.div 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowProfileModal(true)}
+              className="flex items-center gap-3 bg-white pl-2 pr-4 py-1.5 rounded-full border border-gray-200 shadow-sm cursor-pointer hover:border-teal-300 transition-all"
+            >
+              {user?.photo ? (
+                 <img src={user.photo} alt="Profile" className="w-9 h-9 rounded-full object-cover ring-2 ring-teal-50" />
+              ) : (
+                 <ProfileAvatar size="9"/>
               )}
-            </AnimatePresence>
+              <div className="hidden md:flex flex-col text-left">
+                <span className="font-extrabold text-sm text-gray-800 leading-none">{user?.nama ? user.nama.split(' ')[0] : 'Admin'}</span>
+                <span className="text-[10px] text-teal-600 font-bold uppercase tracking-wider mt-0.5">{user?.role === 'admin' ? 'Ketua RT' : 'Pengurus'}</span>
+              </div>
+              <svg className="hidden md:block w-4 h-4 text-gray-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+            </motion.div>
           </div>
         </div>
       </header>
 
       <AnimatePresence>
         {showProfileModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-md w-full overflow-hidden max-h-[90vh] flex flex-col"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden max-h-[90vh] flex flex-col border border-white/20"
             >
-              <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                <h3 className="font-bold text-gray-800">Edit Profil Admin</h3>
-                <button onClick={() => setShowProfileModal(false)} className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-full text-gray-500 hover:bg-gray-50">×</button>
+              <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-slate-50/80 backdrop-blur-md">
+                <h3 className="font-extrabold text-gray-800 text-lg">Menu Pengurus</h3>
+                <button onClick={() => setShowProfileModal(false)} className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-full text-gray-500 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-all">✕</button>
               </div>
-              <div className="p-6 overflow-y-auto w-full relative">
-                 <MobileProfilPage user={user} onLogout={() => setShowProfileModal(false)} onUpdateUser={(d) => { if(onUpdateUser) onUpdateUser(d); setShowProfileModal(false); }} />
-                 <div className="absolute top-6 left-6 right-6 bottom-6 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent, white)', opacity: 0 }}></div>
+              <div className="p-0 overflow-y-auto w-full relative bg-slate-50">
+                 <MobileProfilPage user={user} onLogout={() => { onLogout?.(); setShowProfileModal(false); }} onUpdateUser={(d) => { if(onUpdateUser) onUpdateUser(d); setShowProfileModal(false); }} />
               </div>
             </motion.div>
           </div>
@@ -510,6 +531,7 @@ const WebStatsCards = () => {
   );
 };
 
+// --- 2. UPDATE: WebDateWidget (Kalender) ---
 const WebDateWidget = () => {
   const [date, setDate] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
@@ -528,7 +550,8 @@ const WebDateWidget = () => {
   }, []);
 
   const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][date.getDay()];
-  const bulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][date.getMonth()];
+  const bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][date.getMonth()];
+  const bulanFull = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][date.getMonth()];
   const tanggal = date.getDate();
   const tahun = date.getFullYear();
   const waktu = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -546,78 +569,114 @@ const WebDateWidget = () => {
 
   return (
     <div className="relative col-span-1 xl:col-span-2 select-none z-20">
-      <div 
-        className="bg-gradient-to-br from-teal-500 to-teal-700 p-6 rounded-xl border border-teal-600 shadow-sm text-white flex items-center justify-between cursor-pointer hover:from-teal-600 hover:to-teal-800 transition group"
+      <motion.div 
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.98 }}
+        className="bg-gradient-to-br from-teal-600 via-teal-700 to-emerald-800 p-6 rounded-2xl shadow-lg text-white flex items-center justify-between cursor-pointer relative overflow-hidden group border border-teal-500/30"
         onClick={() => setShowCalendar(!showCalendar)}
       >
-        <div>
-          <p className="text-teal-100 text-sm font-medium mb-1 flex items-center gap-2">
+        {/* Abstract Background Shapes */}
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full blur-2xl -translate-y-10 translate-x-10"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-400/10 rounded-full blur-xl translate-y-10 -translate-x-10"></div>
+
+        <div className="relative z-10">
+          <p className="text-teal-100 text-xs font-bold uppercase tracking-widest mb-1.5 flex items-center gap-2 opacity-90">
             {hari}
-            <svg className={`w-4 h-4 transition-transform ${showCalendar ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+            <motion.svg 
+              animate={{ rotate: showCalendar ? 180 : 0 }} 
+              transition={{ duration: 0.3 }}
+              className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7"/>
+            </motion.svg>
           </p>
-          <h2 className="text-2xl font-bold">{tanggal} {bulan} {tahun}</h2>
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight drop-shadow-sm">{tanggal} <span className="text-teal-200">{bulan}</span> {tahun}</h2>
         </div>
-        <div className="bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm border border-white/20">
-          <span className="text-xl font-bold tracking-wider">{waktu}</span>
+        
+        <div className="relative z-10 bg-white/10 backdrop-blur-md px-5 py-3 rounded-xl border border-white/20 shadow-inner group-hover:bg-white/20 transition-all">
+          <span className="text-xl md:text-2xl font-black tracking-wider text-white drop-shadow-md">{waktu}</span>
         </div>
-      </div>
+      </motion.div>
       
       <AnimatePresence>
         {showCalendar && (
           <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute top-full left-0 right-0 mt-3 bg-white rounded-xl shadow-lg border border-gray-100 p-6 z-30 transform-gpu flex flex-col md:flex-row gap-6"
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 250, damping: 25 }}
+            className="absolute top-full left-0 right-0 mt-4 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-100 p-6 lg:p-8 z-30 flex flex-col md:flex-row gap-8 transform-gpu"
           >
             <div className="flex-1">
-              <div className="text-center font-bold text-gray-800 text-lg mb-4">{bulan} {tahun}</div>
-              <div className="grid grid-cols-7 gap-1 text-center mb-2">
+              <div className="flex justify-between items-center mb-6">
+                 <h3 className="font-extrabold text-gray-800 text-xl">{bulanFull} {tahun}</h3>
+                 <span className="px-3 py-1 bg-teal-50 text-teal-600 text-xs font-bold rounded-full">{hari}</span>
+              </div>
+              <div className="grid grid-cols-7 gap-2 text-center mb-3">
                 {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => (
-                  <div key={d} className="text-xs font-bold text-gray-400 py-1">{d}</div>
+                  <div key={d} className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">{d}</div>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-1 text-center">
+              <div className="grid grid-cols-7 gap-2 text-center">
                 {blanks.map(b => <div key={`blank-${b}`} className="p-2"></div>)}
                 {days.map(d => {
                   const hasEvent = events.some(e => {
                     const evD = new Date(e.date);
                     return evD.getDate() === d && evD.getMonth() === date.getMonth() && evD.getFullYear() === date.getFullYear();
                   });
+                  const isSelected = d === selectedDateState;
+                  const isToday = d === date.getDate();
+
                   return (
-                    <div 
+                    <motion.div 
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
                       key={d} 
                       onClick={() => setSelectedDateState(d)}
-                      className={`p-2 rounded-lg text-sm font-semibold transition-colors relative cursor-pointer ${d === selectedDateState ? 'bg-teal-600 text-white shadow-sm' : 'text-gray-700 hover:bg-teal-50 hover:text-teal-700'}`}
+                      className={`relative aspect-square flex items-center justify-center rounded-xl text-sm font-bold transition-all cursor-pointer border-2
+                        ${isSelected ? 'bg-teal-600 text-white border-teal-600 shadow-md' : 
+                          isToday ? 'bg-teal-50 text-teal-700 border-teal-200' : 
+                          'border-transparent text-gray-700 hover:bg-gray-50'}`}
                     >
                       {d}
                       {hasEvent && (
-                        <div className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${d === selectedDateState ? 'bg-white' : 'bg-teal-500'}`}></div>
+                        <div className={`absolute bottom-1.5 w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-orange-400'}`}></div>
                       )}
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
             </div>
             
-            <div className="flex-1 border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6 flex flex-col min-h-[200px]">
-              <h3 className="font-bold text-gray-800 text-sm mb-3">Agenda {selectedDateState} {bulan} {tahun}</h3>
-              <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+            <div className="flex-1 border-t md:border-t-0 md:border-l border-gray-100 pt-6 md:pt-0 md:pl-8 flex flex-col min-h-[250px]">
+              <div className="flex items-center gap-3 mb-5">
+                 <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600 font-black text-lg shadow-sm">{selectedDateState}</div>
+                 <div>
+                    <h3 className="font-extrabold text-gray-800 text-sm">Agenda Kegiatan</h3>
+                    <p className="text-xs text-gray-500 font-medium">{bulanFull} {tahun}</p>
+                 </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto pr-2 space-y-4 no-scrollbar">
                 {selectedDateEvents.length > 0 ? (
                   selectedDateEvents.map((e, idx) => (
-                    <div key={idx} className="bg-orange-50 border border-orange-100 rounded-lg p-3">
-                      <div className="text-xs font-bold text-orange-600 mb-1">{e.time || 'Waktu tidak ditentukan'}</div>
-                      <div className="text-sm font-bold text-gray-800">{e.title}</div>
-                      <div className="text-xs text-gray-600 mt-1 flex items-center gap-1">
-                        <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                        {e.location || 'Lokasi tidak disebutkan'}
-                      </div>
-                    </div>
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.1 }} key={idx} className="relative pl-4 border-l-2 border-orange-400">
+                      <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-white border-2 border-orange-400"></div>
+                      <div className="text-xs font-extrabold text-orange-600 bg-orange-50 inline-block px-2 py-0.5 rounded mb-1">{e.time || 'Waktu tidak ditentukan'}</div>
+                      <div className="text-sm font-bold text-gray-800 leading-tight">{e.title}</div>
+                      {e.location && (
+                        <div className="text-[11px] font-medium text-gray-500 mt-1.5 flex items-start gap-1.5">
+                          <svg className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                          {e.location}
+                        </div>
+                      )}
+                    </motion.div>
                   ))
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-gray-400 py-6">
-                    <svg className="w-8 h-8 text-gray-200 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    <p className="text-xs">Tidak ada agenda pada hari ini</p>
+                  <div className="h-full flex flex-col items-center justify-center text-gray-400 py-10 opacity-70">
+                    <svg className="w-12 h-12 text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <p className="text-xs font-bold text-gray-500">Kosong, tidak ada agenda</p>
+                    <p className="text-[10px] mt-1">Gunakan waktu ini untuk bersantai.</p>
                   </div>
                 )}
               </div>
@@ -629,6 +688,8 @@ const WebDateWidget = () => {
   );
 };
 
+
+// --- 3. UPDATE: WebMediaSlider ---
 const WebMediaSlider = () => {
   const [media, setMedia] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -643,42 +704,86 @@ const WebMediaSlider = () => {
     if (media.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentIndex(prev => (prev + 1) % media.length);
-    }, 5000);
+    }, 6000); // Diperlambat sedikit agar animasi zoom terasa
     return () => clearInterval(interval);
   }, [media.length]);
 
   if (media.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative w-full h-64 md:h-80 mb-6">
+    <div className="bg-slate-900 rounded-3xl shadow-lg border border-gray-100 overflow-hidden relative w-full h-72 md:h-96 mb-8 group">
       <AnimatePresence mode="wait">
         <motion.img
           key={currentIndex}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
           src={media[currentIndex].imageUrl}
           alt={media[currentIndex].title}
           className="w-full h-full object-cover absolute inset-0"
         />
       </AnimatePresence>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
-      <div className="absolute bottom-6 left-6 right-6 z-10 flex flex-col items-start">
-        <span className="bg-teal-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm mb-2 uppercase tracking-wide">Galeri RT</span>
-        <h3 className="text-white font-bold text-xl md:text-2xl line-clamp-1 filter drop-shadow-md">{media[currentIndex].title}</h3>
+      
+      {/* Modern Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/30 to-transparent pointer-events-none" />
+      
+      <div className="absolute bottom-8 left-8 right-8 z-10 flex flex-col items-start">
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={`tag-${currentIndex}`}
+          className="bg-white/20 backdrop-blur-md border border-white/30 text-white text-[10px] font-extrabold px-3 py-1 rounded-full shadow-sm mb-3 uppercase tracking-widest"
+        >
+          Sorotan Warga
+        </motion.div>
+        <motion.h3 
+          initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} key={`title-${currentIndex}`}
+          className="text-white font-black text-2xl md:text-3xl lg:text-4xl leading-tight line-clamp-2 drop-shadow-lg max-w-2xl"
+        >
+          {media[currentIndex].title}
+        </motion.h3>
+        
         {media[currentIndex].uploaderName && (
-          <p className="text-white/90 text-xs mt-1 md:text-sm font-medium drop-shadow">{media[currentIndex].uploaderName} • {new Date(media[currentIndex].createdAt).toLocaleDateString()}</p>
+          <motion.p 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} key={`desc-${currentIndex}`}
+            className="text-white/80 text-xs md:text-sm font-semibold mt-2 flex items-center gap-2 drop-shadow"
+          >
+            <span className="w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center text-[10px] text-white">
+              {media[currentIndex].uploaderName.charAt(0).toUpperCase()}
+            </span>
+            {media[currentIndex].uploaderName} 
+            <span className="text-white/40">•</span> 
+            {new Date(media[currentIndex].createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year:'numeric'})}
+          </motion.p>
         )}
       </div>
-      <div className="absolute bottom-6 right-6 z-10 flex gap-1.5 items-center">
+
+      {/* Modern Progress Indicators */}
+      <div className="absolute bottom-8 right-8 z-10 flex gap-2 items-center">
         {media.map((_, idx) => (
           <button
             key={idx}
             onClick={() => setCurrentIndex(idx)}
-            className={`h-2 rounded-full transition-all shadow-sm ${idx === currentIndex ? 'bg-white w-6' : 'bg-white/50 hover:bg-white/80 w-2'}`}
-          />
+            className="relative h-1.5 rounded-full overflow-hidden transition-all duration-300"
+            style={{ width: idx === currentIndex ? '32px' : '12px', backgroundColor: 'rgba(255,255,255,0.3)' }}
+          >
+            {idx === currentIndex && (
+              <motion.div 
+                layoutId="activeMediaIndicator"
+                className="absolute inset-0 bg-teal-400" 
+              />
+            )}
+          </button>
         ))}
+      </div>
+      
+      {/* Navigation Arrows (Optional, appears on hover) */}
+      <div className="absolute inset-y-0 left-4 right-4 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none">
+        <button onClick={() => setCurrentIndex(prev => (prev === 0 ? media.length - 1 : prev - 1))} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/30 pointer-events-auto transition">
+           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <button onClick={() => setCurrentIndex(prev => (prev + 1) % media.length)} className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/30 pointer-events-auto transition">
+           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7"/></svg>
+        </button>
       </div>
     </div>
   );
@@ -961,25 +1066,60 @@ const WebPengaturanPage = ({ user, onLogout }: { user: any, onLogout: () => void
   );
 };
 
-// --- Mobile UI Components (Aplikasi Warga Mockup) ---
+// --- UPDATE: MobileHeader ---
 const MobileHeader = ({ notifications, onShowNotifications }: { notifications: any[], onShowNotifications: () => void }) => {
   const unreadCount = notifications.filter(n => !n.read).length;
+  
   return (
-  <header className="flex items-center justify-between p-4 bg-white border-b border-gray-100">
-    <div className="flex items-center gap-2">
-      <LogoCommunityIcon size="20"/>
-      <span className="text-lg font-bold" style={{ color: themeColors.primary, fontFamily: fontStyle }}>GUYUB RUKUN</span>
-    </div>
-    <div className="relative cursor-pointer" onClick={onShowNotifications}>
-      <icons.bell className="w-5 h-5 text-teal-600" />
-      {unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-white"></span>
-        </span>
-      )}
-    </div>
-  </header>
+    <motion.header 
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      // Menggunakan sticky dan backdrop-blur agar terlihat modern saat halaman di-scroll
+      className="sticky top-0 z-40 flex items-center justify-between px-5 py-3.5 bg-white/85 backdrop-blur-xl border-b border-gray-100/50 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)]"
+    >
+      {/* Area Logo */}
+      <motion.div 
+        whileTap={{ scale: 0.95 }}
+        className="flex items-center gap-2.5 cursor-pointer"
+      >
+        <div className="bg-gradient-to-br from-teal-500 to-emerald-600 p-1.5 rounded-xl shadow-sm border border-teal-400/30">
+          {/* Memastikan warna logo di dalam box menjadi putih agar kontras */}
+          <LogoCommunityIcon size="20" colorAccent="#ffffff" colorPrimary="#ffffff" />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-base font-extrabold leading-none tracking-tight text-gray-800" style={{ fontFamily: fontStyle }}>
+            GUYUB <span className="text-teal-600">RUKUN</span>
+          </span>
+          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Aplikasi Warga</span>
+        </div>
+      </motion.div>
+
+      {/* Area Tombol Notifikasi */}
+      <motion.button 
+        whileTap={{ scale: 0.85 }}
+        className="relative p-2.5 bg-slate-50 rounded-full border border-slate-100 shadow-sm active:bg-teal-50 transition-colors"
+        onClick={onShowNotifications}
+      >
+        <icons.bell className="w-5 h-5 text-slate-600" />
+        
+        <AnimatePresence>
+          {unreadCount > 0 && (
+            <motion.span 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              className="absolute -top-1 -right-1 flex h-4 w-4"
+            >
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex items-center justify-center rounded-full h-4 w-4 bg-red-500 border-2 border-white text-[8px] font-bold text-white shadow-sm">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </motion.button>
+    </motion.header>
   );
 };
 
@@ -1006,21 +1146,63 @@ const MobileProfile = ({ user }: { user: any }) => {
   );
 };
 
-const MobileQuickActions = ({ onActionClick }: { onActionClick: (action: string) => void }) => (
-  <section className="px-4 mb-6">
-    <div className="grid grid-cols-4 gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-50">
-      {quickActions.map((action, index) => (
-        <button key={index} onClick={() => onActionClick(action.name)} className="flex flex-col items-center text-center gap-2 cursor-pointer hover:scale-105 transition-transform">
-          <div className="p-3 rounded-xl bg-orange-50">
-            <action.icon className="w-6 h-6 text-orange-600" />
-          </div>
-          <span className="text-[10px] font-medium text-gray-700 leading-tight">{action.name}</span>
-        </button>
-      ))}
-    </div>
-  </section>
-);
+const MobileQuickActions = ({ onActionClick }: { onActionClick: (action: string) => void }) => {
+  // Setup variasi animasi framer-motion
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 } // Waktu jeda antar ikon muncul
+    }
+  };
+  
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20, scale: 0.8 },
+    show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 250, damping: 20 } }
+  };
 
+  return (
+    <section className="px-5 mb-8">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="font-extrabold text-gray-800 text-sm">Layanan Warga</h3>
+        <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full cursor-pointer active:scale-95 transition-transform">Lihat Semua</span>
+      </div>
+      
+      <motion.div 
+        variants={containerVariants} 
+        initial="hidden" 
+        animate="show" 
+        className="grid grid-cols-4 gap-y-5 gap-x-3 bg-white p-5 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100"
+      >
+        {quickActions.map((action, index) => (
+          <motion.button 
+            key={index} 
+            variants={itemVariants}
+            whileTap={{ scale: 0.85 }} // Mengecil saat ditekan
+            onClick={() => onActionClick(action.name)} 
+            className="flex flex-col items-center text-center gap-2.5 group outline-none"
+          >
+            {/* Box Ikon Modern */}
+            <div className={`p-3.5 w-14 h-14 flex items-center justify-center rounded-[1.1rem] bg-gradient-to-br ${action.color} text-white shadow-md ${action.shadow} group-hover:shadow-lg transition-all relative overflow-hidden`}>
+              {/* Efek kilauan cahaya (Shine effect) */}
+              <div className="absolute top-0 -left-[100%] w-1/2 h-full bg-white/30 transform -skew-x-12 group-hover:left-[200%] transition-all duration-700 ease-in-out"></div>
+              
+              {/* Ikon */}
+              <action.icon className="w-6 h-6 relative z-10 drop-shadow-sm" />
+            </div>
+            
+            {/* Teks Label */}
+            <span className="text-[10px] font-extrabold text-slate-600 leading-tight group-hover:text-teal-600 transition-colors">
+              {action.name}
+            </span>
+          </motion.button>
+        ))}
+      </motion.div>
+    </section>
+  );
+};
+
+// --- UPDATE: MobileEvents (Widget Beranda) ---
 const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => void }) => {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState<number | null>(today.getDate());
@@ -1040,8 +1222,8 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
         setMediaList([{
           imageUrl: "https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=600&q=80",
           title: "Kerja Bakti Sambut Ramadhan",
-          uploaderName: "Admin",
-          desc: "Keseruan warga RT 01 bergotong royong membersihkan selokan dan jalanan."
+          uploaderName: "Admin RT",
+          desc: "Keseruan warga RT 01 bergotong royong."
         }]);
       }
     }).catch(console.error).finally(() => setLoadingMedia(false));
@@ -1055,18 +1237,15 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
     if (mediaList.length <= 1) return;
     const interval = setInterval(() => {
       setActiveMediaIndex(prev => (prev + 1) % mediaList.length);
-    }, 4000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [mediaList.length]);
 
   const currentMedia = mediaList[activeMediaIndex] || null;
 
   // Calendar Logic
-  const getDaysInMonth = (month: number, year: number) => new Date(year, month + 1, 0).getDate();
-  const getFirstDayOfMonth = (month: number, year: number) => new Date(year, month, 1).getDay();
-
-  const daysInMonth = getDaysInMonth(currentMonth, currentYear);
-  const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
   const blanks = Array.from({ length: firstDay }, (_, i) => null);
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const totalSlots = [...blanks, ...days];
@@ -1082,136 +1261,212 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
   });
 
   return (
-  <section className="px-4 mb-6 space-y-4">
-    <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden relative group cursor-pointer" onClick={() => onActionClick('Media')}>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeMediaIndex}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full h-40"
-        >
-          {loadingMedia ? (
-             <div className="w-full h-full bg-gray-200 animate-pulse"></div>
-          ) : currentMedia && (
-            <img src={currentMedia.imageUrl} alt={currentMedia.title} className="w-full h-full object-cover" />
-          )}
-        </motion.div>
-      </AnimatePresence>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 text-white">
-        <div className="flex justify-between items-start w-full mb-2">
-          <span className="px-2 py-1 bg-teal-500/80 backdrop-blur-sm text-[9px] font-bold rounded-full w-max">Galeri Terbaru</span>
-          {!loadingMedia && currentMedia && (
-            <a href={currentMedia.imageUrl} download={currentMedia.title || 'foto-rt'} target="_blank" rel="noopener noreferrer" className="bg-white/20 hover:bg-white/40 text-white p-1.5 rounded-full backdrop-blur-sm transition z-10" title="Unduh Foto">
-               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            </a>
-          )}
-        </div>
-        {loadingMedia ? (
-            <>
-               <div className="h-4 w-32 bg-white/30 animate-pulse rounded mb-2"></div>
-               <div className="h-3 w-48 bg-white/20 animate-pulse rounded"></div>
-            </>
-        ) : (
-            <>
-                <h4 className="text-sm font-bold leading-snug">{currentMedia?.title}</h4>
-                {currentMedia?.desc ? (
-                  <p className="text-[10px] text-gray-200 mt-1 line-clamp-2">{currentMedia.desc}</p>
-                ) : (
-                  <p className="text-[10px] text-gray-200 mt-1 line-clamp-2">Diunggah oleh {currentMedia?.uploaderName}</p>
+    <section className="px-5 mb-8 space-y-6">
+      {/* 1. Mobile Media Slider (Modern Story Style) */}
+      <motion.div 
+        whileTap={{ scale: 0.98 }}
+        className="bg-slate-900 rounded-[2rem] shadow-xl overflow-hidden relative group cursor-pointer aspect-[4/3] w-full"
+        onClick={() => onActionClick('Media')}
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeMediaIndex}
+            initial={{ opacity: 0, scale: 1.05 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="absolute inset-0 w-full h-full"
+          >
+            {loadingMedia ? (
+               <div className="w-full h-full bg-slate-200 animate-pulse"></div>
+            ) : currentMedia && (
+              <img src={currentMedia.imageUrl} alt={currentMedia.title} className="w-full h-full object-cover" />
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Progress Bars ala Instagram Story */}
+        {mediaList.length > 1 && !loadingMedia && (
+          <div className="absolute top-4 left-4 right-4 flex gap-1.5 z-20">
+            {mediaList.map((_, idx) => (
+              <div key={idx} className="h-1 bg-white/30 rounded-full flex-1 overflow-hidden backdrop-blur-sm">
+                {idx === activeMediaIndex && (
+                  <motion.div 
+                    initial={{ width: 0 }} 
+                    animate={{ width: "100%" }} 
+                    transition={{ duration: 5, ease: "linear" }} 
+                    className="h-full bg-white rounded-full"
+                  />
                 )}
-            </>
+                {idx < activeMediaIndex && <div className="h-full bg-white rounded-full" />}
+              </div>
+            ))}
+          </div>
         )}
-      </div>
-      {mediaList.length > 1 && !loadingMedia && (
-        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
-          {mediaList.map((_, idx) => (
-            <div key={idx} className={`h-1 rounded-full transition-all ${idx === activeMediaIndex ? 'w-4 bg-teal-400' : 'w-1.5 bg-white/50'}`} />
+
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent flex flex-col justify-end p-5 text-white z-10">
+          <div className="flex justify-between items-end w-full">
+            <div className="flex-grow pr-2">
+              <span className="px-2.5 py-1 mb-2 bg-teal-500/80 backdrop-blur-md text-[9px] font-extrabold rounded-md inline-block uppercase tracking-wider shadow-sm">Sorotan Warga</span>
+              {loadingMedia ? (
+                 <>
+                    <div className="h-5 w-3/4 bg-white/30 animate-pulse rounded mb-2"></div>
+                    <div className="h-3 w-1/2 bg-white/20 animate-pulse rounded"></div>
+                 </>
+              ) : (
+                 <>
+                    <h4 className="text-lg font-black leading-tight drop-shadow-md mb-1">{currentMedia?.title}</h4>
+                    <p className="text-[10px] text-slate-200 font-medium line-clamp-2 drop-shadow">{currentMedia?.desc || `Oleh: ${currentMedia?.uploaderName}`}</p>
+                 </>
+              )}
+            </div>
+            
+            {!loadingMedia && currentMedia && (
+              <a href={currentMedia.imageUrl} download={currentMedia.title || 'foto'} onClick={(e) => e.stopPropagation()} target="_blank" rel="noopener noreferrer" className="bg-white/20 hover:bg-white/40 text-white p-3 rounded-full backdrop-blur-md transition-all shadow-lg active:scale-90 flex-shrink-0" title="Unduh">
+                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              </a>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 2. Mobile Calendar Widget */}
+      <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 p-5">
+        <div className="flex justify-between items-center mb-5">
+           <div className="flex flex-col">
+             <div className="flex items-center gap-1.5">
+               <select 
+                 className="text-lg font-black text-slate-800 bg-transparent border-none outline-none cursor-pointer appearance-none p-0"
+                 value={currentMonth}
+                 onChange={(e) => setCurrentMonth(parseInt(e.target.value))}
+               >
+                 {monthNames.map((m, i) => <option key={i} value={i}>{m}</option>)}
+               </select>
+               <select 
+                 className="text-lg font-black text-teal-600 bg-transparent border-none outline-none cursor-pointer appearance-none p-0"
+                 value={currentYear}
+                 onChange={(e) => setCurrentYear(parseInt(e.target.value))}
+               >
+                 {Array.from({ length: 10 }, (_, i) => today.getFullYear() - 5 + i).map(y => (
+                   <option key={y} value={y}>{y}</option>
+                 ))}
+               </select>
+             </div>
+             <p className="text-[10px] text-slate-400 font-bold mt-0.5 uppercase tracking-widest">Jadwal RT</p>
+           </div>
+           
+           <motion.button 
+             whileTap={{ scale: 0.9 }}
+             onClick={() => onActionClick('Acara')}
+             className="w-10 h-10 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center shadow-sm"
+           >
+             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4"/></svg>
+           </motion.button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-2 text-center mb-3">
+          {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => <div key={d} className="text-[9px] font-extrabold text-slate-400 uppercase">{d}</div>)}
+        </div>
+        
+        <div className="space-y-2">
+          {weeks.map((week, i) => (
+            <div key={i} className="grid grid-cols-7 gap-2 text-center">
+              {week.map((date, j) => {
+                const isEvent = date && backendEvents.some(e => {
+                  const d = new Date(e.date);
+                  return d.getDate() === date && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+                });
+                const isSelected = selectedDate === date;
+                const isToday = date === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
+                
+                if (!date) return <div key={j} className="aspect-square"></div>;
+
+                return (
+                  <motion.div 
+                    key={j} 
+                    whileTap={{ scale: 0.8 }}
+                    onClick={() => setSelectedDate(date)}
+                    className={`relative aspect-square cursor-pointer flex flex-col items-center justify-center rounded-2xl text-xs font-bold transition-colors border-2 
+                      ${isSelected ? 'bg-teal-600 text-white border-teal-600 shadow-md' : 
+                        isToday ? 'bg-teal-50 text-teal-700 border-teal-200' : 
+                        'border-transparent text-slate-700 hover:bg-slate-50'}`}
+                  >
+                    {date}
+                    {isEvent && (
+                      <div className={`absolute bottom-1.5 w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-orange-500'}`}></div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
           ))}
         </div>
-      )}
-    </div>
 
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-      <div className="flex justify-between items-center mb-3">
-         <div className="flex items-center gap-2">
-           <select 
-             className="text-xs font-bold text-gray-800 bg-transparent border-none outline-none cursor-pointer"
-             value={currentMonth}
-             onChange={(e) => setCurrentMonth(parseInt(e.target.value))}
-           >
-             {monthNames.map((m, i) => <option key={i} value={i}>{m}</option>)}
-           </select>
-           <select 
-             className="text-xs font-bold text-gray-800 bg-transparent border-none outline-none cursor-pointer ml-1"
-             value={currentYear}
-             onChange={(e) => setCurrentYear(parseInt(e.target.value))}
-           >
-             {Array.from({ length: 10 }, (_, i) => today.getFullYear() - 5 + i).map(y => (
-               <option key={y} value={y}>{y}</option>
-             ))}
-           </select>
-         </div>
-         <span className="text-[9px] text-teal-600 font-bold cursor-pointer" onClick={() => onActionClick('Acara')}>Kelola Acara</span>
+        {/* Daftar Acara Hari Terpilih */}
+        <div className="mt-6 space-y-3">
+           {selectedDateEvents.map((item) => (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={item.id} className="flex gap-3 items-center p-3 rounded-2xl bg-slate-50 border border-slate-100">
+              <div className="w-12 h-12 rounded-xl bg-orange-100 flex flex-col items-center justify-center shrink-0">
+                 <span className="text-[10px] font-bold text-orange-600 uppercase">{monthNames[currentMonth].substring(0,3)}</span>
+                 <span className="text-sm font-black text-orange-700">{selectedDate}</span>
+              </div>
+              <div className="flex-grow min-w-0">
+                <h5 className="text-xs font-bold text-slate-800 truncate">{item.title}</h5>
+                <p className="text-[10px] text-slate-500 mt-1 line-clamp-1">{item.time || 'Sesuai jadwal'} • {item.desc}</p>
+              </div>
+            </motion.div>
+           ))}
+           {selectedDate && selectedDateEvents.length === 0 && (
+             <div className="text-center py-4 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
+               <p className="text-[10px] font-bold text-slate-400">Tidak ada agenda di tanggal ini.</p>
+             </div>
+           )}
+        </div>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center mb-2">
-        {['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'].map(d => <div key={d} className="text-[8px] font-bold text-gray-400">{d}</div>)}
-      </div>
-      <div className="space-y-1">
-        {weeks.map((week, i) => (
-          <div key={i} className="grid grid-cols-7 gap-1 text-center">
-            {week.map((date, j) => {
-              const isEvent = date && backendEvents.some(e => {
-                const d = new Date(e.date);
-                return d.getDate() === date && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-              });
-              const isSelected = selectedDate === date;
-              return (
-                <div 
-                  key={j} 
-                  onClick={() => date && setSelectedDate(date)}
-                  className={`text-[10px] aspect-square cursor-pointer flex flex-col items-center justify-center rounded-full font-medium transition-colors ${!date ? '' : isSelected ? 'bg-teal-600 text-white shadow-md' : isEvent ? 'bg-orange-100 text-orange-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
-                  {date || ''}
-                  {isEvent && !isSelected && <div className="w-1 h-1 bg-orange-500 rounded-full mt-0.5"></div>}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 space-y-3 border-t border-gray-50 pt-3">
-         {selectedDateEvents.map((item) => (
-          <div key={item.id} className="flex gap-2 items-center">
-            <div className={`w-1 h-full min-h-[30px] rounded-full bg-teal-500`}></div>
-            <div className="flex-grow">
-              <h5 className="text-[10px] font-bold text-gray-800 leading-tight">{item.title}</h5>
-              <p className="text-[8px] text-gray-500 mt-0.5">{new Date(item.date).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})} • {item.desc}</p>
-            </div>
-          </div>
-         ))}
-         {selectedDate && selectedDateEvents.length === 0 && (
-           <p className="text-[10px] text-center text-gray-400 py-2">Tidak ada acara di tanggal {selectedDate} {monthNames[currentMonth]}</p>
-         )}
-      </div>
-    </div>
-  </section>
+    </section>
   );
 };
 
 const MobileBottomNav = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (tab: string) => void }) => (
-  <nav className="flex justify-around items-center p-3 pb-6 bg-white border-t border-gray-100 fixed bottom-0 left-0 right-0 z-10 w-full">
-    {mobileNavItems.map((item) => (
-      <button 
-        key={item.name} 
-        onClick={() => onTabChange(item.name)}
-        className={`flex flex-col items-center gap-1 transition-colors ${activeTab === item.name ? 'text-teal-700' : 'text-gray-400'}`}>
-        <item.icon className="w-6 h-6" />
-        <span className="text-[10px] font-medium">{item.name}</span>
-      </button>
-    ))}
-  </nav>
+  <motion.nav 
+    initial={{ y: 50 }} 
+    animate={{ y: 0 }} 
+    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+    // Efek glassmorphism tebal di bagian bawah
+    className="flex justify-around items-center px-2 py-2 pb-6 bg-white/90 backdrop-blur-xl border-t border-gray-100/50 fixed bottom-0 left-0 right-0 z-50 w-full shadow-[0_-10px_40px_rgba(0,0,0,0.05)]"
+  >
+    {mobileNavItems.map((item) => {
+      const isActive = activeTab === item.name;
+      
+      return (
+        <motion.button 
+          key={item.name} 
+          whileTap={{ scale: 0.85 }}
+          onClick={() => onTabChange(item.name)}
+          className={`relative flex flex-col items-center gap-1 transition-all p-2.5 rounded-2xl w-16 ${isActive ? 'text-teal-600' : 'text-slate-400 hover:text-slate-500'}`}
+        >
+          {/* Active Indicator Melayang (Framer Motion Layout Animation) */}
+          {isActive && (
+            <motion.div 
+              layoutId="bottomNavIndicator" 
+              className="absolute inset-0 bg-teal-50 rounded-2xl -z-10" 
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            />
+          )}
+          
+          <motion.div
+             animate={isActive ? { y: -2 } : { y: 0 }}
+             transition={{ type: "spring", stiffness: 300 }}
+          >
+             <item.icon className={`w-6 h-6 ${isActive ? 'drop-shadow-sm' : ''}`} />
+          </motion.div>
+          <span className={`text-[10px] ${isActive ? 'font-extrabold' : 'font-semibold'}`}>
+            {item.name}
+          </span>
+        </motion.button>
+      );
+    })}
+  </motion.nav>
 );
 
 import { MobileMedia } from './MobileMedia';
@@ -1248,17 +1503,17 @@ export const ProfileAvatar = ({ size = '10' }: { size?: string }) => (
 );
 
 const quickActions = [
-  { name: 'Surat', icon: icons.surat },
-  { name: 'Lapor RT', icon: icons.laporanrt },
-  { name: 'Dokumen', icon: icons.dokumen },
-  { name: 'Media', icon: icons.media },
-  { name: 'Iuran', icon: icons.iuran },
-  { name: 'Kas', icon: icons.kas },
-  { name: 'Sedekah', icon: icons.sedekah },
-  { name: 'Data Warga', icon: icons.warga },
-  { name: 'UMKM', icon: icons.umkm },
-  { name: 'Darurat', icon: icons.darurat },
-  { name: 'Tamu', icon: icons.warga },
+  { name: 'Surat', icon: icons.surat, color: 'from-blue-400 to-indigo-500', shadow: 'shadow-blue-200' },
+  { name: 'Lapor RT', icon: icons.laporanrt, color: 'from-rose-400 to-red-500', shadow: 'shadow-rose-200' },
+  { name: 'Dokumen', icon: icons.dokumen, color: 'from-amber-400 to-orange-500', shadow: 'shadow-amber-200' },
+  { name: 'Media', icon: icons.media, color: 'from-purple-400 to-fuchsia-500', shadow: 'shadow-purple-200' },
+  { name: 'Iuran', icon: icons.iuran, color: 'from-emerald-400 to-teal-500', shadow: 'shadow-emerald-200' },
+  { name: 'Kas', icon: icons.kas, color: 'from-cyan-400 to-blue-500', shadow: 'shadow-cyan-200' },
+  { name: 'Sedekah', icon: icons.sedekah, color: 'from-pink-400 to-rose-500', shadow: 'shadow-pink-200' },
+  { name: 'Data Warga', icon: icons.warga, color: 'from-violet-400 to-purple-500', shadow: 'shadow-violet-200' },
+  { name: 'UMKM', icon: icons.umkm, color: 'from-yellow-400 to-amber-500', shadow: 'shadow-yellow-200' },
+  { name: 'Darurat', icon: icons.darurat, color: 'from-red-500 to-rose-600', shadow: 'shadow-red-200' },
+  { name: 'Tamu', icon: icons.warga, color: 'from-sky-400 to-indigo-500', shadow: 'shadow-sky-200' },
 ];
 
 const MobileSaldoCard = () => {
@@ -1689,45 +1944,142 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
 };
 
 
-const MobileSedekah = ({ onBack, user }: { onBack: () => void, user?: any }) => {
-  return (
-  <div className="p-4 pb-24">
-     <button onClick={onBack} className="text-[10px] text-teal-600 mb-4 font-bold inline-flex items-center gap-1 bg-teal-50 px-2 py-1 rounded">← Kembali</button>
-     <h3 className="font-bold text-gray-800 text-sm mb-4">Sedekah Masjid Al Ikhlas</h3>
-     
-     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-center">
-        <h4 className="font-bold text-gray-800 mb-2">Scan QRIS</h4>
-        <div className="w-48 h-48 mx-auto bg-gray-100 rounded-xl p-2 border-2 border-teal-500 mb-4 flex items-center justify-center">
-            {/* Mock QR instance */}
-            <div className="text-gray-400 font-mono text-xs text-center border-4 border-dashed border-gray-300 w-full h-full flex flex-col items-center justify-center rounded-lg">
-                <icons.kas className="w-8 h-8 mb-2 opacity-50"/>
-                QRIS CODE
-            </div>
-        </div>
-        <p className="text-xs font-semibold text-gray-600 mb-1">DKM MASJID AL IKHLAS</p>
-        <p className="text-[10px] text-gray-400">NMID: ID1234567890</p>
-     </div>
+const MobileSedekah = ({ onBack, user }: { onBack: () => void; user?: any }) => {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-     <div className="mt-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-        <h4 className="font-bold text-gray-800 text-xs mb-3">Transfer Bank</h4>
-        <div className="flex items-center justify-between pb-3 border-b border-gray-50 mb-3">
-           <div>
-              <p className="text-[10px] text-gray-500 mb-0.5">Bank Syariah Indonesia (BSI)</p>
-              <p className="font-bold text-gray-800 text-sm">712 345 6789</p>
-              <p className="text-[10px] font-medium text-teal-600 mt-1">a.n DKM Masjid Al Ikhlas</p>
-           </div>
-           <button className="px-3 py-1.5 bg-teal-50 text-teal-600 font-bold text-[10px] rounded-lg">Salin</button>
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text.replace(/\s/g, '')); // Hapus spasi saat disalin
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const bankAccounts = [
+    {
+      id: 'bsi',
+      bankName: 'Bank Syariah Indonesia (BSI)',
+      accountNumber: '712 345 6789',
+      owner: 'a.n DKM Masjid Al Ikhlas',
+      themeText: 'text-emerald-700',
+      themeBg: 'bg-emerald-50',
+    },
+    {
+      id: 'mandiri',
+      bankName: 'Bank Mandiri',
+      accountNumber: '137 00 1234567 8',
+      owner: 'a.n DKM Masjid Al Ikhlas',
+      themeText: 'text-blue-700',
+      themeBg: 'bg-blue-50',
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50/50 p-4 pb-28 font-sans">
+      {/* Header & Back Button */}
+      <div className="flex flex-col mb-6 space-y-3">
+        <button
+          onClick={onBack}
+          className="w-fit text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Kembali
+        </button>
+        <h3 className="font-extrabold text-gray-900 text-xl tracking-tight">
+          Sedekah & Infaq
+        </h3>
+        <p className="text-gray-500 text-xs">Salurkan donasi terbaik Anda untuk operasional dan kemakmuran Masjid Al Ikhlas.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+        {/* Card QRIS */}
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center flex flex-col items-center justify-center relative overflow-hidden group">
+          {/* Latar Belakang Dekoratif */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-teal-50 rounded-full blur-3xl opacity-60"></div>
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-50 rounded-full blur-3xl opacity-60"></div>
+
+          <div className="flex items-center gap-2 mb-4 z-10">
+            <h4 className="font-extrabold text-gray-800 text-sm tracking-wide">Scan QRIS</h4>
+            <span className="bg-teal-100 text-teal-700 text-[9px] font-bold px-2 py-0.5 rounded-full">Otomatis</span>
+          </div>
+          
+          {/* Area QR Code (Stylized) */}
+          <div className="relative w-52 h-52 bg-white rounded-2xl p-3 shadow-sm border border-gray-100 mb-5 z-10 flex items-center justify-center">
+            {/* Sudut Frame Scanner */}
+            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-teal-500 rounded-tl-xl"></div>
+            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-teal-500 rounded-tr-xl"></div>
+            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-teal-500 rounded-bl-xl"></div>
+            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-teal-500 rounded-br-xl"></div>
+            
+            {/* Mock QR instance (Ganti dengan gambar QR asli menggunakan tag <img>) */}
+            <div className="bg-gray-50 border-2 border-dashed border-gray-200 w-full h-full flex flex-col items-center justify-center rounded-lg transition-transform group-hover:scale-[1.02]">
+              <svg className="w-10 h-10 mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+              </svg>
+              <span className="text-gray-400 font-mono text-[10px] font-semibold tracking-widest">QRIS CODE</span>
+            </div>
+          </div>
+
+          <div className="z-10">
+            <p className="text-xs font-bold text-gray-800 mb-0.5">DKM MASJID AL IKHLAS</p>
+            <p className="text-[10px] text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded-md inline-block">NMID: ID1234567890</p>
+          </div>
         </div>
-        <div className="flex items-center justify-between">
-           <div>
-              <p className="text-[10px] text-gray-500 mb-0.5">Bank Mandiri</p>
-              <p className="font-bold text-gray-800 text-sm">137 00 1234567 8</p>
-              <p className="text-[10px] font-medium text-teal-600 mt-1">a.n DKM Masjid Al Ikhlas</p>
-           </div>
-           <button className="px-3 py-1.5 bg-teal-50 text-teal-600 font-bold text-[10px] rounded-lg">Salin</button>
+
+        {/* Card Transfer Bank */}
+        <div className="flex flex-col gap-3">
+          <h4 className="font-bold text-gray-800 text-sm mb-1 px-1">Transfer Manual</h4>
+          
+          {bankAccounts.map((bank) => (
+            <div key={bank.id} className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  {/* Ikon Bank */}
+                  <div className={`w-10 h-10 ${bank.themeBg} ${bank.themeText} rounded-full flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 mb-1 font-medium">{bank.bankName}</p>
+                    <p className="font-extrabold text-gray-900 text-sm tracking-wide">{bank.accountNumber}</p>
+                    <p className={`text-[10px] font-bold ${bank.themeText} mt-1.5 inline-flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded`}>
+                      {bank.owner}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tombol Salin */}
+                <button
+                  onClick={() => handleCopy(bank.accountNumber, bank.id)}
+                  className={`px-3 py-2 text-[10px] font-bold rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0
+                    ${copiedId === bank.id 
+                      ? 'bg-green-500 text-white shadow-sm shadow-green-200' 
+                      : 'bg-gray-50 text-gray-600 hover:bg-teal-50 hover:text-teal-600 border border-gray-100'
+                    }`}
+                >
+                  {copiedId === bank.id ? (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Tersalin
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Salin
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-     </div>
-  </div>
+      </div>
+    </div>
   );
 };
 
