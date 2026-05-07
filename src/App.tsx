@@ -5,7 +5,6 @@ import { MobileDataWarga } from './MobileDataWarga';
 import { MobileSuratPengantar } from './MobileSuratPengantar';
 import { MobileLaporRT } from './MobileLaporRT';
 import { MobileLaporan } from './MobileLaporan';
-
 import { MobileDarurat } from './MobileDarurat';
 import { MobileDokumen } from './MobileDokumen';
 import { MobileTamu } from './MobileTamu';
@@ -13,6 +12,7 @@ import { MobileAcaraPage } from './MobileAcara';
 import { MobileIuran } from './MobileIuran';
 import { MobileKas } from './MobileKas';
 import { MobileUMKM } from './MobileUMKM';
+import { MobileMedia } from './MobileMedia';
 
 // --- Modern Icons Set ---
 export const icons = {
@@ -1469,7 +1469,7 @@ const MobileBottomNav = ({ activeTab, onTabChange }: { activeTab: string, onTabC
   </motion.nav>
 );
 
-import { MobileMedia } from './MobileMedia';
+// `MobileMedia` imported dynamically at top
 
 // --- Simplified Inline Illustrations (as functional components) ---
 
@@ -2100,16 +2100,18 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                 </div>
               </>
             )}
-            {user.isApproved && activeWebTab === 'Warga' && <WebWargaPage user={user} />}
-            {user.isApproved && activeWebTab === 'Iuran' && <WebIuranPage user={user} />}
-            {user.isApproved && activeWebTab === 'Kas' && <WebKasPage user={user} />}
-            {user.isApproved && activeWebTab === 'Dokumen' && <WebDokumenPage user={user} onUpdateUser={onUpdateUser} />}
-            {user.isApproved && activeWebTab === 'Laporan' && <WebLaporanPage user={user} />}
-            {user.isApproved && activeWebTab === 'Pengumuman' && <WebPengumumanPage user={user} />}
-            {user.isApproved && activeWebTab === 'Media' && <WebMediaPage user={user} />}
-            {user.isApproved && activeWebTab === 'UMKM' && <WebUMKMPage user={user} />}
-            {user.isApproved && activeWebTab === 'Tamu' && <WebTamuPage user={user} />}
-            {user.isApproved && activeWebTab === 'Pengaturan' && <WebPengaturanPage user={user} onLogout={onLogout} />}
+            <>
+              {user.isApproved && activeWebTab === 'Warga' && <WebWargaPage user={user} />}
+              {user.isApproved && activeWebTab === 'Iuran' && <WebIuranPage user={user} />}
+              {user.isApproved && activeWebTab === 'Kas' && <WebKasPage user={user} />}
+              {user.isApproved && activeWebTab === 'Dokumen' && <WebDokumenPage user={user} onUpdateUser={onUpdateUser} />}
+              {user.isApproved && activeWebTab === 'Laporan' && <WebLaporanPage user={user} />}
+              {user.isApproved && activeWebTab === 'Pengumuman' && <WebPengumumanPage user={user} />}
+              {user.isApproved && activeWebTab === 'Media' && <WebMediaPage user={user} />}
+              {user.isApproved && activeWebTab === 'UMKM' && <WebUMKMPage user={user} />}
+              {user.isApproved && activeWebTab === 'Tamu' && <WebTamuPage user={user} />}
+              {user.isApproved && activeWebTab === 'Pengaturan' && <WebPengaturanPage user={user} onLogout={onLogout} />}
+            </>
           </main>
         </div>
       </div>
@@ -2154,19 +2156,21 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                     </>
                   )}
 
-                  {activeMobileTab === 'Acara' && <MobileAcaraPage currentUser={user} />}
-                  {activeMobileTab === 'Laporan' && <MobileLaporan onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Surat' || activeMobileTab === 'Surat Pengantar' ? <MobileSuratPengantar onBack={() => setActiveMobileTab('Beranda')} currentUser={user} /> : null}
-                  {activeMobileTab === 'Iuran' && <MobileIuran onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Kas' && <MobileKas onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Sedekah' && <MobileSedekah onBack={() => setActiveMobileTab('Beranda')} user={user} />}
-                  {activeMobileTab === 'UMKM' || activeMobileTab === 'UMKM Warga' ? <MobileUMKM onBack={() => setActiveMobileTab('Beranda')} currentUser={user} /> : null}
-                  {activeMobileTab === 'Lapor RT' && <MobileLaporRT onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Data Warga' && <MobileDataWarga onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Media' && <MobileMedia onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Darurat' && <MobileDarurat onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Dokumen' && <MobileDokumen onBack={() => setActiveMobileTab('Beranda')} currentUser={user} onUpdateUser={onUpdateUser} />}
-                  {activeMobileTab === 'Tamu' && <MobileTamu onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                  <>
+                    {activeMobileTab === 'Acara' && <MobileAcaraPage currentUser={user} />}
+                    {activeMobileTab === 'Laporan' && <MobileLaporan onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Surat' || activeMobileTab === 'Surat Pengantar' ? <MobileSuratPengantar onBack={() => setActiveMobileTab('Beranda')} currentUser={user} /> : null}
+                    {activeMobileTab === 'Iuran' && <MobileIuran onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Kas' && <MobileKas onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Sedekah' && <MobileSedekah onBack={() => setActiveMobileTab('Beranda')} user={user} />}
+                    {activeMobileTab === 'UMKM' || activeMobileTab === 'UMKM Warga' ? <MobileUMKM onBack={() => setActiveMobileTab('Beranda')} currentUser={user} /> : null}
+                    {activeMobileTab === 'Lapor RT' && <MobileLaporRT onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Data Warga' && <MobileDataWarga onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Media' && <MobileMedia onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Darurat' && <MobileDarurat onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Dokumen' && <MobileDokumen onBack={() => setActiveMobileTab('Beranda')} currentUser={user} onUpdateUser={onUpdateUser} />}
+                    {activeMobileTab === 'Tamu' && <MobileTamu onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                  </>
 
                   {/* Fallback for unrecognized tabs */}
                   {!['Beranda', 'Acara', 'Laporan', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu'].includes(activeMobileTab) && (
