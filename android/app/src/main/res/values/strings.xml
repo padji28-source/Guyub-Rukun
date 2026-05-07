@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GuyubRukun</string>
+    <string name="title_activity_main">GuyubRukun</string>
+    <string name="package_name">com.guyubrukun.app</string>
+    <string name="custom_url_scheme">com.guyubrukun.app</string>
+</resources>
