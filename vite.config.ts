@@ -12,6 +12,10 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        injectRegister: 'auto',
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        },
         manifest: {
           name: "Guyub Rukun RT 01",
           short_name: "Guyub Rukun",
@@ -22,9 +26,20 @@ export default defineConfig(({mode}) => {
           description: "Aplikasi Guyub Rukun untuk warga RT 01",
           icons: [
             {
-              src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%2314B8A6' stroke='%230F766E' strokeWidth='2'/%3E%3Cpath d='M50 20 Q60 40, 50 60 Q40 40, 50 20' fill='%230F766E' /%3E%3Ccircle cx='35' cy='40' r='10' fill='%230F766E'/%3E%3Ccircle cx='65' cy='40' r='10' fill='%230F766E'/%3E%3C/svg%3E",
-              sizes: "192x192 512x512",
+              src: "/pwa-192x192.svg",
+              sizes: "192x192",
               type: "image/svg+xml"
+            },
+            {
+              src: "/pwa-512x512.svg",
+              sizes: "512x512",
+              type: "image/svg+xml"
+            },
+            {
+              src: "/pwa-512x512.svg",
+              sizes: "512x512",
+              type: "image/svg+xml",
+              purpose: "any maskable"
             }
           ]
         }
