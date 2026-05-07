@@ -1944,142 +1944,45 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
 };
 
 
-const MobileSedekah = ({ onBack, user }: { onBack: () => void; user?: any }) => {
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text.replace(/\s/g, '')); // Hapus spasi saat disalin
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const bankAccounts = [
-    {
-      id: 'bsi',
-      bankName: 'Bank Syariah Indonesia (BSI)',
-      accountNumber: '712 345 6789',
-      owner: 'a.n DKM Masjid Al Ikhlas',
-      themeText: 'text-emerald-700',
-      themeBg: 'bg-emerald-50',
-    },
-    {
-      id: 'mandiri',
-      bankName: 'Bank Mandiri',
-      accountNumber: '137 00 1234567 8',
-      owner: 'a.n DKM Masjid Al Ikhlas',
-      themeText: 'text-blue-700',
-      themeBg: 'bg-blue-50',
-    },
-  ];
-
+const MobileSedekah = ({ onBack, user }: { onBack: () => void, user?: any }) => {
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 pb-28 font-sans">
-      {/* Header & Back Button */}
-      <div className="flex flex-col mb-6 space-y-3">
-        <button
-          onClick={onBack}
-          className="w-fit text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Kembali
-        </button>
-        <h3 className="font-extrabold text-gray-900 text-xl tracking-tight">
-          Sedekah & Infaq
-        </h3>
-        <p className="text-gray-500 text-xs">Salurkan donasi terbaik Anda untuk operasional dan kemakmuran Masjid Al Ikhlas.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-        {/* Card QRIS */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center flex flex-col items-center justify-center relative overflow-hidden group">
-          {/* Latar Belakang Dekoratif */}
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-teal-50 rounded-full blur-3xl opacity-60"></div>
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-50 rounded-full blur-3xl opacity-60"></div>
-
-          <div className="flex items-center gap-2 mb-4 z-10">
-            <h4 className="font-extrabold text-gray-800 text-sm tracking-wide">Scan QRIS</h4>
-            <span className="bg-teal-100 text-teal-700 text-[9px] font-bold px-2 py-0.5 rounded-full">Otomatis</span>
-          </div>
-          
-          {/* Area QR Code (Stylized) */}
-          <div className="relative w-52 h-52 bg-white rounded-2xl p-3 shadow-sm border border-gray-100 mb-5 z-10 flex items-center justify-center">
-            {/* Sudut Frame Scanner */}
-            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-teal-500 rounded-tl-xl"></div>
-            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-teal-500 rounded-tr-xl"></div>
-            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-teal-500 rounded-bl-xl"></div>
-            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-teal-500 rounded-br-xl"></div>
-            
-            {/* Mock QR instance (Ganti dengan gambar QR asli menggunakan tag <img>) */}
-            <div className="bg-gray-50 border-2 border-dashed border-gray-200 w-full h-full flex flex-col items-center justify-center rounded-lg transition-transform group-hover:scale-[1.02]">
-              <svg className="w-10 h-10 mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-              </svg>
-              <span className="text-gray-400 font-mono text-[10px] font-semibold tracking-widest">QRIS CODE</span>
+  <div className="p-4 pb-24">
+     <button onClick={onBack} className="text-[10px] text-teal-600 mb-4 font-bold inline-flex items-center gap-1 bg-teal-50 px-2 py-1 rounded">← Kembali</button>
+     <h3 className="font-bold text-gray-800 text-sm mb-4">Sedekah Masjid Al Ikhlas</h3>
+     
+     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-center">
+        <h4 className="font-bold text-gray-800 mb-2">Scan QRIS</h4>
+        <div className="w-48 h-48 mx-auto bg-gray-100 rounded-xl p-2 border-2 border-teal-500 mb-4 flex items-center justify-center">
+            {/* Mock QR instance */}
+            <div className="text-gray-400 font-mono text-xs text-center border-4 border-dashed border-gray-300 w-full h-full flex flex-col items-center justify-center rounded-lg">
+                <icons.kas className="w-8 h-8 mb-2 opacity-50"/>
+                QRIS CODE
             </div>
-          </div>
-
-          <div className="z-10">
-            <p className="text-xs font-bold text-gray-800 mb-0.5">DKM MASJID AL IKHLAS</p>
-            <p className="text-[10px] text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded-md inline-block">NMID: ID1234567890</p>
-          </div>
         </div>
+        <p className="text-xs font-semibold text-gray-600 mb-1">DKM MASJID AL IKHLAS</p>
+        <p className="text-[10px] text-gray-400">NMID: ID1234567890</p>
+     </div>
 
-        {/* Card Transfer Bank */}
-        <div className="flex flex-col gap-3">
-          <h4 className="font-bold text-gray-800 text-sm mb-1 px-1">Transfer Manual</h4>
-          
-          {bankAccounts.map((bank) => (
-            <div key={bank.id} className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  {/* Ikon Bank */}
-                  <div className={`w-10 h-10 ${bank.themeBg} ${bank.themeText} rounded-full flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-500 mb-1 font-medium">{bank.bankName}</p>
-                    <p className="font-extrabold text-gray-900 text-sm tracking-wide">{bank.accountNumber}</p>
-                    <p className={`text-[10px] font-bold ${bank.themeText} mt-1.5 inline-flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded`}>
-                      {bank.owner}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Tombol Salin */}
-                <button
-                  onClick={() => handleCopy(bank.accountNumber, bank.id)}
-                  className={`px-3 py-2 text-[10px] font-bold rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0
-                    ${copiedId === bank.id 
-                      ? 'bg-green-500 text-white shadow-sm shadow-green-200' 
-                      : 'bg-gray-50 text-gray-600 hover:bg-teal-50 hover:text-teal-600 border border-gray-100'
-                    }`}
-                >
-                  {copiedId === bank.id ? (
-                    <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Tersalin
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      Salin
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          ))}
+     <div className="mt-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+        <h4 className="font-bold text-gray-800 text-xs mb-3">Transfer Bank</h4>
+        <div className="flex items-center justify-between pb-3 border-b border-gray-50 mb-3">
+           <div>
+              <p className="text-[10px] text-gray-500 mb-0.5">Bank Syariah Indonesia (BSI)</p>
+              <p className="font-bold text-gray-800 text-sm">712 345 6789</p>
+              <p className="text-[10px] font-medium text-teal-600 mt-1">a.n DKM Masjid Al Ikhlas</p>
+           </div>
+           <button className="px-3 py-1.5 bg-teal-50 text-teal-600 font-bold text-[10px] rounded-lg">Salin</button>
         </div>
-      </div>
-    </div>
+        <div className="flex items-center justify-between">
+           <div>
+              <p className="text-[10px] text-gray-500 mb-0.5">Bank Mandiri</p>
+              <p className="font-bold text-gray-800 text-sm">137 00 1234567 8</p>
+              <p className="text-[10px] font-medium text-teal-600 mt-1">a.n DKM Masjid Al Ikhlas</p>
+           </div>
+           <button className="px-3 py-1.5 bg-teal-50 text-teal-600 font-bold text-[10px] rounded-lg">Salin</button>
+        </div>
+     </div>
+  </div>
   );
 };
 
