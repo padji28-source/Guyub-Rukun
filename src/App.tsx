@@ -1993,34 +1993,14 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const prevNotifIds = React.useRef<Set<string>>(new Set());
   const isInitialLoad = React.useRef(true);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
-    
-    const handleBeforeInstallPrompt = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
-    }
-  };
 
   const fetchNotifications = async () => {
     try {
@@ -2137,24 +2117,6 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
       <div className="flex md:hidden relative z-20 w-full h-full bg-white flex-col overflow-hidden">
         {/* --- MOBILE USER VIEW --- */}
         <MobileHeader notifications={notifications} onShowNotifications={handleShowNotifications} />
-        
-        {deferredPrompt && (
-          <div className="mx-4 mt-2 mb-2 bg-gradient-to-r from-teal-700 to-emerald-600 text-white p-3.5 rounded-2xl shadow-md flex items-center justify-between shrink-0">
-            <div className="flex-1 mr-3">
-              <h3 className="font-bold text-sm">Install Guyub Rukun</h3>
-              <p className="text-[10px] text-teal-100 font-medium">Buka lebih cepat dari layar utama HP Anda.</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button onClick={handleInstallClick} className="bg-white text-teal-700 font-bold text-xs px-3 py-2 rounded-xl shadow-sm active:scale-95 transition-transform">
-                Install
-              </button>
-              <button onClick={() => setDeferredPrompt(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-          </div>
-        )}
-
         <MobileProfile user={user} />
         <div className="flex-grow overflow-hidden bg-white relative">
           <AnimatePresence mode="wait">
