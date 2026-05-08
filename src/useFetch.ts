@@ -1,7 +1,22 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from './apiInterceptor';
 
-const globalCache = new Map<string, any>();
+const getInitialCache = () => {
+  try {
+    const data = localStorage.getItem('use_fetch_cache');
+    return data ? new Map(JSON.parse(data)) : new Map<string, any>();
+  } catch(e) {
+    return new Map<string, any>();
+  }
+};
+
+const saveInitialCache = (map: Map<string, any>) => {
+  try {
+    localStorage.setItem('use_fetch_cache', JSON.stringify(Array.from(map.entries())));
+  } catch(e) {}
+};
+
+const globalCache = getInitialCache();
 const listeners = new Map<string, Set<(data: any) => void>>();
 
 export function useFetch<T>(url: string | null) {
@@ -42,6 +57,7 @@ export function useFetch<T>(url: string | null) {
       .then(json => {
         const newData = json.data || json; // adjust based on API response structure
         globalCache.set(url, newData);
+        saveInitialCache(globalCache);
         // notify all components listening to this url
         urlListeners.forEach(fn => fn(newData));
       })
@@ -61,6 +77,7 @@ export function useFetch<T>(url: string | null) {
   const mutate = (newData: T) => {
     if (!url) return;
     globalCache.set(url, newData);
+    saveInitialCache(globalCache);
     const urlListeners = listeners.get(url);
     if (urlListeners) {
       urlListeners.forEach(fn => fn(newData));
