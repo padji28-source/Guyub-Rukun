@@ -19,6 +19,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   const [nominal, setNominal] = useState(currentUser?.role === 'admin' ? '65000' : '85000');
   const [bulan, setBulan] = useState('Januari');
   const [tahun, setTahun] = useState(new Date().getFullYear().toString());
+  const [jenisIuran, setJenisIuran] = useState('Iuran Wajib');
   const [wargaList, setWargaList] = useState<any[]>([]);
   const [filterStatus, setFilterStatus] = useState('Semua');
   const [showTambahIuran, setShowTambahIuran] = useState(false);
@@ -107,7 +108,8 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     }
     setLoading(true);
     const period = `${bulan} ${tahun}`;
-    const existing = tagihanList.find(t => t.bulan === period);
+    // Cek tagihan yang belum dibayar di periode dan jenis yang sama
+    const existing = tagihanList.find(t => t.bulan === period && (t.jenis || 'Iuran Wajib') === jenisIuran);
 
     try {
       if (existing) {
@@ -120,7 +122,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
         await apiFetch('/api/data/iuran', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nominal, bulan: period, status: 'menunggu', userId: currentUser?.id, nama: currentUser?.nama, buktiUrl: buktiBase64 })
+          body: JSON.stringify({ nominal, bulan: period, jenis: jenisIuran, status: 'menunggu', userId: currentUser?.id, nama: currentUser?.nama, buktiUrl: buktiBase64 })
         });
       }
       alert('✅ Pembayaran iuran berhasil dicatat! Menunggu verifikasi pengurus.');
@@ -131,12 +133,16 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     setLoading(false);
   };
 
-  const handleTambahAdmin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!window.confirm("Simpan data iuran warga?")) return;
-    if (!adminSelectedUserId) return;
+  const [showConfirmTambah, setShowConfirmTambah] = useState(false);
+
+  const handleTambahAdmin = async () => {
+    if (!adminSelectedUserId) {
+        setShowConfirmTambah(false);
+        return;
+    }
     
     setLoading(true);
+    setShowConfirmTambah(false);
     try {
       const targetUsers = adminSelectedUserId === 'all' 
         ? wargaList 
@@ -145,13 +151,14 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
       const period = `${bulan} ${tahun}`;
 
       for (const selectedUser of targetUsers) {
-        const userNominal = selectedUser.role === 'admin' ? '65000' : '85000';
+        const userNominal = jenisIuran === 'Wifi' ? nominal : (selectedUser.role === 'admin' ? '65000' : '85000');
         await apiFetch('/api/data/iuran', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             nominal: adminSelectedUserId === 'all' ? userNominal : nominal, 
             bulan: period,
+            jenis: jenisIuran,
             status: adminStatus,
             userId: selectedUser.id,
             nama: selectedUser.nama
@@ -165,6 +172,14 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     } catch(e) { console.error(e) }
     setLoading(false);
   };
+
+  const onFormTambahSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminSelectedUserId) return;
+    setShowConfirmTambah(true);
+  };
+
+  const cancelTambah = () => setShowConfirmTambah(false);
 
   const [showConfirmVerify, setShowConfirmVerify] = useState<{id: string, status: string} | null>(null);
   const handleUpdateStatus = async (id: string, newStatus: string) => {
@@ -188,8 +203,10 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     await updateStatus(showConfirmVerify.id, showConfirmVerify.status);
     setShowConfirmVerify(null);
   };
+  const cancelVerify = () => setShowConfirmVerify(null);
 
   const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
+  const handleDeleteClick = (id: string) => setShowConfirmDelete(id);
   const confirmDelete = async () => {
     if (!showConfirmDelete) return;
     try {
@@ -198,6 +215,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     } catch(e) { console.error(e) }
     setShowConfirmDelete(null);
   };
+  const cancelDelete = () => setShowConfirmDelete(null);
 
   if (showBayarForm) {
     return (
@@ -211,7 +229,15 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
         <div className="bg-white p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 space-y-6">
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Tujuan Transfer</p>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1">Jenis Pembayaran</label>
+            <select value={jenisIuran} onChange={e => setJenisIuran(e.target.value)} disabled={loading} className="w-full p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none transition-all mb-4">
+              <option value="Iuran Wajib">Iuran Wajib (Keamanan & Kebersihan)</option>
+              <option value="Wifi">Pembayaran Wifi</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1">Tujuan Transfer</label>
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-2xl text-white shadow-lg relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-white opacity-10 rounded-full translate-x-8 -translate-y-8"></div>
               <p className="text-sm font-medium opacity-90">Bank BCA</p>
@@ -335,7 +361,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
           ) : (
             <motion.form 
               key="form-tambah" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-              onSubmit={handleTambahAdmin} className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6 relative overflow-hidden"
+              onSubmit={onFormTambahSubmit} className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6 relative overflow-hidden"
             >
               <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-3">
                 <h4 className="font-extrabold text-slate-800 text-sm">Form Tagihan Warga</h4>
@@ -360,6 +386,13 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
                     <select value={adminStatus} onChange={e => setAdminStatus(e.target.value)} required className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none">
                       <option value="belum dibayar">Tagihan Baru</option>
                       <option value="verifikasi">Lunas Langsung</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Jenis Iuran</label>
+                    <select value={jenisIuran} onChange={e => setJenisIuran(e.target.value)} required className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none">
+                      <option value="Iuran Wajib">Iuran Wajib</option>
+                      <option value="Wifi">Wifi</option>
                     </select>
                   </div>
                   <div>
@@ -450,7 +483,9 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
                   </div>
                   <div>
                     <p className="font-bold text-sm text-slate-800">{item.bulan}</p>
-                    <p className="text-[10px] text-slate-500 font-medium">{isAdminOrBendahara ? item.nama : 'Tagihan Saya'}</p>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      {isAdminOrBendahara ? item.nama : 'Tagihan Saya'} {item.jenis ? ` • ${item.jenis}` : ' • Iuran Wajib'}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -553,6 +588,21 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
               <div className="flex gap-3 justify-center">
                 <button onClick={cancelDelete} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm flex-1 hover:bg-slate-200 transition-colors">Batal</button>
                 <button onClick={confirmDelete} className="px-5 py-3 bg-rose-600 text-white rounded-xl font-bold text-sm flex-1 hover:bg-rose-700 transition-colors shadow-md shadow-rose-200">Ya, Hapus</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* MODAL: KONFIRMASI TAMBAH IURAN */}
+        {showConfirmTambah && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-5">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 rounded-[2rem] w-full max-w-sm text-center shadow-2xl">
+              <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-4"><Icons.check className="w-8 h-8 text-teal-500" /></div>
+              <h3 className="font-extrabold text-slate-800 text-lg mb-2">Simpan Iuran?</h3>
+              <p className="text-sm text-slate-500 mb-8 leading-relaxed">Anda akan menyimpan tagihan iuran ini. Lanjutkan?</p>
+              <div className="flex gap-3 justify-center">
+                <button onClick={cancelTambah} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm flex-1 hover:bg-slate-200 transition-colors">Batal</button>
+                <button onClick={handleTambahAdmin} className="px-5 py-3 bg-teal-600 text-white rounded-xl font-bold text-sm flex-1 hover:bg-teal-700 transition-colors shadow-md shadow-teal-200">Ya, Simpan</button>
               </div>
             </motion.div>
           </motion.div>

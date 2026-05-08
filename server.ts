@@ -493,6 +493,52 @@ app.post("/api/data/:resource", async (req, res) => {
 
   const newItem = { id: Date.now().toString(), createdAt: new Date().toISOString(), ...req.body };
   data[resource].push(newItem);
+  
+  if (resource === 'iuran' && newItem.status === 'verifikasi') {
+    const nominal = parseInt(newItem.nominal || '0', 10);
+    if (newItem.jenis === 'Wifi') {
+      const kasRTAmount = 10000;
+        data['kas'].push({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+        createdAt: new Date().toISOString(),
+        type: 'Masuk',
+        amount: kasRTAmount,
+        name: newItem.nama,
+        message: 'Pembayaran Wifi (Kas RT)',
+        category: 'Kas RT',
+        iuranId: newItem.id
+      });
+    } else {
+      const isSplit = nominal >= 5000;
+      const danaKematianAmount = isSplit ? 5000 : 0;
+      const kasRTAmount = nominal - danaKematianAmount;
+      if (kasRTAmount > 0) {
+        data['kas'].push({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+          createdAt: new Date().toISOString(),
+          type: 'Masuk',
+          amount: kasRTAmount,
+          name: newItem.nama,
+          message: 'Iuran Warga (Kas RT)',
+          category: 'Kas RT',
+          iuranId: newItem.id
+        });
+      }
+      if (danaKematianAmount > 0) {
+        data['kas'].push({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+          createdAt: new Date().toISOString(),
+          type: 'Masuk',
+          amount: danaKematianAmount,
+          name: newItem.nama,
+          message: 'Iuran Warga (Dana Kematian)',
+          category: 'Dana Kematian',
+          iuranId: newItem.id
+        });
+      }
+    }
+  }
+
   await saveAppData(data);
 
   const creator = req.body.nama || req.body.name || req.body.uploaderName || req.body.pembuat || req.body.updaterName || 'Sistem';
@@ -528,33 +574,48 @@ app.put("/api/data/:resource/:id", async (req, res) => {
     } else if (resource === 'iuran' && oldItem.status !== newItem.status && newItem.status === 'verifikasi') {
       await addNotification('Iuran Diverifikasi', `Iuran dari ${newItem.nama || 'warga'} sebesar Rp ${newItem.nominal} telah diverifikasi dan masuk kas.`, req.body.updaterName || 'Admin', resource, newItem.id);
       const nominal = parseInt(newItem.nominal || '0', 10);
-      const isSplit = nominal >= 5000;
-      const danaKematianAmount = isSplit ? 5000 : 0;
-      const kasRTAmount = nominal - danaKematianAmount;
-
-      if (kasRTAmount > 0) {
+      
+      if (newItem.jenis === 'Wifi') {
+        const kasRTAmount = 10000;
         data['kas'].push({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
           createdAt: new Date().toISOString(),
           type: 'Masuk',
           amount: kasRTAmount,
           name: newItem.nama,
-          message: 'Iuran Warga (Kas RT)',
+          message: 'Pembayaran Wifi (Kas RT)',
           category: 'Kas RT',
           iuranId: newItem.id
         });
-      }
-      if (danaKematianAmount > 0) {
-        data['kas'].push({
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-          createdAt: new Date().toISOString(),
-          type: 'Masuk',
-          amount: danaKematianAmount,
-          name: newItem.nama,
-          message: 'Iuran Warga (Dana Kematian)',
-          category: 'Dana Kematian',
-          iuranId: newItem.id
-        });
+      } else {
+        const isSplit = nominal >= 5000;
+        const danaKematianAmount = isSplit ? 5000 : 0;
+        const kasRTAmount = nominal - danaKematianAmount;
+
+        if (kasRTAmount > 0) {
+          data['kas'].push({
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+            createdAt: new Date().toISOString(),
+            type: 'Masuk',
+            amount: kasRTAmount,
+            name: newItem.nama,
+            message: 'Iuran Warga (Kas RT)',
+            category: 'Kas RT',
+            iuranId: newItem.id
+          });
+        }
+        if (danaKematianAmount > 0) {
+          data['kas'].push({
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+            createdAt: new Date().toISOString(),
+            type: 'Masuk',
+            amount: danaKematianAmount,
+            name: newItem.nama,
+            message: 'Iuran Warga (Dana Kematian)',
+            category: 'Dana Kematian',
+            iuranId: newItem.id
+          });
+        }
       }
       await saveAppData(data);
     } else {
