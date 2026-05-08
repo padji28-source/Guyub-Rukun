@@ -366,9 +366,19 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                 >
                   <div className="flex items-center gap-4">
                     <div className="relative">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-teal-400 to-emerald-500 flex items-center justify-center text-white font-bold text-lg shadow-inner">
-                        {warga.nama.charAt(0)}
-                      </div>
+                      {/* FOTO PROFIL ATAU INISIAL */}
+                      {warga.photo ? (
+                        <img 
+                          src={warga.photo} 
+                          alt={warga.nama} 
+                          className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-teal-400 to-emerald-500 flex items-center justify-center text-white font-bold text-lg shadow-inner">
+                          {warga.nama.charAt(0)}
+                        </div>
+                      )}
+                      
                       {warga.isOnline && (
                         <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
                       )}
