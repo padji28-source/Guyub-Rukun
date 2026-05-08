@@ -484,7 +484,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
                     }
                   }} className="text-[10px] text-slate-500 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl font-bold transition-colors ml-auto">Koreksi</button>
                   {currentUser?.role === 'admin' && (
-                    <button onClick={() => setShowConfirmDelete(item.id)} className="text-[10px] bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold px-3 py-1.5 rounded-xl transition-colors">Hapus</button>
+                    <button onClick={() => handleDeleteClick(item.id)} className="text-[10px] bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold px-3 py-1.5 rounded-xl transition-colors">Hapus</button>
                   )}
                 </div>
               )}
@@ -534,7 +534,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
               <h3 className="font-extrabold text-slate-800 text-lg mb-2">Verifikasi Iuran?</h3>
               <p className="text-sm text-slate-500 mb-8 leading-relaxed">Iuran yang diverifikasi akan dinyatakan <span className="font-bold text-teal-600">LUNAS</span> dan masuk ke buku kas. Lanjutkan?</p>
               <div className="flex gap-3 justify-center">
-                <button onClick={() => setShowConfirmVerify(null)} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm flex-1 hover:bg-slate-200 transition-colors">Batal</button>
+                <button onClick={cancelVerify} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm flex-1 hover:bg-slate-200 transition-colors">Batal</button>
                 <button onClick={confirmVerify} className="px-5 py-3 bg-teal-600 text-white rounded-xl font-bold text-sm flex-1 hover:bg-teal-700 transition-colors shadow-md shadow-teal-200">Ya, Verifikasi</button>
               </div>
             </motion.div>
@@ -551,7 +551,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
               <h3 className="font-extrabold text-slate-800 text-lg mb-2">Hapus Data Iuran?</h3>
               <p className="text-sm text-slate-500 mb-8 leading-relaxed">Data yang telah dihapus tidak dapat dipulihkan. Yakin ingin menghapus?</p>
               <div className="flex gap-3 justify-center">
-                <button onClick={() => setShowConfirmDelete(null)} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm flex-1 hover:bg-slate-200 transition-colors">Batal</button>
+                <button onClick={cancelDelete} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm flex-1 hover:bg-slate-200 transition-colors">Batal</button>
                 <button onClick={confirmDelete} className="px-5 py-3 bg-rose-600 text-white rounded-xl font-bold text-sm flex-1 hover:bg-rose-700 transition-colors shadow-md shadow-rose-200">Ya, Hapus</button>
               </div>
             </motion.div>

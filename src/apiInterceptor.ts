@@ -1,21 +1,6 @@
-const getLocalCache = () => {
-  try {
-    const data = localStorage.getItem('api_cache');
-    return data ? new Map(JSON.parse(data)) : new Map<string, { data: string, timestamp: number }>();
-  } catch(e) {
-    return new Map<string, { data: string, timestamp: number }>();
-  }
-};
-
-const saveLocalCache = (map: Map<string, { data: string, timestamp: number }>) => {
-  try {
-    localStorage.setItem('api_cache', JSON.stringify(Array.from(map.entries())));
-  } catch(e) {}
-};
-
-const cache = getLocalCache();
+const cache = new Map<string, { data: string, timestamp: number }>();
 const inflight = new Map<string, Promise<Response>>();
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_TTL = 5 * 60 * 1000;
 
 export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const isGet = !init || !init.method || init.method.toUpperCase() === 'GET';
@@ -24,16 +9,9 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
   // Clear cache on mutations (POST, PUT, DELETE)
   if (!isGet) {
     cache.clear();
-    saveLocalCache(cache);
   } else {
     // 1. Check cache
     const cached = cache.get(url);
-    // If cached, return immediately for instant UI, we will background fetch below if needed, but for now just return cache.
-    // Wait, if we return cache, we won't background fetch if we just resolve?
-    // The requirement says "no delay, langsung muncul". Returning cache resolves instantly.
-    // However, if we return cache and don't do a background fetch, data might be stale.
-    // We can do a background fetch but we can't easily wait if we already returned a promise. 
-    // Let's just return the cache if it's within TTL.
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       const mockRes = new Response(cached.data, {
         status: 200,
@@ -44,18 +22,6 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
       mockRes.json = async () => {
         try { return await originalJsonMock(); } catch (e) { return { data: [] }; }
       };
-      
-      // trigger background fetch to keep it fresh
-      fetch(input, init).then(async (bgRes) => {
-          if(bgRes.ok) {
-              const text = await bgRes.text();
-              if (!text.trim().startsWith('<')) {
-                  cache.set(url, { data: text, timestamp: Date.now() });
-                  saveLocalCache(cache);
-              }
-          }
-      }).catch(e => {});
-
       return Promise.resolve(mockRes);
     }
 
@@ -102,7 +68,6 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
         const text = await clonedForCache.text();
         if (!text.trim().startsWith('<')) {
           cache.set(url, { data: text, timestamp: Date.now() });
-          saveLocalCache(cache);
         }
       } catch (e) {}
     }
