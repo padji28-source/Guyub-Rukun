@@ -9,7 +9,7 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(async (req, res, next) => {
   if (process.env.VERCEL) {
     if (!isDbConnected) {
-      await initDb();
+      await connectDB(); // Hanya connect DB, tidak initDb() yang berat setiap request
     }
   }
   next();
@@ -49,10 +49,19 @@ async function connectDB() {
 let memoryStorage: Record<string, any> = {};
 
 async function getDocData(id: string) {
-  if (!isDbConnected) return memoryStorage[id] || null;
+  // 1. Ambil dari cache memori jika ada (tanpa delay)
+  if (memoryStorage[id]) return memoryStorage[id];
+
+  if (!isDbConnected) return null;
+
   try {
+    // 2. Jika tidak ada di cache, ambil dari database
     const doc = await SystemDataModel.findById(id);
-    return doc ? doc.data : null;
+    if (doc) {
+      memoryStorage[id] = doc.data; // Simpan ke cache
+      return doc.data;
+    }
+    return null;
   } catch (e) {
     console.error(`Error getting ${id}:`, e);
     return null;
@@ -60,14 +69,13 @@ async function getDocData(id: string) {
 }
 
 async function setDocData(id: string, data: any) {
-  if (!isDbConnected) {
-    memoryStorage[id] = data;
-    return;
-  }
-  try {
-    await SystemDataModel.findByIdAndUpdate(id, { data }, { upsert: true });
-  } catch (e) {
-    console.error(`Error saving ${id}:`, e);
+  // 1. Update cache secara instan
+  memoryStorage[id] = data;
+
+  if (isDbConnected) {
+    // 2. Simpan ke database di background tanpa await (tidak memblokir request)
+    SystemDataModel.findByIdAndUpdate(id, { data }, { upsert: true })
+      .catch(e => console.error(`Error saving ${id}:`, e));
   }
 }
 
@@ -156,8 +164,9 @@ async function saveNotifications(notifs: any) {
 
 async function getAppData() {
   const doc = await getDocData('app_data');
-  const data = doc ? (doc.data || {}) : {};
-  
+  // Handle in case doc directly returns the data structure (depending on how it was saved previously)
+  const data = doc ? (doc.data || doc) : {};
+
   if (!data.surat) data.surat = [];
   if (!data.laporan) data.laporan = [];
   if (!data.acara) data.acara = [];
@@ -196,7 +205,7 @@ export async function addNotification(title: string, message: string, updaterNam
 
 app.post("/api/register", async (req, res) => {
   const { username, nama, password, alamat, noHp, status, umur } = req.body;
-  
+
   if (!username || !nama || !password) {
     return res.status(400).json({ error: "Username, nama dan password wajib diisi" });
   }
@@ -255,7 +264,7 @@ app.post("/api/login", async (req, res) => {
       return res.status(409).json({ error: "User sedang digunakan di perangkat lain" });
     }
     activeSessions.set(user.id, Date.now());
-    
+
     // Auto-approve admin and dummy users if they don't have isApproved set
     if (user.role === 'admin' && user.isApproved === undefined) {
       user.isApproved = true;
@@ -481,11 +490,11 @@ app.post("/api/data/:resource", async (req, res) => {
   const data = await getAppData();
   const resource = req.params.resource;
   if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
-  
+
   const newItem = { id: Date.now().toString(), createdAt: new Date().toISOString(), ...req.body };
   data[resource].push(newItem);
   await saveAppData(data);
-  
+
   const creator = req.body.nama || req.body.name || req.body.uploaderName || req.body.pembuat || req.body.updaterName || 'Sistem';
   let title = `Input Baru: ${resource}`;
   if (resource === 'laporan') title = 'Laporan Baru';
@@ -494,7 +503,7 @@ app.post("/api/data/:resource", async (req, res) => {
   if (resource === 'darurat') title = 'Panggilan Darurat';
   if (resource === 'acara') title = 'Acara Baru';
   if (resource === 'surat') title = 'Surat Keluar Baru';
-  
+
   await addNotification(title, `Terdapat data baru pada modul ${resource} oleh ${creator}.`, creator, resource, newItem.id);
 
   res.json({ message: "Created successfully", item: newItem });
@@ -589,7 +598,12 @@ app.get("/api/health", (req, res) => {
 });
 
 export async function startServer(listen = true) {
-  await initDb();
+  // Hanya inisiasi full database jika tidak berjalan di environment serverless (Vercel)
+  if (!process.env.VERCEL) {
+    await initDb();
+  } else {
+    await connectDB();
+  }
 
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const viteDynamic = "vite";
@@ -617,6 +631,5 @@ export async function startServer(listen = true) {
 if (!process.env.VERCEL) {
   startServer(true);
 }
-
 
 export default app;
