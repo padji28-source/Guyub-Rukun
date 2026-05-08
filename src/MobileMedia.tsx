@@ -2,6 +2,7 @@ import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App'; // Sesuaikan path jika perlu
+import { ConfirmModal } from './ConfirmModal';
 
 export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
   const [media, setMedia] = useState<any[]>([]);
@@ -86,15 +87,18 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus foto ini?")) return;
+  const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
+
+  const confirmDelete = async () => {
+    if (!showConfirmDelete) return;
     try {
-      await apiFetch(`/api/data/media/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/data/media/${showConfirmDelete}`, { method: 'DELETE' });
       fetchData();
     } catch(e) { 
       console.error(e); 
       alert('Gagal menghapus foto');
     }
+    setShowConfirmDelete(null);
   };
 
   const reversedMedia = useMemo(() => [...media].reverse(), [media]);
@@ -164,7 +168,7 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
                   <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                     {(isAdminOrPengurus || item.userId === currentUser?.id) && (
                       <button 
-                        onClick={() => handleDelete(item.id)} 
+                        onClick={() => setShowConfirmDelete(item.id)} 
                         className="bg-black/40 backdrop-blur-md text-white p-2 rounded-full shadow-sm hover:bg-rose-500 transition-colors"
                         title="Hapus"
                       >
@@ -230,6 +234,14 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
         </AnimatePresence>
 
       </div>
+
+      <ConfirmModal
+        isOpen={!!showConfirmDelete}
+        title="Hapus Foto"
+        message="Apakah Anda yakin ingin menghapus foto ini secara permanen?"
+        onConfirm={confirmDelete}
+        onCancel={() => setShowConfirmDelete(null)}
+      />
     </motion.div>
   );
 };

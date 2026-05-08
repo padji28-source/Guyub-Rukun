@@ -2,6 +2,7 @@ import { apiFetch } from './apiInterceptor';
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App'; // Sesuaikan jika perlu
+import { ConfirmModal } from './ConfirmModal';
 
 export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () => void, currentUser: any, defaultTab?: 'Keluhan' | 'Tamu' }) => {
   const [judul, setJudul] = useState('');
@@ -18,10 +19,21 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
 
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showConfirmKeluhan, setShowConfirmKeluhan] = useState(false);
+  const [showConfirmTamu, setShowConfirmTamu] = useState(false);
 
-  const handleSubmitKeluhan = async (e: React.FormEvent) => {
+  const pendingKeluhanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin mengirim laporan ini?")) return;
+    setShowConfirmKeluhan(true);
+  };
+
+  const pendingTamuSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowConfirmTamu(true);
+  };
+
+  const handleConfirmKeluhan = async () => {
+    setShowConfirmKeluhan(false);
     setLoading(true);
     setSuccessMsg('');
     try {
@@ -42,14 +54,14 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch(e) { 
       console.error(e); 
-      alert('Gagal mengirim keluhan');
+      setSuccessMsg('Gagal mengirim keluhan');
+      setTimeout(() => setSuccessMsg(''), 3000);
     }
     setLoading(false);
   };
 
-  const handleSubmitTamu = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin mengirim laporan tamu ini?")) return;
+  const handleConfirmTamu = async () => {
+    setShowConfirmTamu(false);
     setLoading(true);
     setSuccessMsg('');
     try {
@@ -73,7 +85,8 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch(e) { 
       console.error(e); 
-      alert('Gagal mengirim laporan tamu');
+      setSuccessMsg('Gagal mengirim laporan tamu');
+      setTimeout(() => setSuccessMsg(''), 3000);
     }
     setLoading(false);
   };
@@ -181,7 +194,7 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
                 <motion.form 
                   key="form-keluhan"
                   initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ duration: 0.2 }}
-                  onSubmit={handleSubmitKeluhan} 
+                  onSubmit={pendingKeluhanSubmit} 
                   className="space-y-4"
                 >
                   <div>
@@ -206,7 +219,7 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
                 <motion.form 
                   key="form-tamu"
                   initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }}
-                  onSubmit={handleSubmitTamu} 
+                  onSubmit={pendingTamuSubmit} 
                   className="space-y-4"
                 >
                   {/* Data Pelapor (Readonly) disembunyikan dalam grup agar rapi */}
@@ -266,6 +279,22 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showConfirmKeluhan}
+        title="Kirim Laporan Keluhan"
+        message="Apakah Anda yakin ingin mengirim laporan keluhan ini?"
+        onConfirm={handleConfirmKeluhan}
+        onCancel={() => setShowConfirmKeluhan(false)}
+      />
+
+      <ConfirmModal
+        isOpen={showConfirmTamu}
+        title="Kirim Laporan Tamu"
+        message="Apakah Anda yakin ingin mengirim laporan tamu ini?"
+        onConfirm={handleConfirmTamu}
+        onCancel={() => setShowConfirmTamu(false)}
+      />
     </motion.div>
   );
 };

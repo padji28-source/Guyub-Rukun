@@ -1,5 +1,6 @@
 import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
+import { ConfirmModal } from './ConfirmModal';
 
 export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
   const [data, setData] = useState<any[]>([]);
@@ -8,6 +9,8 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
   const [desc, setDesc] = useState('');
   const [kontak, setKontak] = useState('');
   const [showTambahUMKM, setShowTambahUMKM] = useState(false);
+  const [showConfirmSimpan, setShowConfirmSimpan] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
 
   const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
 
@@ -25,9 +28,13 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
     fetchData();
   }, []);
 
-  const handleTambah = async (e: React.FormEvent) => {
+  const triggerTambah = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm('Apakah Anda yakin ingin menyimpan data UMKM ini?')) return;
+    setShowConfirmSimpan(true);
+  };
+
+  const handleConfirmTambah = async () => {
+    setShowConfirmSimpan(false);
     setLoading(true);
     try {
       await apiFetch('/api/data/umkm', {
@@ -47,15 +54,16 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
     setLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus data UMKM ini?')) return;
+  const confirmDelete = async () => {
+    if (!showConfirmDelete) return;
     try {
-      await apiFetch(`/api/data/umkm/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/data/umkm/${showConfirmDelete}`, { method: 'DELETE' });
       alert('Data UMKM berhasil dihapus!');
       fetchData();
     } catch (e) {
       console.error(e);
     }
+    setShowConfirmDelete(null);
   };
 
   return (
@@ -108,7 +116,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
               </span>
               Form Tambah UMKM
             </h4>
-            <form onSubmit={handleTambah} className="space-y-4">
+            <form onSubmit={triggerTambah} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-semibold text-gray-600 mb-1">Nama Usaha</label>
                 <input type="text" placeholder="Contoh: Kedai Kopi Pak Budi" value={nama} onChange={e => setNama(e.target.value)} required className="w-full p-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all outline-none" />
@@ -145,7 +153,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
               </svg>
               {isAdminOrPengurus && (
                 <button 
-                  onClick={() => handleDelete(item.id)} 
+                  onClick={() => setShowConfirmDelete(item.id)} 
                   className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg text-red-500 hover:text-white hover:bg-red-500 shadow-sm transition-colors"
                   title="Hapus UMKM"
                 >
@@ -190,6 +198,22 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
           <p className="text-xs text-gray-500 mt-1">Data UMKM warga akan muncul di sini.</p>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showConfirmSimpan}
+        title="Simpan Data UMKM"
+        message="Apakah Anda yakin ingin menyimpan data UMKM ini?"
+        onConfirm={handleConfirmTambah}
+        onCancel={() => setShowConfirmSimpan(false)}
+      />
+
+      <ConfirmModal
+        isOpen={!!showConfirmDelete}
+        title="Hapus Data UMKM"
+        message="Apakah Anda yakin ingin menghapus data UMKM ini secara permanen?"
+        onConfirm={confirmDelete}
+        onCancel={() => setShowConfirmDelete(null)}
+      />
     </div>
   );
 };

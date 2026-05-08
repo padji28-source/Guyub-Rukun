@@ -1,6 +1,7 @@
 import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ConfirmModal } from './ConfirmModal';
 
 // --- Kumpulan Ikon ---
 const Icons = {
@@ -101,11 +102,15 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   };
 
   const submitPembayaran = async () => {
-    if (!window.confirm("Apakah Anda yakin ingin mengirim pembayaran ini?")) return;
     if (!buktiBase64) {
       alert('Harap unggah bukti pembayaran terlebih dahulu.');
       return;
     }
+    setShowConfirmBayar(true);
+  };
+
+  const confirmBayaran = async () => {
+    setShowConfirmBayar(false);
     setLoading(true);
     const period = `${bulan} ${tahun}`;
     // Cek tagihan yang belum dibayar di periode dan jenis yang sama
@@ -134,6 +139,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   };
 
   const [showConfirmTambah, setShowConfirmTambah] = useState(false);
+  const [showConfirmBayar, setShowConfirmBayar] = useState(false);
 
   const handleTambahAdmin = async () => {
     if (!adminSelectedUserId) {
@@ -296,6 +302,14 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
             {loading ? 'Memproses...' : 'Kirim Bukti Pembayaran'}
           </button>
         </div>
+        
+        <ConfirmModal
+          isOpen={showConfirmBayar}
+          title="Kirim Pembayaran Iuran"
+          message="Apakah Anda yakin ingin mengirim pembayaran ini?"
+          onConfirm={confirmBayaran}
+          onCancel={() => setShowConfirmBayar(false)}
+        />
       </motion.div>
     );
   }

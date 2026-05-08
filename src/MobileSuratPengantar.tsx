@@ -2,6 +2,7 @@ import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App'; // Sesuaikan path jika berbeda
+import { ConfirmModal } from './ConfirmModal';
 
 export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
   const [data, setData] = useState<any[]>([]);
@@ -9,6 +10,8 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
   const [keterangan, setKeterangan] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
 
   const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
 
@@ -26,10 +29,15 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
     fetchData();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const triggerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin mengajukan surat pengantar ini?")) return;
+    setShowConfirm(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirm(false);
     setLoading(true);
+    setSuccessMsg('');
     try {
       await apiFetch('/api/data/surat', {
         method: 'POST',
@@ -45,14 +53,17 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
       setKeperluan('');
       setKeterangan('');
       setShowForm(false); // Tutup form setelah berhasil
-      alert('Surat berhasil diajukan');
+      setSuccessMsg('Surat berhasil diajukan');
+      setTimeout(() => setSuccessMsg(''), 3000);
       fetchData();
     } catch(e) { 
       console.error(e); 
-      alert('Gagal mengajukan surat');
+      setSuccessMsg('Gagal mengajukan surat');
+      setTimeout(() => setSuccessMsg(''), 3000);
     }
     setLoading(false);
   };
+
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
@@ -103,6 +114,25 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
 
         <div className="p-4 mt-2 space-y-6">
           
+          {/* Pesan Sukses Mengambang */}
+          <AnimatePresence>
+            {successMsg && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3.5 rounded-2xl flex items-center gap-3 shadow-sm mb-4"
+              >
+                <div className="bg-emerald-100 p-1.5 rounded-full shrink-0">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold">{successMsg}</h4>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Section: Buat Surat (Togglable) */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <button 
@@ -138,7 +168,7 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden"
                 >
-                  <form onSubmit={handleSubmit} className="p-5 border-t border-slate-100 space-y-4 bg-white">
+                  <form onSubmit={triggerSubmit} className="p-5 border-t border-slate-100 space-y-4 bg-white">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1.5">Keperluan</label>
                       <input 
@@ -250,6 +280,14 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showConfirm}
+        title="Ajukan Surat"
+        message="Apakah Anda yakin ingin mengajukan surat pengantar ini?"
+        onConfirm={handleConfirmSubmit}
+        onCancel={() => setShowConfirm(false)}
+      />
     </motion.div>
   );
 };

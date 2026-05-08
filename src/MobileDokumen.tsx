@@ -2,6 +2,7 @@ import { apiFetch } from './apiInterceptor';
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App';
+import { ConfirmModal } from './ConfirmModal';
 
 export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: () => void, currentUser: any, onUpdateUser: (u: any) => void }) => {
   const [loading, setLoading] = useState(false);
@@ -11,6 +12,7 @@ export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: (
   );
   const [hasUploaded, setHasUploaded] = useState(!!currentUser?.dokumenKk || !!currentUser?.dokumenKtp);
   const [successMsg, setSuccessMsg] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'kk' | 'ktp') => {
     const file = e.target.files?.[0];
@@ -62,8 +64,12 @@ export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: (
     setDokumenKtp(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSave = async () => {
-    if (!window.confirm("Apakah Anda yakin ingin menyimpan dokumen ini?")) return;
+  const triggerSave = () => {
+    setShowConfirm(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setShowConfirm(false);
     setLoading(true);
     setSuccessMsg('');
     try {
@@ -205,7 +211,7 @@ export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: (
 
           {/* Tombol Simpan */}
           <button 
-            onClick={handleSave} 
+            onClick={triggerSave} 
             disabled={loading}
             className="w-full py-3.5 bg-teal-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-teal-200 hover:bg-teal-700 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 transition-all flex items-center justify-center gap-2"
           >
@@ -222,6 +228,14 @@ export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: (
 
         </div>
       </div>
+      
+      <ConfirmModal
+        isOpen={showConfirm}
+        title="Simpan Dokumen"
+        message="Apakah Anda yakin ingin menyimpan dokumen ini?"
+        onConfirm={handleConfirmSave}
+        onCancel={() => setShowConfirm(false)}
+      />
     </motion.div>
   );
 };

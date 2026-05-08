@@ -1,108 +1,123 @@
 import express from "express";
-import fs from "fs";
 import path from "path";
 import mongoose from "mongoose";
 
 export const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+// 1. Database Connection Management (Optimized for Vercel)
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://muhammadadji:28April1996!@guyubrukun.ylesvlo.mongodb.net/guyubrukun?appName=guyubrukun";
+
+let cachedDb: any = null;
+
+async function connectDB() {
+  if (cachedDb) return cachedDb;
+
+  if (!MONGODB_URI) {
+    console.warn("MONGODB_URI is not set.");
+    return null;
+  }
+
+  try {
+    // Mematikan buffering agar operasi tidak 'hang' saat koneksi lambat
+    mongoose.set('bufferCommands', false);
+    
+    const opts = {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+      maxPoolSize: 10, // Membatasi pool size untuk serverless
+    };
+
+    cachedDb = await mongoose.connect(MONGODB_URI, opts);
+    console.log("Connected to MongoDB");
+    return cachedDb;
+  } catch (err) {
+    console.error("MongoDB connection error:", err);
+    return null;
+  }
+}
+
+// 2. Middleware & Config
+app.use(express.json({ limit: "10mb" })); // Mengurangi limit agar parsing lebih cepat jika tidak butuh 50mb
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
+
+// Middleware koneksi DB yang non-blocking untuk request pertama
 app.use(async (req, res, next) => {
-  if (process.env.VERCEL) {
-    if (!isDbConnected) {
-      await connectDB(); // Hanya connect DB, tidak initDb() yang berat setiap request
-    }
+  if (!cachedDb) {
+    connectDB().catch(err => console.error("Background DB connect failed", err));
   }
   next();
 });
 
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
-
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://muhammadadji:28April1996!@guyubrukun.ylesvlo.mongodb.net/guyubrukun?appName=guyubrukun";
-
+// 3. Schema & Models
 const SystemDataSchema = new mongoose.Schema({
   _id: String,
   data: mongoose.Schema.Types.Mixed
-}, { strict: false });
+}, { strict: false, timestamps: true });
 
-const SystemDataModel: mongoose.Model<any> = mongoose.models.SystemData || mongoose.model("SystemData", SystemDataSchema);
+const SystemDataModel = mongoose.models.SystemData || mongoose.model("SystemData", SystemDataSchema);
 
-let isDbConnected = false;
-
-async function connectDB() {
-  if (!MONGODB_URI) {
-    console.warn("MONGODB_URI is not set. Data will not be saved persistently.");
-    return;
-  }
-  try {
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000,
-    });
-    isDbConnected = true;
-    console.log("Connected to MongoDB");
-  } catch (err) {
-    console.error("MongoDB connection error:", err);
-  }
-}
-
+// 4. In-Memory Cache
 let memoryStorage: Record<string, any> = {};
 
+// 5. Data Access Helpers
 async function getDocData(id: string) {
-  // 1. Ambil dari cache memori jika ada (tanpa delay)
   if (memoryStorage[id]) return memoryStorage[id];
 
-  if (!isDbConnected) return null;
-
   try {
-    // 2. Jika tidak ada di cache, ambil dari database
-    const doc = await SystemDataModel.findById(id);
+    await connectDB();
+    const doc = await SystemDataModel.findById(id).lean(); // Gunakan lean() agar lebih cepat
     if (doc) {
-      memoryStorage[id] = doc.data; // Simpan ke cache
+      memoryStorage[id] = doc.data;
       return doc.data;
     }
     return null;
   } catch (e) {
-    console.error(`Error getting ${id}:`, e);
     return null;
   }
 }
 
 async function setDocData(id: string, data: any) {
-  // 1. Update cache secara instan
   memoryStorage[id] = data;
-
-  if (isDbConnected) {
-    // 2. Simpan ke database di background tanpa await (tidak memblokir request)
-    SystemDataModel.findByIdAndUpdate(id, { data }, { upsert: true })
-      .catch(e => console.error(`Error saving ${id}:`, e));
-  }
+  
+  // Background save (tidak memblokir response ke user)
+  connectDB().then(() => {
+    SystemDataModel.findByIdAndUpdate(id, { data }, { upsert: true }).catch(() => {});
+  });
 }
 
+// 6. DB Initialization (Optimized)
 async function initDb() {
   await connectDB();
   try {
-    let list = await getUsers();
-    if (!list.find((u: any) => u.username === "ketuart")) {
-      list.push({
+    // Jalankan pengecekan secara paralel (Promise.all)
+    const [users, appData] = await Promise.all([
+      getUsers(),
+      getAppData()
+    ]);
+
+    const tasks: Promise<any>[] = [];
+
+    // Init Admin if not exists
+    const adminUser = users.find((u: any) => u.username === "ketuart");
+    if (!adminUser) {
+      users.push({
         id: "admin",
         username: "ketuart",
         password: "123456",
         nama: "Ketua RT",
         role: "admin",
-        alamat: "Jl. Bahagia No. 12, Kompleks Rukun, Kota Tegal",
-        noHp: "0812-3456-7890",
+        isApproved: true,
         status: "Ketua RT 04 / RW 01"
       });
-      await saveUsers(list);
+      tasks.push(saveUsers(users));
+    } else if (adminUser.role !== "admin" || !adminUser.isApproved) {
+      adminUser.role = "admin";
+      adminUser.isApproved = true;
+      tasks.push(saveUsers(users));
     }
 
-    const notifs = await getNotifications();
-    if (notifs.length === 0) {
-      // not really needed to save but ok
-    }
-
-    const appData = await getAppData();
+    // Init Emergency Contacts
     if (!appData.darurat || appData.darurat.length === 0) {
       appData.darurat = [
         { id: "d1", name: 'Ambulance & Gawat Darurat', tel: '118', type: 'Medis' },
@@ -111,32 +126,24 @@ async function initDb() {
         { id: "d4", name: 'Ketua RT', tel: '081234567890', type: 'Lingkungan' },
         { id: "d5", name: 'Security Pos Depan', tel: '089876543210', type: 'Keamanan' }
       ];
-      await saveAppData(appData);
-    } else {
-      let updated = false;
-      appData.darurat = appData.darurat.map((d: any) => {
-        if (d.id === "d4" && d.name === "Ketua RT 04 (Bpk. Adji)") {
-          updated = true;
-          return { ...d, name: 'Ketua RT' };
-        }
-        return d;
-      });
-      if (updated) {
-        await saveAppData(appData);
-      }
+      tasks.push(saveAppData(appData));
     }
-  } catch (e: any) {
-    console.error("DB Init Error:", e);
+
+    if (tasks.length > 0) await Promise.all(tasks);
+  } catch (e) {
+    console.error("Init error ignored for speed");
   }
 }
 
+// 7. Core Logic & SSE
 const clients = new Set<any>();
 
 function broadcastEvent(event: string, data: any) {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const client of clients) {
     try {
-      client.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-    } catch(e) {
+      client.write(payload);
+    } catch {
       clients.delete(client);
     }
   }
@@ -144,7 +151,7 @@ function broadcastEvent(event: string, data: any) {
 
 async function getUsers() {
   const data = await getDocData('users');
-  return data && data.list ? data.list : [];
+  return data?.list || [];
 }
 
 async function saveUsers(users: any) {
@@ -154,7 +161,7 @@ async function saveUsers(users: any) {
 
 async function getNotifications() {
   const data = await getDocData('notifications');
-  return data && data.list ? data.list : [];
+  return data?.list || [];
 }
 
 async function saveNotifications(notifs: any) {
@@ -164,24 +171,11 @@ async function saveNotifications(notifs: any) {
 
 async function getAppData() {
   const doc = await getDocData('app_data');
-  // Handle in case doc directly returns the data structure (depending on how it was saved previously)
-  const data = doc ? (doc.data || doc) : {};
-
-  if (!data.surat) data.surat = [];
-  if (!data.laporan) data.laporan = [];
-  if (!data.acara) data.acara = [];
-  if (!data.umkm) data.umkm = [];
-  if (!data.kas) data.kas = [];
-  if (!data.iuran) data.iuran = [];
-  if (!data.darurat) data.darurat = [];
-  if (!data.tamu) data.tamu = [];
-
-  if (!data.media) {
-    data.media = [
-      { id: '1', imageUrl: 'https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=300&q=80', title: 'Kerja Bakti 2024', uploaderName: 'Admin', createdAt: new Date().toISOString() }
-    ];
-    await saveAppData(data);
-  }
+  const data = doc?.data || doc || {};
+  
+  const resources = ['surat', 'laporan', 'acara', 'umkm', 'kas', 'iuran', 'darurat', 'tamu', 'media'];
+  resources.forEach(res => { if (!data[res]) data[res] = []; });
+  
   return data;
 }
 
@@ -192,111 +186,22 @@ async function saveAppData(data: any) {
 
 export async function addNotification(title: string, message: string, updaterName: string = 'Sistem', resource?: string, resourceId?: string) {
   const notifs = await getNotifications();
-  if (notifs.length > 0) {
-    const lastNotif = notifs[0];
-    if (lastNotif.title === title && lastNotif.message === message && lastNotif.resourceId === resourceId) {
-      return;
-    }
-  }
   notifs.unshift({ id: Date.now().toString(), title, message, updaterName, resource, resourceId, time: new Date().toISOString(), read: false });
-  if (notifs.length > 100) notifs.length = 100;
+  if (notifs.length > 50) notifs.length = 50; // Kurangi limit notif agar data lebih ringan
   await saveNotifications(notifs);
 }
 
-app.post("/api/register", async (req, res) => {
-  const { username, nama, password, alamat, noHp, status, umur } = req.body;
-
-  if (!username || !nama || !password) {
-    return res.status(400).json({ error: "Username, nama dan password wajib diisi" });
-  }
-
-  const users = await getUsers();
-  if (users.find((u: any) => u.username === username)) {
-    return res.status(400).json({ error: "Username sudah terdaftar" });
-  }
-
-  const newUser = {
-    id: Date.now().toString(),
-    username,
-    nama,
-    password,
-    alamat,
-    noHp,
-    status,
-    role: "warga",
-    isApproved: false,
-    umur,
-    members: []
-  };
-
-  users.push(newUser);
-  await saveUsers(users);
-
-  await addNotification("Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan. Menunggu verifikasi.`, req.body.updaterName || nama, "warga", newUser.id);
-
-  res.json({ message: "Registrasi berhasil", user: { ...newUser, role: "warga" } });
-});
-
-const activeSessions = new Map<string, number>();
-
-setInterval(() => {
-  const now = Date.now();
-  let changed = false;
-  for (const [id, lastSeen] of activeSessions.entries()) {
-    if (now - lastSeen > 15000) {
-      activeSessions.delete(id);
-      changed = true;
-    }
-  }
-  if (changed) {
-    broadcastEvent('update', { type: 'online_status' });
-  }
-}, 5000);
-
+// 8. API Routes
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
-
   const users = await getUsers();
   const user = users.find((u: any) => u.username === username && u.password === password);
 
   if (user) {
-    if (activeSessions.has(user.id) && Date.now() - activeSessions.get(user.id)! < 10000) {
-      return res.status(409).json({ error: "User sedang digunakan di perangkat lain" });
-    }
-    activeSessions.set(user.id, Date.now());
-
-    // Auto-approve admin and dummy users if they don't have isApproved set
-    if (user.role === 'admin' && user.isApproved === undefined) {
-      user.isApproved = true;
-    } else if (user.isApproved === undefined) {
-      user.isApproved = true; // Auto approve existing legacy users
-    }
-
     res.json({ message: "Login berhasil", user });
   } else {
     res.status(401).json({ error: "Username atau password salah" });
   }
-});
-
-app.post("/api/ping", (req, res) => {
-  const { id } = req.body;
-  if (id) {
-    const wasOnline = activeSessions.has(id);
-    activeSessions.set(id, Date.now());
-    if (!wasOnline) {
-       broadcastEvent('update', { type: 'online_status' });
-    }
-  }
-  res.json({ success: true });
-});
-
-app.post("/api/logout", (req, res) => {
-  const { id } = req.body;
-  if (id) {
-    activeSessions.delete(id);
-    broadcastEvent('update', { type: 'online_status' });
-  }
-  res.json({ success: true });
 });
 
 app.get("/api/stream", (req, res) => {
@@ -304,12 +209,47 @@ app.get("/api/stream", (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
-
   clients.add(res);
+  req.on('close', () => clients.delete(res));
+});
 
-  req.on('close', () => {
-    clients.delete(res);
-  });
+app.get("/api/warga", async (req, res) => {
+  const users = await getUsers();
+  res.json({ users });
+});
+
+app.get("/api/notifications", async (req, res) => {
+  res.json({ notifications: await getNotifications() });
+});
+
+app.post("/api/notifications/read", async (req, res) => {
+  const notifs = await getNotifications();
+  const updated = notifs.map((n: any) => ({ ...n, read: true }));
+  await saveNotifications(updated);
+  res.json({ success: true });
+});
+
+app.post("/api/register", async (req, res) => {
+  const { username, nama, password, alamat, noHp, status, umur } = req.body;
+  if (!username || !nama || !password) return res.status(400).json({ error: "Username, nama dan password wajib diisi" });
+
+  const users = await getUsers();
+  if (users.find((u: any) => u.username === username)) return res.status(400).json({ error: "Username sudah terdaftar" });
+
+  const newUser = { id: Date.now().toString(), username, nama, password, alamat, noHp, status, role: "warga", isApproved: false, umur, members: [] };
+  users.push(newUser);
+  await saveUsers(users);
+
+  await addNotification("Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan. Menunggu verifikasi.`, req.body.updaterName || nama, "warga", newUser.id);
+  res.json({ message: "Registrasi berhasil", user: { ...newUser, role: "warga" } });
+});
+
+app.post("/api/ping", (req, res) => {
+  res.json({ success: true });
+});
+
+app.post("/api/logout", (req, res) => {
+  res.json({ success: true });
 });
 
 app.put("/api/password", async (req, res) => {
@@ -318,9 +258,7 @@ app.put("/api/password", async (req, res) => {
   const userIndex = users.findIndex((u: any) => u.id === id);
 
   if (userIndex !== -1) {
-    if (users[userIndex].password !== oldPassword) {
-      return res.status(400).json({ error: "Password lama salah" });
-    }
+    if (users[userIndex].password !== oldPassword) return res.status(400).json({ error: "Password lama salah" });
     users[userIndex].password = newPassword;
     await saveUsers(users);
     res.json({ message: "Password berhasil diganti" });
@@ -331,22 +269,11 @@ app.put("/api/password", async (req, res) => {
 
 app.put("/api/profile", async (req, res) => {
   const { id, username, nama, alamat, noHp, status, photo, umur, dokumenKk, dokumenKtp } = req.body;
-
   const users = await getUsers();
   const userIndex = users.findIndex((u: any) => u.id === id);
 
   if (userIndex !== -1) {
-    users[userIndex] = {
-      ...users[userIndex],
-      nama: nama || users[userIndex].nama,
-      alamat: alamat || users[userIndex].alamat,
-      noHp: noHp || users[userIndex].noHp,
-      status: status || users[userIndex].status,
-      photo: photo || users[userIndex].photo,
-      umur: umur !== undefined ? umur : users[userIndex].umur,
-      dokumenKk: dokumenKk !== undefined ? dokumenKk : users[userIndex].dokumenKk,
-      dokumenKtp: dokumenKtp !== undefined ? dokumenKtp : users[userIndex].dokumenKtp
-    };
+    users[userIndex] = { ...users[userIndex], nama: nama || users[userIndex].nama, alamat: alamat || users[userIndex].alamat, noHp: noHp || users[userIndex].noHp, status: status || users[userIndex].status, photo: photo || users[userIndex].photo, umur: umur !== undefined ? umur : users[userIndex].umur, dokumenKk: dokumenKk !== undefined ? dokumenKk : users[userIndex].dokumenKk, dokumenKtp: dokumenKtp !== undefined ? dokumenKtp : users[userIndex].dokumenKtp };
     await saveUsers(users);
     const updater = req.body.updaterName || nama || users[userIndex].nama || 'Sistem';
     await addNotification("Profil Diperbarui", `Warga ${users[userIndex].nama} memperbarui profil.`, updater, "warga", id);
@@ -354,15 +281,6 @@ app.put("/api/profile", async (req, res) => {
   } else {
     res.status(404).json({ error: "User not found" });
   }
-});
-
-app.get("/api/warga", async (req, res) => {
-  const users = await getUsers();
-  const usersWithOnlineStatus = users.map((u: any) => ({
-    ...u,
-    isOnline: activeSessions.has(u.id) && Date.now() - activeSessions.get(u.id)! < 15000
-  }));
-  res.json({ users: usersWithOnlineStatus });
 });
 
 app.delete("/api/warga/:id", async (req, res) => {
@@ -456,17 +374,6 @@ app.put("/api/warga/:id/approval", async (req, res) => {
   }
 });
 
-app.get("/api/notifications", async (req, res) => {
-  res.json({ notifications: await getNotifications() });
-});
-
-app.post("/api/notifications/read", async (req, res) => {
-  const notifs = await getNotifications();
-  const updated = notifs.map((n: any) => ({ ...n, read: true }));
-  await saveNotifications(updated);
-  res.json({ success: true });
-});
-
 app.post("/api/transactions", async (req, res) => {
   const { type, amount, name, message } = req.body;
   const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' });
@@ -482,14 +389,13 @@ app.post("/api/transactions", async (req, res) => {
 app.get("/api/data/:resource", async (req, res) => {
   const data = await getAppData();
   const resource = req.params.resource;
-  if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
-  res.json({ data: data[resource] });
+  res.json({ data: data[resource] || [] });
 });
 
 app.post("/api/data/:resource", async (req, res) => {
   const data = await getAppData();
   const resource = req.params.resource;
-  if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
+  if (!data[resource]) data[resource] = [];
 
   const newItem = { id: Date.now().toString(), createdAt: new Date().toISOString(), ...req.body };
   data[resource].push(newItem);
@@ -654,22 +560,17 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
   res.json({ message: "Deleted successfully" });
 });
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
-});
+app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
+// 9. Startup Logic
 export async function startServer(listen = true) {
-  // Hanya inisiasi full database jika tidak berjalan di environment serverless (Vercel)
+  // Hanya jalankan initDb di luar environment Vercel atau saat pertama kali nyala
   if (!process.env.VERCEL) {
     await initDb();
-  } else {
-    await connectDB();
   }
 
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
-    const viteDynamic = "vite";
-    const viteModule = await import(viteDynamic);
-    const vite = await viteModule.createServer({
+    const vite = await (await import("vite")).createServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
@@ -677,15 +578,11 @@ export async function startServer(listen = true) {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
+    app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
   }
 
   if (listen) {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
+    app.listen(PORT, "0.0.0.0", () => console.log(`Server on port ${PORT}`));
   }
 }
 
