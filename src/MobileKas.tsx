@@ -1,7 +1,6 @@
 import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ConfirmModal } from './ConfirmModal';
 
 // --- Ikon Tambahan ---
 const Icons = {
@@ -23,8 +22,6 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
   const [message, setMessage] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
   const [showTransfer, setShowTransfer] = useState(false);
-  const [showConfirmSimpan, setShowConfirmSimpan] = useState(false);
-  const [showConfirmTransfer, setShowConfirmTransfer] = useState(false);
 
   const isAdminOrBendahara = currentUser?.role === 'admin' || currentUser?.role === 'bendahara';
 
@@ -40,13 +37,9 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
     fetchData();
   }, []);
 
-  const triggerTambah = (e: React.FormEvent) => {
+  const handleTambah = async (e: React.FormEvent) => {
     e.preventDefault();
-    setShowConfirmSimpan(true);
-  };
-
-  const handleConfirmTambah = async () => {
-    setShowConfirmSimpan(false);
+    if (!window.confirm("Apakah Anda yakin ingin menyimpan data ini?")) return;
     setLoading(true);
     try {
       await apiFetch('/api/data/kas', {
@@ -89,24 +82,21 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
     return masuk - keluar;
   };
 
-  const triggerTransfer = (e: React.FormEvent) => {
+  const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!window.confirm("Apakah Anda yakin ingin mentransfer dana ini?")) return;
+    setLoading(true);
     const nominal = parseInt(transferAmount.replace(/\D/g, '') || '0');
     if (nominal <= 0) {
       alert("Nominal transfer tidak valid.");
+      setLoading(false);
       return;
     }
     if (nominal > getSaldo('Kas RT')) {
       alert("Saldo Kas RT tidak mencukupi.");
+      setLoading(false);
       return;
     }
-    setShowConfirmTransfer(true);
-  };
-
-  const handleConfirmTransfer = async () => {
-    setShowConfirmTransfer(false);
-    setLoading(true);
-    const nominal = parseInt(transferAmount.replace(/\D/g, '') || '0');
     
     try {
       await apiFetch('/api/data/kas', {
@@ -200,7 +190,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
             {!showTransfer ? (
               <motion.form 
                 key="catat" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.2 }}
-                onSubmit={triggerTambah} className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 space-y-4"
+                onSubmit={handleTambah} className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 space-y-4"
               >
                 <div className="flex gap-3">
                   <div className="flex-1">
@@ -234,7 +224,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
             ) : (
               <motion.form 
                 key="transfer" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.2 }}
-                onSubmit={triggerTransfer} className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 space-y-4"
+                onSubmit={handleTransfer} className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 space-y-4"
               >
                 <div className="flex items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
                    <div className="flex-1 text-center">
@@ -362,22 +352,6 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
           </motion.div>
         )}
       </AnimatePresence>
-
-      <ConfirmModal
-        isOpen={showConfirmSimpan}
-        title="Simpan Transaksi Kas"
-        message="Apakah Anda yakin ingin menyimpan catatan transaksi kas ini?"
-        onConfirm={handleConfirmTambah}
-        onCancel={() => setShowConfirmSimpan(false)}
-      />
-
-      <ConfirmModal
-        isOpen={showConfirmTransfer}
-        title="Transfer Antar Dana"
-        message="Apakah Anda yakin ingin mentransfer dana ini? Saldo Kas RT akan otomatis berkurang."
-        onConfirm={handleConfirmTransfer}
-        onCancel={() => setShowConfirmTransfer(false)}
-      />
     </div>
   );
 };

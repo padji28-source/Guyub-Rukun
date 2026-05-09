@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProfileAvatar } from './App'; 
 import { GoogleGenAI, Type } from '@google/genai';
-import { ConfirmModal } from './ConfirmModal';
 
 // Icon Set - Diperbarui dan ditambah beberapa icon untuk mendukung UI baru
 const icons = {
@@ -108,15 +107,12 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
     } catch(e) { console.error(e); }
   };
 
-  const [showConfirmDeleteMember, setShowConfirmDeleteMember] = useState<{wargaId: string, memberId: string} | null>(null);
-
-  const confirmDeleteMember = async () => {
-    if (!showConfirmDeleteMember) return;
+  const handleDeleteMember = async (wargaId: string, memberId: string) => {
+    if(!window.confirm("Yakin ingin menghapus anggota keluarga ini?")) return;
     try {
-      await apiFetch(`/api/warga/${showConfirmDeleteMember.wargaId}/members/${showConfirmDeleteMember.memberId}`, { method: 'DELETE' });
+      await apiFetch(`/api/warga/${wargaId}/members/${memberId}`, { method: 'DELETE' });
       fetchWarga();
     } catch(e) { console.error(e); }
-    setShowConfirmDeleteMember(null);
   };
 
   const handleExtractKK = async (wargaId: string) => {
@@ -533,7 +529,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                                   {canEditFamily && (
                                     <div className="flex gap-1">
                                       <button onClick={() => { setActiveWargaId(warga.id); setEditingMember(member); setMemberForm({ ...member, tglLahir: member.tglLahir || '', age: member.age || '' }); setShowMemberForm(true); }} className="p-1.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"><icons.edit className="w-4 h-4"/></button>
-                                      <button onClick={() => setShowConfirmDeleteMember({wargaId: warga.id, memberId: member.id})} className="p-1.5 text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"><icons.delete className="w-4 h-4"/></button>
+                                      <button onClick={() => handleDeleteMember(warga.id, member.id)} className="p-1.5 text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"><icons.delete className="w-4 h-4"/></button>
                                     </div>
                                   )}
                                 </div>
@@ -608,13 +604,6 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
         )}
       </AnimatePresence>
       
-      <ConfirmModal
-        isOpen={!!showConfirmDeleteMember}
-        title="Hapus Anggota Keluarga"
-        message="Yakin ingin menghapus anggota keluarga ini?"
-        onConfirm={confirmDeleteMember}
-        onCancel={() => setShowConfirmDeleteMember(null)}
-      />
     </div>
   );
 };
