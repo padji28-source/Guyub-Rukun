@@ -133,16 +133,12 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     setLoading(false);
   };
 
-  const [showConfirmTambah, setShowConfirmTambah] = useState(false);
-
-  const handleTambahAdmin = async () => {
-    if (!adminSelectedUserId) {
-        setShowConfirmTambah(false);
-        return;
-    }
+  const handleTambahAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!window.confirm("Simpan data iuran warga?")) return;
+    if (!adminSelectedUserId) return;
     
     setLoading(true);
-    setShowConfirmTambah(false);
     try {
       const targetUsers = adminSelectedUserId === 'all' 
         ? wargaList 
@@ -151,7 +147,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
       const period = `${bulan} ${tahun}`;
 
       for (const selectedUser of targetUsers) {
-        const userNominal = jenisIuran === 'Wifi' ? nominal : (selectedUser.role === 'admin' ? '65000' : '85000');
+        const userNominal = selectedUser.role === 'admin' ? '65000' : '85000';
         await apiFetch('/api/data/iuran', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -172,14 +168,6 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     } catch(e) { console.error(e) }
     setLoading(false);
   };
-
-  const onFormTambahSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!adminSelectedUserId) return;
-    setShowConfirmTambah(true);
-  };
-
-  const cancelTambah = () => setShowConfirmTambah(false);
 
   const [showConfirmVerify, setShowConfirmVerify] = useState<{id: string, status: string} | null>(null);
   const handleUpdateStatus = async (id: string, newStatus: string) => {
@@ -361,7 +349,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
           ) : (
             <motion.form 
               key="form-tambah" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-              onSubmit={onFormTambahSubmit} className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6 relative overflow-hidden"
+              onSubmit={handleTambahAdmin} className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6 relative overflow-hidden"
             >
               <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-3">
                 <h4 className="font-extrabold text-slate-800 text-sm">Form Tagihan Warga</h4>
@@ -588,21 +576,6 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
               <div className="flex gap-3 justify-center">
                 <button onClick={cancelDelete} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm flex-1 hover:bg-slate-200 transition-colors">Batal</button>
                 <button onClick={confirmDelete} className="px-5 py-3 bg-rose-600 text-white rounded-xl font-bold text-sm flex-1 hover:bg-rose-700 transition-colors shadow-md shadow-rose-200">Ya, Hapus</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {/* MODAL: KONFIRMASI TAMBAH IURAN */}
-        {showConfirmTambah && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-5">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-6 rounded-[2rem] w-full max-w-sm text-center shadow-2xl">
-              <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-4"><Icons.check className="w-8 h-8 text-teal-500" /></div>
-              <h3 className="font-extrabold text-slate-800 text-lg mb-2">Simpan Iuran?</h3>
-              <p className="text-sm text-slate-500 mb-8 leading-relaxed">Anda akan menyimpan tagihan iuran ini. Lanjutkan?</p>
-              <div className="flex gap-3 justify-center">
-                <button onClick={cancelTambah} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm flex-1 hover:bg-slate-200 transition-colors">Batal</button>
-                <button onClick={handleTambahAdmin} className="px-5 py-3 bg-teal-600 text-white rounded-xl font-bold text-sm flex-1 hover:bg-teal-700 transition-colors shadow-md shadow-teal-200">Ya, Simpan</button>
               </div>
             </motion.div>
           </motion.div>
