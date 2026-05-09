@@ -8,10 +8,12 @@ const PORT = Number(process.env.PORT) || 3000;
 // 1. Database Connection Management (Optimized for Vercel)
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://muhammadadji:28April1996!@guyubrukun.ylesvlo.mongodb.net/guyubrukun?appName=guyubrukun";
 
-let cachedDb: any = null;
+let cachedDb: typeof mongoose | null = null;
 
 async function connectDB() {
-  if (cachedDb) return cachedDb;
+  if (cachedDb && mongoose.connection.readyState === 1) {
+    return cachedDb;
+  }
 
   if (!MONGODB_URI) {
     console.warn("MONGODB_URI is not set.");
@@ -28,8 +30,17 @@ async function connectDB() {
       maxPoolSize: 10, // Membatasi pool size untuk serverless
     };
 
-    cachedDb = await mongoose.connect(MONGODB_URI, opts);
-    console.log("Connected to MongoDB");
+    if (mongoose.connection.readyState !== 1) {
+      // Disconnect if in connecting or disconnecting state to avoid issues
+      if (mongoose.connection.readyState !== 0) {
+        await mongoose.disconnect();
+      }
+      cachedDb = await mongoose.connect(MONGODB_URI, opts);
+      console.log("Connected to MongoDB");
+    } else {
+      cachedDb = mongoose;
+    }
+    
     return cachedDb;
   } catch (err) {
     console.error("MongoDB connection error:", err);
@@ -62,28 +73,42 @@ let memoryStorage: Record<string, any> = {};
 
 // 5. Data Access Helpers
 async function getDocData(id: string) {
-  if (memoryStorage[id]) return memoryStorage[id];
+  // If not on Vercel, we can try using memoryStorage cache. On Vercel, we must fetch from DB so we don't get stale data
+  if (!process.env.VERCEL && memoryStorage[id]) return memoryStorage[id];
 
   try {
     await connectDB();
     const doc = await (SystemDataModel as any).findById(id).lean(); // Gunakan lean() agar lebih cepat
     if (doc) {
-      memoryStorage[id] = doc.data;
+      if (!process.env.VERCEL) memoryStorage[id] = doc.data;
       return doc.data;
     }
     return null;
   } catch (e) {
+    console.error(`Error in getDocData for id ${id}:`, e);
     return null;
   }
 }
 
 async function setDocData(id: string, data: any) {
-  memoryStorage[id] = data;
+  if (!process.env.VERCEL) {
+    memoryStorage[id] = data;
+  }
   
-  // Background save (tidak memblokir response ke user)
-  connectDB().then(() => {
-    (SystemDataModel as any).findByIdAndUpdate(id, { data }, { upsert: true }).catch(() => {});
-  });
+  if (process.env.VERCEL) {
+    // Vercel serverless functions will freeze execution when the response is sent, so we must await this
+    try {
+      await connectDB();
+      await (SystemDataModel as any).findByIdAndUpdate(id, { data }, { upsert: true });
+    } catch (err) {
+      console.error("setDocData error in Vercel:", err);
+    }
+  } else {
+    // Background save (tidak memblokir response ke user) untuk non-serverless
+    connectDB().then(() => {
+      (SystemDataModel as any).findByIdAndUpdate(id, { data }, { upsert: true }).catch((err: any) => console.error("setDocData error:", err));
+    });
+  }
 }
 
 // 6. DB Initialization (Optimized)
