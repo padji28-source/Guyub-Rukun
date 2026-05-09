@@ -104,7 +104,7 @@ async function initDb() {
       users.push({
         id: "admin",
         username: "ketuart",
-        password: "123456",
+        password: "rt123456",
         nama: "Ketua RT",
         role: "admin",
         isApproved: true,
