@@ -66,7 +66,7 @@ async function getDocData(id: string) {
 
   try {
     await connectDB();
-    const doc = await SystemDataModel.findOne({ _id: id }).lean(); // Gunakan lean() agar lebih cepat
+    const doc = await (SystemDataModel as any).findOne({ _id: id }).lean(); // Gunakan lean() agar lebih cepat
     if (doc) {
       memoryStorage[id] = doc.data;
       return doc.data;
@@ -82,7 +82,7 @@ async function setDocData(id: string, data: any) {
   
   // Background save (tidak memblokir response ke user)
   connectDB().then(() => {
-    SystemDataModel.updateOne({ _id: id }, { data }, { upsert: true }).catch(() => {});
+    (SystemDataModel as any).updateOne({ _id: id }, { data }, { upsert: true }).catch(() => {});
   });
 }
 
