@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProfileAvatar } from './App'; 
 import { GoogleGenAI, Type } from '@google/genai';
+import { ConfirmModal } from './ConfirmModal';
 
 // Icon Set - Diperbarui dan ditambah beberapa icon untuk mendukung UI baru
 const icons = {
@@ -532,7 +533,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                                   {canEditFamily && (
                                     <div className="flex gap-1">
                                       <button onClick={() => { setActiveWargaId(warga.id); setEditingMember(member); setMemberForm({ ...member, tglLahir: member.tglLahir || '', age: member.age || '' }); setShowMemberForm(true); }} className="p-1.5 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"><icons.edit className="w-4 h-4"/></button>
-                                      <button onClick={() => handleDeleteMember(warga.id, member.id)} className="p-1.5 text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"><icons.delete className="w-4 h-4"/></button>
+                                      <button onClick={() => setShowConfirmDeleteMember({wargaId: warga.id, memberId: member.id})} className="p-1.5 text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"><icons.delete className="w-4 h-4"/></button>
                                     </div>
                                   )}
                                 </div>
