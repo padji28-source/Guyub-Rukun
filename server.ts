@@ -194,8 +194,12 @@ export async function addNotification(title: string, message: string, updaterNam
 // 8. API Routes
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: "Username dan password wajib diisi" });
+
   const users = await getUsers();
-  const user = users.find((u: any) => u.username === username && u.password === password);
+  const trimmedUsername = (username || '').trim().toLowerCase();
+  
+  const user = users.find((u: any) => (u.username || '').toLowerCase() === trimmedUsername && u.password === password);
 
   if (user) {
     res.json({ message: "Login berhasil", user });
@@ -234,9 +238,11 @@ app.post("/api/register", async (req, res) => {
   if (!username || !nama || !password) return res.status(400).json({ error: "Username, nama dan password wajib diisi" });
 
   const users = await getUsers();
-  if (users.find((u: any) => u.username === username)) return res.status(400).json({ error: "Username sudah terdaftar" });
+  const trimmedUsername = username.trim().toLowerCase();
+  
+  if (users.find((u: any) => (u.username || '').toLowerCase() === trimmedUsername)) return res.status(400).json({ error: "Username sudah terdaftar" });
 
-  const newUser = { id: Date.now().toString(), username, nama, password, alamat, noHp, status, role: "warga", isApproved: false, umur, members: [] };
+  const newUser = { id: Date.now().toString(), username: username.trim(), nama, password, alamat, noHp, status, role: "warga", isApproved: false, umur, members: [] };
   users.push(newUser);
   await saveUsers(users);
 
