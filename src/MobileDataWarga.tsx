@@ -107,12 +107,15 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
     } catch(e) { console.error(e); }
   };
 
-  const handleDeleteMember = async (wargaId: string, memberId: string) => {
-    if(!window.confirm("Yakin ingin menghapus anggota keluarga ini?")) return;
+  const [showConfirmDeleteMember, setShowConfirmDeleteMember] = useState<{wargaId: string, memberId: string} | null>(null);
+
+  const confirmDeleteMember = async () => {
+    if (!showConfirmDeleteMember) return;
     try {
-      await apiFetch(`/api/warga/${wargaId}/members/${memberId}`, { method: 'DELETE' });
+      await apiFetch(`/api/warga/${showConfirmDeleteMember.wargaId}/members/${showConfirmDeleteMember.memberId}`, { method: 'DELETE' });
       fetchWarga();
     } catch(e) { console.error(e); }
+    setShowConfirmDeleteMember(null);
   };
 
   const handleExtractKK = async (wargaId: string) => {
@@ -604,6 +607,13 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
         )}
       </AnimatePresence>
       
+      <ConfirmModal
+        isOpen={!!showConfirmDeleteMember}
+        title="Hapus Anggota Keluarga"
+        message="Yakin ingin menghapus anggota keluarga ini?"
+        onConfirm={confirmDeleteMember}
+        onCancel={() => setShowConfirmDeleteMember(null)}
+      />
     </div>
   );
 };

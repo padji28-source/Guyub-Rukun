@@ -8,12 +8,10 @@ const PORT = Number(process.env.PORT) || 3000;
 // 1. Database Connection Management (Optimized for Vercel)
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://muhammadadji:28April1996!@guyubrukun.ylesvlo.mongodb.net/guyubrukun?appName=guyubrukun";
 
-let cachedDb: typeof mongoose | null = null;
+let cachedDb: any = null;
 
 async function connectDB() {
-  if (cachedDb && mongoose.connection.readyState === 1) {
-    return cachedDb;
-  }
+  if (cachedDb) return cachedDb;
 
   if (!MONGODB_URI) {
     console.warn("MONGODB_URI is not set.");
@@ -30,17 +28,8 @@ async function connectDB() {
       maxPoolSize: 10, // Membatasi pool size untuk serverless
     };
 
-    if (mongoose.connection.readyState !== 1) {
-      // Disconnect if in connecting or disconnecting state to avoid issues
-      if (mongoose.connection.readyState !== 0) {
-        await mongoose.disconnect();
-      }
-      cachedDb = await mongoose.connect(MONGODB_URI, opts);
-      console.log("Connected to MongoDB");
-    } else {
-      cachedDb = mongoose;
-    }
-    
+    cachedDb = await mongoose.connect(MONGODB_URI, opts);
+    console.log("Connected to MongoDB");
     return cachedDb;
   } catch (err) {
     console.error("MongoDB connection error:", err);
@@ -73,42 +62,28 @@ let memoryStorage: Record<string, any> = {};
 
 // 5. Data Access Helpers
 async function getDocData(id: string) {
-  // If not on Vercel, we can try using memoryStorage cache. On Vercel, we must fetch from DB so we don't get stale data
-  if (!process.env.VERCEL && memoryStorage[id]) return memoryStorage[id];
+  if (memoryStorage[id]) return memoryStorage[id];
 
   try {
     await connectDB();
-    const doc = await (SystemDataModel as any).findById(id).lean(); // Gunakan lean() agar lebih cepat
+    const doc = await SystemDataModel.findById(id).lean(); // Gunakan lean() agar lebih cepat
     if (doc) {
-      if (!process.env.VERCEL) memoryStorage[id] = doc.data;
+      memoryStorage[id] = doc.data;
       return doc.data;
     }
     return null;
   } catch (e) {
-    console.error(`Error in getDocData for id ${id}:`, e);
     return null;
   }
 }
 
 async function setDocData(id: string, data: any) {
-  if (!process.env.VERCEL) {
-    memoryStorage[id] = data;
-  }
+  memoryStorage[id] = data;
   
-  if (process.env.VERCEL) {
-    // Vercel serverless functions will freeze execution when the response is sent, so we must await this
-    try {
-      await connectDB();
-      await (SystemDataModel as any).findByIdAndUpdate(id, { data }, { upsert: true });
-    } catch (err) {
-      console.error("setDocData error in Vercel:", err);
-    }
-  } else {
-    // Background save (tidak memblokir response ke user) untuk non-serverless
-    connectDB().then(() => {
-      (SystemDataModel as any).findByIdAndUpdate(id, { data }, { upsert: true }).catch((err: any) => console.error("setDocData error:", err));
-    });
-  }
+  // Background save (tidak memblokir response ke user)
+  connectDB().then(() => {
+    SystemDataModel.findByIdAndUpdate(id, { data }, { upsert: true }).catch(() => {});
+  });
 }
 
 // 6. DB Initialization (Optimized)
@@ -219,12 +194,8 @@ export async function addNotification(title: string, message: string, updaterNam
 // 8. API Routes
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: "Username dan password wajib diisi" });
-
   const users = await getUsers();
-  const trimmedUsername = (username || '').trim().toLowerCase();
-  
-  const user = users.find((u: any) => (u.username || '').toLowerCase() === trimmedUsername && u.password === password);
+  const user = users.find((u: any) => u.username === username && u.password === password);
 
   if (user) {
     res.json({ message: "Login berhasil", user });
@@ -263,11 +234,9 @@ app.post("/api/register", async (req, res) => {
   if (!username || !nama || !password) return res.status(400).json({ error: "Username, nama dan password wajib diisi" });
 
   const users = await getUsers();
-  const trimmedUsername = username.trim().toLowerCase();
-  
-  if (users.find((u: any) => (u.username || '').toLowerCase() === trimmedUsername)) return res.status(400).json({ error: "Username sudah terdaftar" });
+  if (users.find((u: any) => u.username === username)) return res.status(400).json({ error: "Username sudah terdaftar" });
 
-  const newUser = { id: Date.now().toString(), username: username.trim(), nama, password, alamat, noHp, status, role: "warga", isApproved: false, umur, members: [] };
+  const newUser = { id: Date.now().toString(), username, nama, password, alamat, noHp, status, role: "warga", isApproved: false, umur, members: [] };
   users.push(newUser);
   await saveUsers(users);
 

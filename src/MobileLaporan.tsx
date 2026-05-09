@@ -2,6 +2,7 @@ import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App';
+import { ConfirmModal } from './ConfirmModal';
 
 export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
   const [data, setData] = useState<any[]>([]);
@@ -34,15 +35,18 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
     }
   };
 
-  const handleDeleteLaporan = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus laporan ini?')) return;
+  const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
+
+  const confirmDelete = async () => {
+    if (!showConfirmDelete) return;
     try {
-      await apiFetch(`/api/data/laporan/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/data/laporan/${showConfirmDelete}`, { method: 'DELETE' });
       fetchData();
     } catch (e) {
       console.error(e);
       alert('Gagal menghapus laporan');
     }
+    setShowConfirmDelete(null);
   };
 
   // Menggunakan useMemo agar filter & reverse tidak dihitung ulang berkali-kali pada tiap render
@@ -137,7 +141,7 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
                         )}
                         {currentUser?.role === 'admin' && (
                           <button 
-                            onClick={() => handleDeleteLaporan(item.id)} 
+                            onClick={() => setShowConfirmDelete(item.id)} 
                             className="w-full sm:w-auto py-2 px-4 text-xs bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-100 active:bg-rose-200 transition-colors"
                           >
                             Hapus
@@ -171,6 +175,14 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!showConfirmDelete}
+        title="Hapus Laporan"
+        message="Apakah Anda yakin ingin menghapus laporan ini? Laporan yang dihapus tidak dapat dilihat lagi."
+        onConfirm={confirmDelete}
+        onCancel={() => setShowConfirmDelete(null)}
+      />
     </motion.div>
   );
 };

@@ -111,7 +111,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
               <motion.form 
                 key="form-tambah"
                 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}
-                onSubmit={handleTambah} 
+                onSubmit={triggerTambah} 
                 className="bg-white p-5 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 space-y-4 relative overflow-hidden"
               >
                 <div className="flex justify-between items-center border-b border-slate-50 pb-3 mb-2">
@@ -201,7 +201,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
                   {/* Tombol Hapus (Admin Only) */}
                   {isAdminOrPengurus && (
                     <button 
-                      onClick={() => handleDelete(item.id)} 
+                      onClick={() => setShowConfirmDelete(item.id)} 
                       className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center bg-rose-50 text-rose-500 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors border border-rose-100 opacity-80 hover:opacity-100"
                       title="Hapus Acara"
                     >
@@ -215,6 +215,21 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
         </AnimatePresence>
       </div>
 
+      <ConfirmModal
+        isOpen={showConfirmSimpan}
+        title="Simpan Data Acara"
+        message="Apakah Anda yakin ingin menyimpan data acara ini?"
+        onConfirm={handleConfirmTambah}
+        onCancel={() => setShowConfirmSimpan(false)}
+      />
+
+      <ConfirmModal
+        isOpen={!!showConfirmDelete}
+        title="Hapus Acara"
+        message="Apakah Anda yakin ingin menghapus data acara ini secara permanen?"
+        onConfirm={confirmDelete}
+        onCancel={() => setShowConfirmDelete(null)}
+      />
     </div>
   );
 };
