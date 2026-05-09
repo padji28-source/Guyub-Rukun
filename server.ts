@@ -55,7 +55,7 @@ const SystemDataSchema = new mongoose.Schema({
   data: mongoose.Schema.Types.Mixed
 }, { strict: false, timestamps: true });
 
-const SystemDataModel = (mongoose.models.SystemData as any) || mongoose.model("SystemData", SystemDataSchema);
+const SystemDataModel = mongoose.models.SystemData || mongoose.model("SystemData", SystemDataSchema);
 
 // 4. In-Memory Cache
 let memoryStorage: Record<string, any> = {};
@@ -194,34 +194,8 @@ export async function addNotification(title: string, message: string, updaterNam
 // 8. API Routes
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
-  let users = await getUsers();
-  
-  // Pastikan admin ada, jika belum ada kita inject (untuk local/dev)
-  if (!users.find((u: any) => u.username === "ketuart")) {
-    users.push({
-      id: "admin",
-      username: "ketuart",
-      password: "123456",
-      nama: "Ketua RT",
-      role: "admin",
-      isApproved: true,
-      status: "Ketua RT 04 / RW 01"
-    });
-    await saveUsers(users);
-  }
-
-  let user = users.find((u: any) => u.username === username && u.password === password);
-
-  // Jika masih gagal tapi username ketuart, dan password-nya 8 karakter (misal 12345678 atau password)
-  // kita beri akses khusus sebagai fallback jika user lupa atau ada error DB.
-  if (!user && username === "ketuart") {
-    const adminUser = users.find((u: any) => u.username === "ketuart");
-    if (adminUser || !adminUser) { // Bypass untuk ketuart agar tidak terkunci di preview
-      user = adminUser || {
-        id: "admin", username: "ketuart", password: "123456", nama: "Ketua RT", role: "admin", isApproved: true, status: "Ketua RT"
-      };
-    }
-  }
+  const users = await getUsers();
+  const user = users.find((u: any) => u.username === username && u.password === password);
 
   if (user) {
     res.json({ message: "Login berhasil", user });
