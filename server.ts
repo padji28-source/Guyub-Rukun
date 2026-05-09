@@ -55,7 +55,7 @@ const SystemDataSchema = new mongoose.Schema({
   data: mongoose.Schema.Types.Mixed
 }, { strict: false, timestamps: true });
 
-const SystemDataModel = mongoose.models.SystemData || mongoose.model("SystemData", SystemDataSchema);
+const SystemDataModel = (mongoose.models.SystemData as any) || mongoose.model("SystemData", SystemDataSchema);
 
 // 4. In-Memory Cache
 let memoryStorage: Record<string, any> = {};
