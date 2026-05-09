@@ -46,19 +46,12 @@ async function connectDB() {
   }
 }
 
-let memoryStorage: Record<string, any> = {};
-
 async function getDocData(id: string) {
-  // 1. Ambil dari cache memori jika ada (tanpa delay)
-  if (memoryStorage[id]) return memoryStorage[id];
-
   if (!isDbConnected) return null;
 
   try {
-    // 2. Jika tidak ada di cache, ambil dari database
     const doc = await SystemDataModel.findById(id);
     if (doc) {
-      memoryStorage[id] = doc.data; // Simpan ke cache
       return doc.data;
     }
     return null;
@@ -69,13 +62,12 @@ async function getDocData(id: string) {
 }
 
 async function setDocData(id: string, data: any) {
-  // 1. Update cache secara instan
-  memoryStorage[id] = data;
-
   if (isDbConnected) {
-    // 2. Simpan ke database di background tanpa await (tidak memblokir request)
-    SystemDataModel.findByIdAndUpdate(id, { data }, { upsert: true })
-      .catch(e => console.error(`Error saving ${id}:`, e));
+    try {
+      await SystemDataModel.findByIdAndUpdate(id, { data }, { upsert: true });
+    } catch (e) {
+      console.error(`Error saving ${id}:`, e);
+    }
   }
 }
 
