@@ -110,8 +110,7 @@ export function Login({ onLogin, onNavRegister }: any) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 w-full max-w-md">
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 w-full max-w-md">
         <CuteMascot isFocusedPassword={isFocusedPassword} />
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-teal-600 mb-2">Login</h1>
@@ -138,8 +137,7 @@ export function Login({ onLogin, onNavRegister }: any) {
           </button>
         </form>
         <p className="mt-6 text-center text-xs text-gray-500">Belum punya akun? <button type="button" onClick={onNavRegister} className="text-teal-600 font-bold hover:underline">Daftar</button></p>
-      </motion.div>
-    </div>
+      </div>
   );
 }
 
@@ -187,8 +185,7 @@ export function Register({ onRegister, onNavLogin }: any) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 py-8">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 w-full max-w-md">
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 w-full max-w-md">
         <CuteMascot isFocusedPassword={isFocusedPassword} />
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-teal-600 mb-2">Daftar Akun</h1>
@@ -256,7 +253,6 @@ export function Register({ onRegister, onNavLogin }: any) {
           </button>
         </form>
         <p className="mt-6 text-center text-xs text-gray-500">Sudah punya akun? <button type="button" onClick={onNavLogin} className="text-teal-600 font-bold hover:underline">Masuk</button></p>
-      </motion.div>
-    </div>
+      </div>
   );
 }

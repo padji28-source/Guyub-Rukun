@@ -2257,34 +2257,48 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
             }}
           />
           <main className="flex-grow p-4 lg:p-8 overflow-y-auto ml-20 lg:ml-[16rem] transition-all duration-300" style={{ backgroundColor: themeColors.neutral.bg }}>
-            {!user.isApproved ? (
-              <div className="flex flex-col items-center justify-center p-12 mt-20 text-center bg-white rounded-2xl shadow-sm border border-gray-100 max-w-lg mx-auto">
-                <icons.dokumen className="w-20 h-20 text-gray-300 mb-6" />
-                <h2 className="text-2xl font-bold text-teal-600 mb-3">Akun Belum Aktif</h2>
-                <p className="text-sm text-gray-500 leading-relaxed mb-8">Akun Anda sedang diverifikasi atau dinonaktifkan oleh Ketua RT. Harap hubungi Ketua RT untuk akses fitur dalam aplikasi.</p>
-                <button onClick={() => window.open(`https://wa.me/`, '_blank')} className="px-8 py-3 bg-teal-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-teal-700 transition">Hubungi Pengurus / RT</button>
-              </div>
-            ) : activeWebTab === 'Dashboard' && (
-              <>
-                <WebStatsCards/>
-                <WebMediaSlider/>
-                <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
-                  <WebDateWidget/>
-                  <WebLaporanTable/>
-                  <WebIuranChart/>
-                </div>
-              </>
-            )}
-            {user.isApproved && activeWebTab === 'Warga' && <WebWargaPage user={user} />}
-            {user.isApproved && activeWebTab === 'Iuran' && <WebIuranPage user={user} />}
-            {user.isApproved && activeWebTab === 'Kas' && <WebKasPage user={user} />}
-            {user.isApproved && activeWebTab === 'Dokumen' && <WebDokumenPage user={user} onUpdateUser={onUpdateUser} />}
-            {user.isApproved && activeWebTab === 'Laporan' && <WebLaporanPage user={user} />}
-            {user.isApproved && activeWebTab === 'Pengumuman' && <WebPengumumanPage user={user} />}
-            {user.isApproved && activeWebTab === 'Media' && <WebMediaPage user={user} />}
-            {user.isApproved && activeWebTab === 'UMKM' && <WebUMKMPage user={user} />}
-            {user.isApproved && activeWebTab === 'Tamu' && <WebTamuPage user={user} />}
-            {user.isApproved && activeWebTab === 'Pengaturan' && <WebPengaturanPage user={user} onLogout={onLogout} />}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeWebTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+                className="w-full h-full"
+              >
+                {!user.isApproved ? (
+                  <div className="flex flex-col items-center justify-center p-12 mt-20 text-center bg-white rounded-2xl shadow-sm border border-gray-100 max-w-lg mx-auto">
+                    <icons.dokumen className="w-20 h-20 text-gray-300 mb-6" />
+                    <h2 className="text-2xl font-bold text-teal-600 mb-3">Akun Belum Aktif</h2>
+                    <p className="text-sm text-gray-500 leading-relaxed mb-8">Akun Anda sedang diverifikasi atau dinonaktifkan oleh Ketua RT. Harap hubungi Ketua RT untuk akses fitur dalam aplikasi.</p>
+                    <button onClick={() => window.open(`https://wa.me/`, '_blank')} className="px-8 py-3 bg-teal-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-teal-700 transition">Hubungi Pengurus / RT</button>
+                  </div>
+                ) : activeWebTab === 'Dashboard' ? (
+                  <>
+                    <WebStatsCards/>
+                    <WebMediaSlider/>
+                    <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
+                      <WebDateWidget/>
+                      <WebLaporanTable/>
+                      <WebIuranChart/>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {user.isApproved && activeWebTab === 'Warga' && <WebWargaPage user={user} />}
+                    {user.isApproved && activeWebTab === 'Iuran' && <WebIuranPage user={user} />}
+                    {user.isApproved && activeWebTab === 'Kas' && <WebKasPage user={user} />}
+                    {user.isApproved && activeWebTab === 'Dokumen' && <WebDokumenPage user={user} onUpdateUser={onUpdateUser} />}
+                    {user.isApproved && activeWebTab === 'Laporan' && <WebLaporanPage user={user} />}
+                    {user.isApproved && activeWebTab === 'Pengumuman' && <WebPengumumanPage user={user} />}
+                    {user.isApproved && activeWebTab === 'Media' && <WebMediaPage user={user} />}
+                    {user.isApproved && activeWebTab === 'UMKM' && <WebUMKMPage user={user} />}
+                    {user.isApproved && activeWebTab === 'Tamu' && <WebTamuPage user={user} />}
+                    {user.isApproved && activeWebTab === 'Pengaturan' && <WebPengaturanPage user={user} onLogout={onLogout} />}
+                  </>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </main>
         </div>
       </div>
@@ -2425,6 +2439,93 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
 
 import { Login, Register } from './Auth';
 
+const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onFinish, 2500); // splash duration
+    return () => clearTimeout(timer);
+  }, [onFinish]);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0, scale: 1.05, filter: "blur(5px)" }}
+      transition={{ duration: 0.8, ease: "easeInOut" }}
+      className="fixed inset-0 bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 z-[9999] flex flex-col items-center justify-center overflow-hidden"
+    >
+      <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-[0.05] rounded-full translate-x-20 -translate-y-20 blur-2xl"></div>
+      <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-300 opacity-20 rounded-full -translate-x-16 translate-y-16 blur-2xl"></div>
+      
+      <motion.div
+        initial={{ y: 30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.8, ease: "easeOut" }}
+        className="w-40 h-40 relative mb-8 rounded-[2rem] overflow-hidden shadow-2xl bg-white/10 backdrop-blur-md p-5 flex items-center justify-center border border-white/20"
+      >
+        <motion.svg 
+          viewBox="0 0 100 100" 
+          className="w-full h-full drop-shadow-xl"
+        >
+          <defs>
+            <linearGradient id="bg_splash" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#14B8A6" />
+              <stop offset="100%" stopColor="#0F766E" />
+            </linearGradient>
+          </defs>
+          <rect width="100" height="100" fill="transparent" />
+          
+          <motion.g animate={{ y: [0, -3, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
+            <circle cx="30" cy="35" r="8" fill="#A5F3FC" />
+            <path d="M15 65 Q30 40 45 65 Z" fill="#A5F3FC" />
+          </motion.g>
+
+          <motion.g animate={{ y: [0, -3, 0] }} transition={{ duration: 2.2, repeat: Infinity, delay: 0.2, ease: "easeInOut" }}>
+            <circle cx="70" cy="35" r="8" fill="#FEF08A" />
+            <path d="M55 65 Q70 40 85 65 Z" fill="#FEF08A" />
+          </motion.g>
+
+          <motion.g animate={{ y: [-1, -4, -1] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} style={{ transformOrigin: '50px 65px' }}>
+            <circle cx="50" cy="28" r="9" fill="#FFFFFF" />
+            <path d="M30 65 C40 30 60 30 70 65 Z" fill="#FFFFFF" />
+          </motion.g>
+
+          <path d="M15 65 L85 65" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
+        </motion.svg>
+      </motion.div>
+
+      <motion.h1 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6, duration: 0.6 }}
+        className="text-3xl font-extrabold text-white tracking-widest text-center"
+      >
+        GUYUB RUKUN
+      </motion.h1>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.9, duration: 0.6 }}
+        className="text-teal-100 text-sm mt-3 font-medium tracking-wide"
+      >
+        Menghubungkan Warga RT.01
+      </motion.p>
+      
+      <motion.div 
+        initial={{ width: 0, opacity: 0 }}
+        animate={{ width: "160px", opacity: 1 }}
+        transition={{ delay: 1.2, duration: 0.8, ease: "easeInOut" }}
+        className="h-1.5 bg-white/20 rounded-full mt-10 overflow-hidden relative"
+      >
+         <motion.div 
+           initial={{ width: 0 }}
+           animate={{ width: "100%" }}
+           transition={{ duration: 2.2, ease: "easeInOut" }}
+           className="absolute top-0 left-0 bottom-0 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"
+         />
+      </motion.div>
+    </motion.div>
+  );
+};
+
 export default function App() {
   const [user, setUser] = useState<any>(() => {
     try {
@@ -2433,6 +2534,7 @@ export default function App() {
     } catch { return null; }
   });
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
+  const [showSplash, setShowSplash] = useState(true);
 
   const handleUpdateUser = (updatedData: any) => {
     const newUser = { ...user, ...updatedData };
@@ -2471,12 +2573,48 @@ export default function App() {
     localStorage.removeItem('auth_user');
   };
 
-  if (!user) {
-    if (authView === 'login') {
-      return <Login onLogin={handleLogin} onNavRegister={() => setAuthView('register')} />;
-    }
-    return <Register onRegister={handleLogin} onNavLogin={() => setAuthView('login')} />;
-  }
-
-  return <MainApp user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />;
+  return (
+    <AnimatePresence mode="wait">
+      {showSplash ? (
+        <SplashScreen key="splash" onFinish={() => setShowSplash(false)} />
+      ) : (
+        !user ? (
+          authView === 'login' ? (
+            <motion.div
+              key="login"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+              className="w-full min-h-screen flex items-center justify-center bg-gray-50 p-4"
+            >
+              <Login onLogin={handleLogin} onNavRegister={() => setAuthView('register')} />
+            </motion.div>
+          ) : (
+             <motion.div
+              key="register"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+              className="w-full min-h-screen flex items-center justify-center bg-gray-50 p-4 py-8"
+            >
+              <Register onRegister={handleLogin} onNavLogin={() => setAuthView('login')} />
+            </motion.div>
+          )
+        ) : (
+          <motion.div
+            key="main"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="w-full min-h-screen"
+          >
+            <MainApp user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
+          </motion.div>
+        )
+      )}
+    </AnimatePresence>
+  );
 }
