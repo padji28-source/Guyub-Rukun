@@ -2452,50 +2452,41 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
       transition={{ duration: 0.8, ease: "easeInOut" }}
       className="fixed inset-0 bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 z-[9999] flex flex-col items-center justify-center overflow-hidden"
     >
-      <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-[0.05] rounded-full translate-x-20 -translate-y-20 blur-2xl"></div>
-      <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-300 opacity-20 rounded-full -translate-x-16 translate-y-16 blur-2xl"></div>
+      {/* Background Abstract Shapes */}
+      <motion.div 
+        animate={{ rotate: 360 }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-white opacity-[0.03] rounded-full blur-3xl pointer-events-none"
+      />
+      <motion.div 
+        animate={{ rotate: -360 }}
+        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        className="absolute bottom-[-10%] left-[-10%] w-80 h-80 bg-emerald-300 opacity-10 rounded-full blur-3xl pointer-events-none"
+      />
       
-      <motion.div
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.8, ease: "easeOut" }}
-        className="w-40 h-40 relative mb-8 rounded-[2rem] overflow-hidden shadow-2xl bg-white/10 backdrop-blur-md p-5 flex items-center justify-center border border-white/20"
-      >
-        <motion.svg 
-          viewBox="0 0 100 100" 
-          className="w-full h-full drop-shadow-xl"
-        >
-          <defs>
-            <linearGradient id="bg_splash" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#14B8A6" />
-              <stop offset="100%" stopColor="#0F766E" />
-            </linearGradient>
-          </defs>
-          <rect width="100" height="100" fill="transparent" />
-          
-          <motion.g animate={{ y: [0, -3, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
-            <circle cx="30" cy="35" r="8" fill="#A5F3FC" />
-            <path d="M15 65 Q30 40 45 65 Z" fill="#A5F3FC" />
-          </motion.g>
-
-          <motion.g animate={{ y: [0, -3, 0] }} transition={{ duration: 2.2, repeat: Infinity, delay: 0.2, ease: "easeInOut" }}>
-            <circle cx="70" cy="35" r="8" fill="#FEF08A" />
-            <path d="M55 65 Q70 40 85 65 Z" fill="#FEF08A" />
-          </motion.g>
-
-          <motion.g animate={{ y: [-1, -4, -1] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} style={{ transformOrigin: '50px 65px' }}>
-            <circle cx="50" cy="28" r="9" fill="#FFFFFF" />
-            <path d="M30 65 C40 30 60 30 70 65 Z" fill="#FFFFFF" />
-          </motion.g>
-
-          <path d="M15 65 L85 65" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
-        </motion.svg>
-      </motion.div>
+      {/* Animated Rings instead of the App Image */}
+      <div className="relative w-32 h-32 mb-10 flex items-center justify-center">
+        <motion.div 
+          animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-0 rounded-full border-4 border-white/20"
+        />
+        <motion.div 
+          animate={{ scale: [1, 1.2, 1], opacity: [0.8, 0, 0.8] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+          className="absolute inset-4 rounded-full border-4 border-white/40"
+        />
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+          className="absolute inset-8 rounded-full border-4 border-t-white border-transparent"
+        />
+      </div>
 
       <motion.h1 
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6, duration: 0.6 }}
+        transition={{ delay: 0.2, duration: 0.6 }}
         className="text-3xl font-extrabold text-white tracking-widest text-center"
       >
         GUYUB RUKUN
@@ -2503,7 +2494,7 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.9, duration: 0.6 }}
+        transition={{ delay: 0.5, duration: 0.6 }}
         className="text-teal-100 text-sm mt-3 font-medium tracking-wide"
       >
         Menghubungkan Warga RT.01
@@ -2512,7 +2503,7 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
       <motion.div 
         initial={{ width: 0, opacity: 0 }}
         animate={{ width: "160px", opacity: 1 }}
-        transition={{ delay: 1.2, duration: 0.8, ease: "easeInOut" }}
+        transition={{ delay: 0.8, duration: 0.8, ease: "easeInOut" }}
         className="h-1.5 bg-white/20 rounded-full mt-10 overflow-hidden relative"
       >
          <motion.div 
