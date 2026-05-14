@@ -8,55 +8,64 @@ const CuteMascot = ({ isFocusedPassword }: { isFocusedPassword?: boolean }) => {
     <div className="w-32 h-32 mx-auto relative mb-4">
       <motion.svg 
         viewBox="0 0 100 100" 
-        className="w-full h-full drop-shadow-md"
+        className="w-full h-full drop-shadow-md rounded-3xl overflow-hidden"
         animate={{
-          y: [0, -10, 0],
-          rotate: isFocusedPassword ? [0, -5, 5, 0] : 0,
+          y: isFocusedPassword ? 0 : [0, -3, 0],
         }}
         transition={{
-          y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
-          rotate: { duration: 0.5, ease: "easeInOut" }
+          y: { duration: 3, repeat: Infinity, ease: "easeInOut" }
         }}
       >
-        <motion.circle 
-          cx="50" cy="50" r="45" 
-          fill="#14B8A6" stroke="#0F766E" strokeWidth="2"
-          animate={{ scale: isFocusedPassword ? 0.95 : 1 }}
-          transition={{ duration: 0.3 }}
-        />
-        <motion.path 
-          d="M50 20 Q60 40, 50 60 Q40 40, 50 20" 
-          fill="#0F766E" 
-          animate={{ 
-            d: isFocusedPassword ? "M50 30 Q60 45, 50 50 Q40 45, 50 30" : "M50 20 Q60 40, 50 60 Q40 40, 50 20"
-          }}
-          transition={{ duration: 0.3 }}
-        />
-        <motion.circle 
-          cx="35" cy="40" r="10" fill="#0F766E"
-          animate={{ 
-            cx: isFocusedPassword ? 40 : 35,
-            cy: isFocusedPassword ? 45 : 40,
-            r: isFocusedPassword ? 0 : 10 
-          }}
-          transition={{ duration: 0.3 }}
-        />
-        <motion.circle 
-          cx="65" cy="40" r="10" fill="#0F766E"
-          animate={{ 
-            cx: isFocusedPassword ? 60 : 65,
-            cy: isFocusedPassword ? 45 : 40,
-            r: isFocusedPassword ? 0 : 10 
-          }}
-          transition={{ duration: 0.3 }}
-        />
-        {/* Closed Eyes when focused */}
-        {isFocusedPassword && (
-          <>
-            <motion.path d="M35 45Q40 40 45 45" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" fill="none" />
-            <motion.path d="M55 45Q60 40 65 45" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" fill="none" />
-          </>
-        )}
+        <defs>
+          <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#14B8A6" />
+            <stop offset="100%" stopColor="#0F766E" />
+          </linearGradient>
+        </defs>
+        <rect width="100" height="100" fill="url(#bg)" />
+        
+        {/* Left person */}
+        <motion.g 
+           animate={{ y: isFocusedPassword ? 2 : 0 }} 
+           transition={{ duration: 0.3 }}
+        >
+          <circle cx="30" cy="35" r="8" fill="#A5F3FC" />
+          <path d="M15 65 Q30 40 45 65 Z" fill="#A5F3FC" />
+        </motion.g>
+
+        {/* Right person */}
+        <motion.g 
+           animate={{ y: isFocusedPassword ? 2 : 0 }} 
+           transition={{ duration: 0.3 }}
+        >
+          <circle cx="70" cy="35" r="8" fill="#FEF08A" />
+          <path d="M55 65 Q70 40 85 65 Z" fill="#FEF08A" />
+        </motion.g>
+
+        {/* Center person */}
+        <motion.g 
+           animate={{ y: isFocusedPassword ? 5 : 0, scale: isFocusedPassword ? 0.95 : 1 }} 
+           style={{ transformOrigin: '50px 65px' }}
+           transition={{ duration: 0.3 }}
+        >
+          <circle cx="50" cy="28" r="9" fill="#FFFFFF" />
+          <path d="M30 65 C40 30 60 30 70 65 Z" fill="#FFFFFF" />
+          
+          {/* Eyes for center person to make it cute when typing password */}
+          <motion.circle cx="47" cy="26" r="1.5" fill="#0F766E" animate={{ scaleY: isFocusedPassword ? 0 : 1 }} />
+          <motion.circle cx="53" cy="26" r="1.5" fill="#0F766E" animate={{ scaleY: isFocusedPassword ? 0 : 1 }} />
+          <motion.path 
+             d={isFocusedPassword ? "M45 28 Q50 26 55 28" : "M48 30 Q50 32 52 30"} 
+             stroke="#0F766E" strokeWidth="1" fill="none" strokeLinecap="round" 
+          />
+        </motion.g>
+
+        {/* Ground line */}
+        <path d="M15 65 L85 65" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
+
+        {/* Text */}
+        <text x="50" y="85" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="11" fill="#FFFFFF" textAnchor="middle" letterSpacing="0.5">GUYUB RUKUN</text>
+        
       </motion.svg>
       {/* Sparkles */}
       {!isFocusedPassword && (
