@@ -237,7 +237,7 @@ const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange
 );
 
 // --- 1. UPDATE: WebHeader ---
-const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNotifications, onNotificationClick }: { user?: any; onLogout?: () => void; onUpdateUser?: (data: any) => void; notifications?: any[]; onShowNotifications?: () => void; onNotificationClick?: (n: any) => void; }) => {
+const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNotifications, onNotificationClick, onOpenBroadcast }: { user?: any; onLogout?: () => void; onUpdateUser?: (data: any) => void; notifications?: any[]; onShowNotifications?: () => void; onNotificationClick?: (n: any) => void; onOpenBroadcast?: () => void; }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   
@@ -289,7 +289,12 @@ const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNot
                   >
                     <div className="p-4 border-b border-gray-100 bg-white/50 flex justify-between items-center">
                       <h4 className="font-extrabold text-gray-800 text-sm">Notifikasi</h4>
-                      {unreadCount > 0 && <span className="text-[10px] uppercase font-bold text-teal-700 bg-teal-100 px-2.5 py-1 rounded-full shadow-sm">{unreadCount} Baru</span>}
+                      <div className="flex items-center gap-2">
+                        {user?.role === 'admin' && (
+                           <button onClick={(e) => { e.stopPropagation(); setShowNotifications(false); onOpenBroadcast?.(); }} className="text-[10px] uppercase font-bold text-white bg-teal-600 hover:bg-teal-700 px-2.5 py-1 rounded-full shadow-sm">Kirim Broadcast</button>
+                        )}
+                        {unreadCount > 0 && <span className="text-[10px] uppercase font-bold text-teal-700 bg-teal-100 px-2.5 py-1 rounded-full shadow-sm">{unreadCount} Baru</span>}
+                      </div>
                     </div>
                     <div className="max-h-80 overflow-y-auto no-scrollbar">
                       {notifications.length > 0 ? notifications.map((n, i) => (
@@ -2083,11 +2088,83 @@ const MobileSedekah = ({ onBack, user }: { onBack: () => void; user?: any }) => 
   );
 };
 
+const BroadcastModalView = ({ onClose, onSuccess, user }: { onClose: () => void, onSuccess: () => void, user: any }) => {
+  const [title, setTitle] = useState('');
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim()) return alert("Pesan tidak boleh kosong");
+    setLoading(true);
+    try {
+       const res = await apiFetch('/api/broadcast', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ title, message, updaterName: user?.nama || 'Admin' })
+       });
+       if(res.ok) {
+         onSuccess();
+         onClose();
+       } else {
+         alert("Gagal mengirim pesan broadcast.");
+       }
+    } catch(e) { console.error(e); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+       <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 font-bold bg-gray-50 p-2 rounded-full hover:bg-gray-100">X</button>
+       <h2 className="text-xl font-extrabold text-gray-800 mb-2">Kirim Broadcast</h2>
+       <p className="text-xs text-gray-500 mb-5">Pesan ini akan dikirimkan sebagai Notifikasi ke seluruh warga yang terdaftar.</p>
+       
+       <form onSubmit={handleSend} className="space-y-4">
+         <div>
+            <label className="text-sm font-bold text-gray-700 block mb-1">Judul Pengumuman</label>
+            <input 
+              type="text" 
+              placeholder="Contoh: Info Kerja Bakti"
+              value={title} 
+              onChange={e => setTitle(e.target.value)} 
+              required
+              className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none"
+            />
+         </div>
+         <div>
+            <label className="text-sm font-bold text-gray-700 block mb-1">Isi Pesan</label>
+            <textarea 
+              rows={4} 
+              placeholder="Tulis pesan pengumuman..."
+              value={message} 
+              onChange={e => setMessage(e.target.value)} 
+              required
+              className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none"
+            />
+         </div>
+         <button 
+           type="submit" 
+           disabled={loading}
+           className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow-md transition-all flex justify-center items-center gap-2"
+         >
+           {loading ? 'Mengirim...' : (
+             <>
+               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+               Kirim Pesan ke Semua Warga
+             </>
+           )}
+         </button>
+       </form>
+    </div>
+  );
+};
+
 // --- Main Combined View ---
 function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => void; onUpdateUser: (updatedData: any) => void }) {
   const [activeWebTab, setActiveWebTab] = useState('Dashboard');
   const [activeMobileTab, setActiveMobileTab] = useState('Beranda');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const prevNotifIds = React.useRef<Set<string>>(new Set());
@@ -2169,6 +2246,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
             onUpdateUser={onUpdateUser} 
             notifications={notifications} 
             onShowNotifications={handleShowNotifications} 
+            onOpenBroadcast={() => setShowBroadcastModal(true)}
             onNotificationClick={(n) => {
                alert(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
                if (n.resource) {
@@ -2281,12 +2359,16 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
         </div>
         <MobileBottomNav activeTab={activeMobileTab} onTabChange={setActiveMobileTab} />
         
-        {/* Notifications Modal Overlay */}
         {showNotifications && (
           <div className="absolute inset-0 bg-black/50 z-50 flex justify-end flex-col">
             <div className="bg-white rounded-t-3xl min-h-[50%] max-h-[80%] flex flex-col">
                <div className="flex justify-between items-center p-5 border-b border-gray-100">
-                  <h3 className="font-bold text-gray-800">Notifikasi</h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-bold text-gray-800">Notifikasi</h3>
+                    {user?.role === 'admin' && (
+                       <button onClick={() => { setShowNotifications(false); setShowBroadcastModal(true); }} className="text-[10px] uppercase font-bold text-white bg-teal-600 hover:bg-teal-700 px-2.5 py-1 rounded-full shadow-sm">Kirim Broadcast</button>
+                    )}
+                  </div>
                   <button onClick={() => setShowNotifications(false)} className="text-gray-400 font-bold p-2 bg-gray-50 rounded-full">X</button>
                </div>
                <div className="overflow-y-auto p-4 space-y-3 pb-8">
@@ -2323,6 +2405,19 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
           </div>
         )}
       </div>
+      )}
+
+      {showBroadcastModal && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+           <BroadcastModalView 
+              user={user} 
+              onClose={() => setShowBroadcastModal(false)} 
+              onSuccess={() => {
+                 fetchNotifications();
+                 alert("Broadcast berhasil dikirim ke semua warga!");
+              }} 
+           />
+        </div>
       )}
     </div>
   );

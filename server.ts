@@ -471,6 +471,13 @@ app.post("/api/transactions", async (req, res) => {
   res.json({ success: true, message: "Transaksi berhasil dan notifikasi dikirim" });
 });
 
+app.post("/api/broadcast", async (req, res) => {
+  const { title, message, updaterName } = req.body;
+  if (!message) return res.status(400).json({ error: "Pesan tidak boleh kosong" });
+  await addNotification(title || "📢 Pengumuman RT", message, updaterName || 'Admin', "broadcast");
+  res.json({ success: true, message: "Pesan broadcast berhasil dikirim ke semua warga" });
+});
+
 app.get("/api/data/:resource", async (req, res) => {
   const data = await getAppData();
   const resource = req.params.resource;
