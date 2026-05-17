@@ -162,17 +162,34 @@ export const icons = {
 // --- Logo Komunitas Modern ---
 // Menggunakan desain gradien yang elegan dan bentuk rumah/orang abstrak bersatu
 const LogoCommunityIcon = ({ size = '32', colorAccent = themeColors.accent, colorPrimary = themeColors.primary }) => (
-  <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="48" height="48" rx="14" fill="url(#logo-gradient)" />
-    <path d="M24 12L10 24V36C10 37.1046 10.8954 38 12 38H36C37.1046 38 38 37.1046 38 36V24L24 12Z" fill="white" fillOpacity="0.1" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M18 38V26C18 24.3431 19.3431 23 21 23H27C28.6569 23 30 24.3431 30 26V38" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <circle cx="24" cy="18" r="3.5" fill="white" />
+  <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="logo-gradient" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-        <stop stopColor={colorPrimary} />
-        <stop offset="1" stopColor="#0F766E" /> {/* Warna hijau tua estetik */}
+      <linearGradient id="logo-bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#14B8A6" />
+        <stop offset="100%" stopColor="#0F766E" />
       </linearGradient>
     </defs>
+    <rect width="100" height="100" rx="20" fill="url(#logo-bg-gradient)" />
+    
+    <g id="people">
+      {/* Left person */}
+      <circle cx="30" cy="35" r="8" fill="#A5F3FC" />
+      <path d="M15 65 Q30 40 45 65 Z" fill="#A5F3FC" />
+
+      {/* Right person */}
+      <circle cx="70" cy="35" r="8" fill="#FEF08A" />
+      <path d="M55 65 Q70 40 85 65 Z" fill="#FEF08A" />
+
+      {/* Center person */}
+      <circle cx="50" cy="28" r="9" fill="#FFFFFF" />
+      <path d="M30 65 C40 30 60 30 70 65 Z" fill="#FFFFFF" />
+
+      {/* Ground line */}
+      <path d="M15 65 L85 65" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
+    </g>
+
+    {/* Text */}
+    <text x="50" y="85" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="11" fill="#FFFFFF" textAnchor="middle" letterSpacing="0.5">GUYUB RUKUN</text>
   </svg>
 );
 
@@ -187,7 +204,7 @@ const mobileEventsData = [
 ];
 
 const themeColors = {
-  primary: '#1A866A', // Teal green
+  primary: '#14B8A6', // Teal 500 matching new logo
   accent: '#FBCFCA',  // Soft pink-orange
   neutral: {
     bg: '#F9FAFB',
@@ -2185,7 +2202,24 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
       if ("Notification" in window && Notification.permission === "granted" && !isInitialLoad.current) {
         newNotifs.forEach((n: any) => {
           if (!n.read && !prevNotifIds.current.has(n.id)) {
-             new Notification(n.title, { body: n.message });
+             const title = n.title || 'Guyub Rukun';
+             const options = {
+                 body: n.message,
+                 icon: '/icon-192.png',
+                 badge: '/icon-192.png',
+                 vibrate: [200, 100, 200]
+             };
+             
+             if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then(registration => {
+                   registration.showNotification(title, options);
+                }).catch(() => {
+                   new Notification(title, options);
+                });
+             } else {
+                new Notification(title, options);
+             }
+
              try {
                 const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
                 audio.play().catch(e => console.log('Autoplay blocked:', e));
@@ -2489,6 +2523,8 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
           </motion.g>
 
           <path d="M15 65 L85 65" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
+          
+          <text x="50" y="85" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="11" fill="#FFFFFF" textAnchor="middle" letterSpacing="0.5">GUYUB RUKUN</text>
         </motion.svg>
       </motion.div>
 
