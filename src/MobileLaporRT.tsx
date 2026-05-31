@@ -22,36 +22,51 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
   const handleSubmitKeluhan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!window.confirm("Apakah Anda yakin ingin mengirim laporan ini?")) return;
-    setLoading(true);
     setSuccessMsg('');
+    const tempJudul = judul;
+    const tempKet = keterangan;
+    
+    setJudul('');
+    setKeterangan('');
+    setSuccessMsg('Mengirim...');
+    
     try {
       await apiFetch('/api/data/laporan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          judul,
-          keterangan,
+          judul: tempJudul,
+          keterangan: tempKet,
           status: 'Pending',
           userId: currentUser?.id,
           userName: currentUser?.nama
         })
       });
-      setJudul('');
-      setKeterangan('');
       setSuccessMsg('Laporan Keluhan berhasil dikirim!');
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch(e) { 
       console.error(e); 
-      alert('Gagal mengirim keluhan');
+      setJudul(tempJudul);
+      setKeterangan(tempKet);
+      setSuccessMsg('Gagal mengirim keluhan');
+      setTimeout(() => setSuccessMsg(''), 3000);
     }
-    setLoading(false);
   };
 
   const handleSubmitTamu = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!window.confirm("Apakah Anda yakin ingin mengirim laporan tamu ini?")) return;
-    setLoading(true);
     setSuccessMsg('');
+    
+    const tempKeluarga = hubunganTamu;
+    const tempJumlah = jumlahTamu;
+    const tempWaktu = waktuMenginap;
+
+    setHubunganTamu('');
+    setJumlahTamu('');
+    setWaktuMenginap('');
+    setSuccessMsg('Mengirim...');
+
     try {
       await apiFetch('/api/data/tamu', {
         method: 'POST',
@@ -59,23 +74,23 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
         body: JSON.stringify({
           namaPelapor: currentUser?.nama,
           alamatPelapor: currentUser?.alamat,
-          hubunganTamu,
-          jumlahTamu,
-          waktuMenginap,
+          hubunganTamu: tempKeluarga,
+          jumlahTamu: tempJumlah,
+          waktuMenginap: tempWaktu,
           status: 'Dilaporkan',
           userId: currentUser?.id
         })
       });
-      setHubunganTamu('');
-      setJumlahTamu('');
-      setWaktuMenginap('');
       setSuccessMsg('Laporan Tamu berhasil dikirim!');
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch(e) { 
       console.error(e); 
-      alert('Gagal mengirim laporan tamu');
+      setHubunganTamu(tempKeluarga);
+      setJumlahTamu(tempJumlah);
+      setWaktuMenginap(tempWaktu);
+      setSuccessMsg('Gagal mengirim laporan tamu');
+      setTimeout(() => setSuccessMsg(''), 3000);
     }
-    setLoading(false);
   };
 
   // Helper untuk rendering tab button agar rapi

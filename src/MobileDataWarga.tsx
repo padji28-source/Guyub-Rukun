@@ -14,8 +14,10 @@ const icons = {
   sparkles: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4M4 19h4m13-4v4m-2-2h4m-5-9V5m-2 2h4M9 12a3 3 0 116 0 3 3 0 01-6 0z" /></svg>
 };
 
+let cachedDataWarga: any[] | null = null;
+
 export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
-  const [wargaData, setWargaData] = useState<any[]>([]);
+  const [wargaData, setWargaData] = useState<any[]>(cachedDataWarga || []);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Forms states
@@ -50,7 +52,8 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
     try {
       const res = await apiFetch('/api/warga');
       const data = await res.json();
-      setWargaData(data.users || []);
+      cachedDataWarga = data.users || [];
+      setWargaData(cachedDataWarga!);
     } catch(e) { console.error(e); }
   };
 

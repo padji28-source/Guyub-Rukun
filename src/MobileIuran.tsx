@@ -13,14 +13,17 @@ const Icons = {
   upload: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
 };
 
+let cachedIuranData: any[] | null = null;
+let cachedWargaIuranData: any[] | null = null;
+
 export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any[]>(cachedIuranData || []);
+  const [loading, setLoading] = useState(!cachedIuranData);
   const [nominal, setNominal] = useState(currentUser?.role === 'admin' ? '65000' : '85000');
   const [bulan, setBulan] = useState('Januari');
   const [tahun, setTahun] = useState(new Date().getFullYear().toString());
   const [jenisIuran, setJenisIuran] = useState('Iuran Wajib');
-  const [wargaList, setWargaList] = useState<any[]>([]);
+  const [wargaList, setWargaList] = useState<any[]>(cachedWargaIuranData || []);
   const [filterStatus, setFilterStatus] = useState('Semua');
   const [showTambahIuran, setShowTambahIuran] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,17 +57,20 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     try {
       const res = await apiFetch('/api/data/iuran');
       const json = await res.json();
-      setData(json.data || []);
+      cachedIuranData = json.data || [];
+      setData(cachedIuranData!);
       
       if (isAdminOrBendahara) {
         const resWarga = await apiFetch('/api/warga');
         const jsonWarga = await resWarga.json();
-        setWargaList(jsonWarga.users || []);
-        if (jsonWarga.users?.length > 0) {
+        cachedWargaIuranData = jsonWarga.users || [];
+        setWargaList(cachedWargaIuranData!);
+        if (jsonWarga.users?.length > 0 && !adminSelectedUserId) {
           setAdminSelectedUserId(jsonWarga.users[0].id);
         }
       }
     } catch(e) { console.error(e); }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -106,11 +112,34 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
       alert('Harap unggah bukti pembayaran terlebih dahulu.');
       return;
     }
-    setLoading(true);
+    
+    // Optimistic Update
     const period = `${bulan} ${tahun}`;
     // Cek tagihan yang belum dibayar di periode dan jenis yang sama
     const existing = tagihanList.find(t => t.bulan === period && (t.jenis || 'Iuran Wajib') === jenisIuran);
-
+    
+    const tempId = existing ? existing.id : 'temp-bayar-' + Date.now();
+    const newDataRow = {
+       id: tempId,
+       nominal: nominal,
+       bulan: period,
+       jenis: jenisIuran,
+       status: 'menunggu',
+       userId: currentUser?.id,
+       nama: currentUser?.nama,
+       buktiUrl: buktiBase64,
+       date: new Date().toISOString()
+    };
+    
+    if (existing) {
+       setData(prev => prev.map(item => item.id === existing.id ? { ...item, ...newDataRow } : item));
+    } else {
+       setData(prev => [newDataRow, ...prev]);
+    }
+    
+    setShowBayarForm(false);
+    setBuktiBase64('');
+    
     try {
       if (existing) {
         await apiFetch(`/api/data/iuran/${existing.id}`, {
@@ -125,12 +154,8 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
           body: JSON.stringify({ nominal, bulan: period, jenis: jenisIuran, status: 'menunggu', userId: currentUser?.id, nama: currentUser?.nama, buktiUrl: buktiBase64 })
         });
       }
-      alert('✅ Pembayaran iuran berhasil dicatat! Menunggu verifikasi pengurus.');
-      setShowBayarForm(false);
-      setBuktiBase64('');
       fetchData();
-    } catch(e) { console.error(e) }
-    setLoading(false);
+    } catch(e) { console.error(e); fetchData(); }
   };
 
   const handleTambahAdmin = async (e: React.FormEvent) => {
@@ -138,14 +163,28 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     if (!window.confirm("Simpan data iuran warga?")) return;
     if (!adminSelectedUserId) return;
     
-    setLoading(true);
+    const targetUsers = adminSelectedUserId === 'all' 
+      ? wargaList 
+      : [wargaList.find(w => w.id === adminSelectedUserId)].filter(Boolean);
+
+    const period = `${bulan} ${tahun}`;
+    
+    // Optimistic array building
+    const tempRows = targetUsers.map((u, idx) => ({
+      id: 'temp-iuran-' + Date.now() + '-' + idx,
+      nominal: adminSelectedUserId === 'all' ? (u.role === 'admin' ? '65000' : '85000') : nominal,
+      bulan: period,
+      jenis: jenisIuran,
+      status: adminStatus,
+      userId: u.id,
+      nama: u.nama,
+      date: new Date().toISOString()
+    }));
+    
+    setData(prev => [...tempRows, ...prev]);
+    setShowTambahIuran(false);
+    
     try {
-      const targetUsers = adminSelectedUserId === 'all' 
-        ? wargaList 
-        : [wargaList.find(w => w.id === adminSelectedUserId)].filter(Boolean);
-
-      const period = `${bulan} ${tahun}`;
-
       for (const selectedUser of targetUsers) {
         const userNominal = selectedUser.role === 'admin' ? '65000' : '85000';
         await apiFetch('/api/data/iuran', {
@@ -161,12 +200,8 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
           })
         });
       }
-
-      alert('✨ Data iuran berhasil ditambahkan.');
-      setShowTambahIuran(false);
       fetchData();
-    } catch(e) { console.error(e) }
-    setLoading(false);
+    } catch(e) { console.error(e); fetchData(); }
   };
 
   const [showConfirmVerify, setShowConfirmVerify] = useState<{id: string, status: string} | null>(null);
@@ -176,6 +211,8 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   };
 
   const updateStatus = async (id: string, newStatus: string) => {
+    // Optimistic update status
+    setData(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
     try {
       await apiFetch(`/api/data/iuran/${id}`, {
         method: 'PUT',
@@ -183,7 +220,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
         body: JSON.stringify({ status: newStatus, updaterName: currentUser?.nama })
       });
       fetchData();
-    } catch(e) { console.error(e) }
+    } catch(e) { console.error(e); fetchData(); }
   };
 
   const confirmVerify = async () => {
@@ -197,11 +234,16 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   const handleDeleteClick = (id: string) => setShowConfirmDelete(id);
   const confirmDelete = async () => {
     if (!showConfirmDelete) return;
-    try {
-      await apiFetch(`/api/data/iuran/${showConfirmDelete}`, { method: 'DELETE' });
-      fetchData();
-    } catch(e) { console.error(e) }
+    const deletedId = showConfirmDelete;
+    
+    // Optimistic delete
+    setData(prev => prev.filter(item => item.id !== deletedId));
     setShowConfirmDelete(null);
+    
+    try {
+      await apiFetch(`/api/data/iuran/${deletedId}`, { method: 'DELETE' });
+      fetchData();
+    } catch(e) { console.error(e); fetchData(); }
   };
   const cancelDelete = () => setShowConfirmDelete(null);
 

@@ -13,9 +13,11 @@ const Icons = {
   delete: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
 };
 
+let cachedKasData: any[] | null = null;
+
 export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any[]>(cachedKasData || []);
+  const [loading, setLoading] = useState(!cachedKasData);
   const [type, setType] = useState('Masuk');
   const [category, setCategory] = useState('Kas RT');
   const [amount, setAmount] = useState('');
@@ -29,8 +31,10 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
     try {
       const res = await apiFetch('/api/data/kas');
       const json = await res.json();
-      setData(json.data || []);
+      cachedKasData = json.data || [];
+      setData(cachedKasData!);
     } catch(e) { console.error(e); }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -40,7 +44,24 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
   const handleTambah = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!window.confirm("Apakah Anda yakin ingin menyimpan data ini?")) return;
-    setLoading(true);
+    
+    // Optimistic Update
+    const nominal = parseInt(amount.replace(/\D/g, '') || '0');
+    const tempId = 'temp-' + Date.now();
+    const newEntry = {
+      id: tempId,
+      type,
+      category,
+      amount: nominal,
+      message,
+      name: currentUser?.nama,
+      date: new Date().toISOString()
+    };
+    
+    setData(prev => [newEntry, ...prev]);
+    setAmount('');
+    setMessage('');
+
     try {
       await apiFetch('/api/data/kas', {
         method: 'POST',
@@ -48,17 +69,19 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
         body: JSON.stringify({ 
           type, 
           category,
-          amount: parseInt(amount.replace(/\D/g, '') || '0'), 
+          amount: nominal, 
           message,
           name: currentUser?.nama
         })
       });
-      setAmount('');
-      setMessage('');
-      alert('✅ Kas berhasil dicatat!');
+      // Fetch quietly in background to get real ID
       fetchData();
-    } catch(e) { console.error(e) }
-    setLoading(false);
+    } catch(e) { 
+      console.error(e);
+      // Revert if error
+      setData(prev => prev.filter(item => item.id !== tempId));
+      fetchData();
+    }
   };
 
   const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
@@ -68,11 +91,19 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
 
   const confirmDelete = async () => {
     if (!showConfirmDelete) return;
-    try {
-      await apiFetch(`/api/data/kas/${showConfirmDelete}`, { method: 'DELETE' });
-      fetchData();
-    } catch(e) { console.error(e) }
+    const deletedId = showConfirmDelete;
+    
+    // Optimistic delete
+    setData(prev => prev.filter(item => item.id !== deletedId));
     setShowConfirmDelete(null);
+
+    try {
+      await apiFetch(`/api/data/kas/${deletedId}`, { method: 'DELETE' });
+      fetchData();
+    } catch(e) { 
+      console.error(e); 
+      fetchData(); 
+    }
   };
 
   const getSaldo = (cat: string) => {
@@ -85,19 +116,28 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
   const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!window.confirm("Apakah Anda yakin ingin mentransfer dana ini?")) return;
-    setLoading(true);
+    
     const nominal = parseInt(transferAmount.replace(/\D/g, '') || '0');
     if (nominal <= 0) {
       alert("Nominal transfer tidak valid.");
-      setLoading(false);
       return;
     }
     if (nominal > getSaldo('Kas RT')) {
       alert("Saldo Kas RT tidak mencukupi.");
-      setLoading(false);
       return;
     }
     
+    // Optimistic Update
+    const tempId1 = 'temp-out-' + Date.now();
+    const tempId2 = 'temp-in-' + Date.now();
+    
+    const entryOut = { id: tempId1, type: 'Keluar', category: 'Kas RT', amount: nominal, message: 'Transfer ke Dana Sosial', name: currentUser?.nama, date: new Date().toISOString() };
+    const entryIn = { id: tempId2, type: 'Masuk', category: 'Dana Sosial', amount: nominal, message: 'Transfer dari Kas RT', name: currentUser?.nama, date: new Date().toISOString() };
+    
+    setData(prev => [entryOut, entryIn, ...prev]);
+    setTransferAmount('');
+    setShowTransfer(false);
+
     try {
       await apiFetch('/api/data/kas', {
         method: 'POST',
@@ -109,12 +149,13 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'Masuk', category: 'Dana Sosial', amount: nominal, message: 'Transfer dari Kas RT', name: currentUser?.nama })
       });
-      setTransferAmount('');
-      setShowTransfer(false);
-      alert('💸 Transfer antar dana berhasil!');
       fetchData();
-    } catch(e) { console.error(e) }
-    setLoading(false);
+    } catch(e) { 
+      console.error(e);
+      // Revert if error
+      setData(prev => prev.filter(item => item.id !== tempId1 && item.id !== tempId2));
+      fetchData();
+    }
   };
 
   const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });

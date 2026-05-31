@@ -1,9 +1,11 @@
 import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 
+let cachedUMKMData: any[] | null = null;
+
 export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any[]>(cachedUMKMData || []);
+  const [loading, setLoading] = useState(!cachedUMKMData);
   const [nama, setNama] = useState('');
   const [desc, setDesc] = useState('');
   const [kontak, setKontak] = useState('');
@@ -15,10 +17,12 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
     try {
       const res = await apiFetch('/api/data/umkm');
       const json = await res.json();
-      setData(json.data || []);
+      cachedUMKMData = json.data || [];
+      setData(cachedUMKMData!);
     } catch (e) {
       console.error(e);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -28,33 +32,46 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
   const handleTambah = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!window.confirm('Apakah Anda yakin ingin menyimpan data UMKM ini?')) return;
-    setLoading(true);
+    
+    const tempId = 'temp-umkm-' + Date.now();
+    const newData = {
+       id: tempId,
+       nama,
+       desc,
+       kontak,
+       date: new Date().toISOString()
+    };
+    
+    setData(prev => [newData, ...prev]);
+    setNama('');
+    setDesc('');
+    setKontak('');
+    setShowTambahUMKM(false);
+
     try {
       await apiFetch('/api/data/umkm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nama, desc, kontak }),
       });
-      setNama('');
-      setDesc('');
-      setKontak('');
-      setShowTambahUMKM(false);
-      alert('Data UMKM berhasil ditambah!');
       fetchData();
     } catch (e) {
       console.error(e);
+      fetchData();
     }
-    setLoading(false);
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus data UMKM ini?')) return;
+    
+    setData(prev => prev.filter(item => item.id !== id));
+    
     try {
       await apiFetch(`/api/data/umkm/${id}`, { method: 'DELETE' });
-      alert('Data UMKM berhasil dihapus!');
       fetchData();
     } catch (e) {
       console.error(e);
+      fetchData();
     }
   };
 

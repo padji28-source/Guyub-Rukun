@@ -3,11 +3,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App'; // Sesuaikan path jika berbeda
 
+let cachedSuratData: any[] | null = null;
+
 export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<any[]>(cachedSuratData || []);
   const [keperluan, setKeperluan] = useState('');
   const [keterangan, setKeterangan] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!cachedSuratData);
   const [showForm, setShowForm] = useState(false);
 
   const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
@@ -16,10 +18,12 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
     try {
       const res = await apiFetch('/api/data/surat');
       const json = await res.json();
-      setData(json.data || []);
+      cachedSuratData = json.data || [];
+      setData(cachedSuratData!);
     } catch(e) { 
       console.error(e); 
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -29,32 +33,45 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!window.confirm("Apakah Anda yakin ingin mengajukan surat pengantar ini?")) return;
-    setLoading(true);
+    
+    // Optimistic Update
+    const tempId = 'temp-surat-' + Date.now();
+    const newSurat = {
+      id: tempId,
+      keperluan,
+      keterangan,
+      status: 'pending',
+      userId: currentUser?.id,
+      userName: currentUser?.nama,
+      date: new Date().toISOString()
+    };
+    
+    setData(prev => [...prev, newSurat]);
+    setKeperluan('');
+    setKeterangan('');
+    setShowForm(false);
+    
     try {
       await apiFetch('/api/data/surat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          keperluan,
-          keterangan,
+          keperluan: newSurat.keperluan,
+          keterangan: newSurat.keterangan,
           status: 'pending',
           userId: currentUser?.id,
           userName: currentUser?.nama
         })
       });
-      setKeperluan('');
-      setKeterangan('');
-      setShowForm(false); // Tutup form setelah berhasil
-      alert('Surat berhasil diajukan');
       fetchData();
     } catch(e) { 
       console.error(e); 
-      alert('Gagal mengajukan surat');
+      fetchData();
     }
-    setLoading(false);
   };
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
+    setData(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
     try {
       await apiFetch(`/api/data/surat/${id}`, {
         method: 'PUT',
@@ -64,6 +81,7 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
       fetchData();
     } catch(e) { 
       console.error(e); 
+      fetchData();
     }
   };
 

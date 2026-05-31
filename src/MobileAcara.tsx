@@ -11,9 +11,11 @@ const EventIcons = {
   document: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
 };
 
+let cachedAcaraData: any[] | null = null;
+
 export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any[]>(cachedAcaraData || []);
+  const [loading, setLoading] = useState(!cachedAcaraData);
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
@@ -27,8 +29,10 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
       const json = await res.json();
       // Mengurutkan acara berdasarkan tanggal terbaru
       const sortedEvents = (json.data || []).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setData(sortedEvents);
+      cachedAcaraData = sortedEvents;
+      setData(cachedAcaraData!);
     } catch(e) { console.error(e); }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -38,27 +42,38 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
   const handleTambah = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!window.confirm("Apakah Anda yakin ingin menyimpan data ini?")) return;
-    setLoading(true);
+    
+    // Optimistic Update
+    const tempId = 'temp-acara-' + Date.now();
+    const newAcara = { id: tempId, title, desc, date };
+    
+    setTitle(''); setDesc(''); setDate('');
+    setShowForm(false);
+    
+    setData(prev => {
+      const updated = [newAcara, ...prev];
+      return updated.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    });
+    
     try {
       await apiFetch('/api/data/acara', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, desc, date })
       });
-      setTitle(''); setDesc(''); setDate('');
-      setShowForm(false);
-      alert('🎉 Acara berhasil ditambahkan!');
       fetchData();
-    } catch(e) { console.error(e); }
-    setLoading(false);
+    } catch(e) { console.error(e); fetchData(); }
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Hapus data acara ini secara permanen?")) return;
+    
+    setData(prev => prev.filter(item => item.id !== id));
+    
     try {
       await apiFetch(`/api/data/acara/${id}`, { method: 'DELETE' });
       fetchData();
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error(e); fetchData(); }
   };
 
   return (
