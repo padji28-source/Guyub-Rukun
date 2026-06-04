@@ -1225,33 +1225,40 @@ const MobileQuickActions = ({ onActionClick }: { onActionClick: (action: string)
 };
 
 // --- UPDATE: MobileEvents (Widget Beranda) ---
+let cachedMediaList: any[] | null = null;
+let cachedBackendEvents: any[] | null = null;
+
 const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => void }) => {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState<number | null>(today.getDate());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const [mediaList, setMediaList] = useState<any[]>([]);
+  const [mediaList, setMediaList] = useState<any[]>(cachedMediaList || []);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
-  const [backendEvents, setBackendEvents] = useState<any[]>([]);
-  const [loadingMedia, setLoadingMedia] = useState(true);
+  const [backendEvents, setBackendEvents] = useState<any[]>(cachedBackendEvents || []);
+  const [loadingMedia, setLoadingMedia] = useState(!cachedMediaList);
 
   useEffect(() => {
-    setLoadingMedia(true);
+    setLoadingMedia(!cachedMediaList);
     apiFetch('/api/data/media').then(r => r.json()).then(json => {
+      let list = [];
       if (json.data && json.data.length > 0) {
-        setMediaList(json.data.slice(-5).reverse());
+        list = json.data.slice(-5).reverse();
       } else {
-        setMediaList([{
+        list = [{
           imageUrl: "https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=600&q=80",
           title: "Kerja Bakti Sambut Ramadhan",
           uploaderName: "Admin RT",
           desc: "Keseruan warga RT 01 bergotong royong."
-        }]);
+        }];
       }
+      cachedMediaList = list;
+      setMediaList(list);
     }).catch(console.error).finally(() => setLoadingMedia(false));
 
     apiFetch('/api/data/acara').then(r => r.json()).then(json => {
-      setBackendEvents(json.data || []);
+      cachedBackendEvents = json.data || [];
+      setBackendEvents(cachedBackendEvents);
     }).catch(console.error);
   }, []);
 
@@ -1538,14 +1545,16 @@ const quickActions = [
   { name: 'Tamu', icon: icons.warga, color: 'from-sky-400 to-indigo-500', shadow: 'shadow-sky-200' },
 ];
 
+let cachedSaldoResult: any = null;
+
 const MobileSaldoCard = () => {
-  const [saldo, setSaldo] = useState(0);
-  const [danaKematian, setDanaKematian] = useState(0);
-  const [danaSosial, setDanaSosial] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [saldo, setSaldo] = useState(cachedSaldoResult?.saldo || 0);
+  const [danaKematian, setDanaKematian] = useState(cachedSaldoResult?.danaKematian || 0);
+  const [danaSosial, setDanaSosial] = useState(cachedSaldoResult?.danaSosial || 0);
+  const [loading, setLoading] = useState(!cachedSaldoResult);
 
   useEffect(() => {
-    setLoading(true);
+    setLoading(!cachedSaldoResult);
     apiFetch('/api/data/kas')
       .then(res => res.json())
       .then(json => {
@@ -1553,7 +1562,8 @@ const MobileSaldoCard = () => {
         const kasRtData = data.filter((d: any) => (d.category || 'Kas RT') === 'Kas RT');
         const masuk = kasRtData.filter((d: any) => d.type === 'Masuk').reduce((a: number, b: any) => a + (b.amount || 0), 0);
         const keluar = kasRtData.filter((d: any) => d.type === 'Keluar').reduce((a: number, b: any) => a + (b.amount || 0), 0);
-        setSaldo(masuk - keluar);
+        const s = masuk - keluar;
+        setSaldo(s);
 
         const getSaldo = (cat: string) => {
           const items = data.filter((d: any) => (d.category || 'Kas RT') === cat);
@@ -1562,8 +1572,12 @@ const MobileSaldoCard = () => {
           return m - k;
         };
 
-        setDanaKematian(getSaldo('Dana Kematian'));
-        setDanaSosial(getSaldo('Dana Sosial'));
+        const k = getSaldo('Dana Kematian');
+        const sol = getSaldo('Dana Sosial');
+        setDanaKematian(k);
+        setDanaSosial(sol);
+        
+        cachedSaldoResult = { saldo: s, danaKematian: k, danaSosial: sol };
       })
       .catch(e => console.error(e))
       .finally(() => setLoading(false));
@@ -2291,13 +2305,13 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
             }}
           />
           <main className="flex-grow p-4 lg:p-8 overflow-y-auto ml-20 lg:ml-[16rem] transition-all duration-300" style={{ backgroundColor: themeColors.neutral.bg }}>
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
               <motion.div
                 key={activeWebTab}
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2, ease: "easeInOut" }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
                 className="w-full h-full"
               >
                 {!user.isApproved ? (
@@ -2342,13 +2356,13 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
         <MobileHeader notifications={notifications} onShowNotifications={handleShowNotifications} />
         <MobileProfile user={user} />
         <div className="flex-grow overflow-hidden bg-white relative">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             <motion.div
               key={activeMobileTab}
-              initial={{ opacity: 0, x: 10 }}
+              initial={{ opacity: 0, x: 5 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
+              exit={{ opacity: 0, x: -5 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
               className="h-full overflow-y-auto pb-24"
             >
               {activeMobileTab === 'Profil' ? (
@@ -2473,7 +2487,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
 
 import { Login, Register } from './Auth';
 
-const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
+const SplashScreen = ({ onFinish }: { onFinish: () => void, key?: string }) => {
   useEffect(() => {
     const timer = setTimeout(onFinish, 2500); // splash duration
     return () => clearTimeout(timer);

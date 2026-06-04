@@ -31,10 +31,7 @@ export const MobileTamu = ({ onBack, currentUser }: { onBack: () => void, curren
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
+    <div
       className="p-4 pb-24 bg-gray-50 min-h-screen"
     >
       <div className="flex items-center gap-3 mb-6">
@@ -90,6 +87,6 @@ export const MobileTamu = ({ onBack, currentUser }: { onBack: () => void, curren
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

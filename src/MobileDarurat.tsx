@@ -42,11 +42,7 @@ export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, cur
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+    <div 
       className="bg-slate-50 min-h-screen pb-24 w-full"
     >
       <div className="max-w-xl mx-auto w-full">
@@ -129,6 +125,6 @@ export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, cur
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

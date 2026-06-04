@@ -95,11 +95,7 @@ export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: (
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+    <div
       className="bg-slate-50 min-h-screen pb-24 w-full"
     >
       <div className="max-w-xl mx-auto w-full">
@@ -222,6 +218,6 @@ export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: (
 
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

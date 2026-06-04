@@ -22,6 +22,7 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
   }, []);
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
+    setData(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
     try {
       await apiFetch(`/api/data/laporan/${id}`, {
         method: 'PUT',
@@ -31,17 +32,20 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
       fetchData();
     } catch(e) { 
       console.error(e); 
+      fetchData();
     }
   };
 
   const handleDeleteLaporan = async (id: string) => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus laporan ini?')) return;
+    setData(prev => prev.filter(item => item.id !== id));
     try {
       await apiFetch(`/api/data/laporan/${id}`, { method: 'DELETE' });
       fetchData();
     } catch (e) {
       console.error(e);
       alert('Gagal menghapus laporan');
+      fetchData();
     }
   };
 
@@ -61,11 +65,7 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+    <div
       className="bg-slate-50 min-h-screen pb-24 w-full"
     >
       {/* Wrapper responsif untuk layar lebar */}
@@ -171,6 +171,6 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
