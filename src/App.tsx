@@ -2500,71 +2500,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
 
 import { Login, Register } from './Auth';
 
-const RtSelection = ({ onSelectRt }: { onSelectRt: (rt: string) => void }) => {
-  const rts = ['RT 01', 'RT 02', 'RT 03', 'RT 04', 'RT 05', 'RT 06', 'RT 07', 'RT 08'];
-  const [selected, setSelected] = useState('');
-
-  return (
-    <div className="w-full max-w-md mx-auto bg-white p-8 md:p-10 rounded-[2rem] shadow-2xl shadow-teal-900/10 relative overflow-hidden border border-teal-50">
-      {/* Decorative background shapes */}
-      <div className="absolute -top-24 -right-24 w-48 h-48 bg-teal-100 rounded-full blur-3xl opacity-50"></div>
-      <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-sky-100 rounded-full blur-3xl opacity-50"></div>
-      
-      <div className="relative text-center mb-10 mt-4">
-        {/* Logo or Icon */}
-        <div className="w-20 h-20 bg-gradient-to-tr from-teal-500 to-sky-400 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-teal-500/30 rotate-3">
-          <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
-        </div>
-        
-        <h2 className="text-3xl font-black text-slate-800 tracking-tight">
-          Sistem Warga
-        </h2>
-        <p className="text-base text-slate-500 font-medium mt-3 leading-relaxed">
-          Silakan pilih lingkungan Rukun Tetangga (RT) Anda di <span className="text-teal-600 font-bold">RW 21</span>
-        </p>
-      </div>
-      
-      <div className="relative">
-        <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Pilih Rukun Tetangga</label>
-        <div className="relative">
-          <select 
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
-            className="w-full pl-5 pr-12 py-4 bg-slate-50 border-2 border-slate-200 hover:border-teal-300 focus:border-teal-500 rounded-2xl text-base font-semibold text-slate-800 transition-all appearance-none focus:outline-none focus:ring-4 focus:ring-teal-500/10 cursor-pointer"
-          >
-            <option value="" disabled>-- Pilih RT Anda --</option>
-            {rts.map(rt => (
-              <option key={rt} value={rt.toLowerCase().replace(' ', '')}>{rt}</option>
-            ))}
-          </select>
-          <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      <button 
-        onClick={() => {
-          if(selected) onSelectRt(selected);
-        }}
-        disabled={!selected}
-        className="w-full mt-8 py-4 bg-gradient-to-r from-teal-500 to-teal-600 text-white rounded-2xl text-base font-bold shadow-xl shadow-teal-500/20 hover:from-teal-600 hover:to-teal-700 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none disabled:active:scale-100 transition-all flex items-center justify-center gap-2 group"
-      >
-        <span>Lanjutkan Masuk</span>
-        <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-        </svg>
-      </button>
-    </div>
-  );
-};
-
 const SplashScreen = ({ onFinish }: { onFinish: () => void, key?: string }) => {
-
   useEffect(() => {
     const timer = setTimeout(onFinish, 2500); // splash duration
     return () => clearTimeout(timer);
@@ -2660,7 +2596,6 @@ export default function App() {
       return saved ? JSON.parse(saved) : null;
     } catch { return null; }
   });
-  const [selectedRt, setSelectedRt] = useState<string>(() => localStorage.getItem('selected_rt') || '');
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
   const [showSplash, setShowSplash] = useState(true);
 
@@ -2675,14 +2610,8 @@ export default function App() {
     localStorage.setItem('auth_user', JSON.stringify(userData));
   };
 
-  const handleSelectRt = (rt: string) => {
-    setSelectedRt(rt);
-    localStorage.setItem('selected_rt', rt);
-  };
-
   useEffect(() => {
     if (!user?.id) return;
-
     
     // Initial ping
     apiFetch('/api/ping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: user.id }) });
@@ -2712,18 +2641,7 @@ export default function App() {
       {showSplash ? (
         <SplashScreen key="splash" onFinish={() => setShowSplash(false)} />
       ) : (
-        !selectedRt ? (
-          <motion.div
-            key="rt-selection"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.05 }}
-            transition={{ duration: 0.4 }}
-            className="w-full min-h-screen flex items-center justify-center bg-gray-50 p-4"
-          >
-            <RtSelection onSelectRt={handleSelectRt} />
-          </motion.div>
-        ) : !user ? (
+        !user ? (
           authView === 'login' ? (
             <motion.div
               key="login"
@@ -2731,14 +2649,8 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="w-full min-h-screen flex items-center justify-center bg-gray-50 p-4 relative"
+              className="w-full min-h-screen flex items-center justify-center bg-gray-50 p-4"
             >
-              <button 
-                onClick={() => handleSelectRt('')}
-                className="absolute top-6 left-6 text-sm font-bold text-teal-600 hover:text-teal-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-teal-100 flex items-center gap-2"
-              >
-                ← Ganti RT
-              </button>
               <Login onLogin={handleLogin} onNavRegister={() => setAuthView('register')} />
             </motion.div>
           ) : (
@@ -2748,14 +2660,8 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="w-full min-h-screen flex items-center justify-center bg-gray-50 p-4 py-8 relative"
+              className="w-full min-h-screen flex items-center justify-center bg-gray-50 p-4 py-8"
             >
-              <button 
-                onClick={() => handleSelectRt('')}
-                className="absolute top-6 left-6 text-sm font-bold text-teal-600 hover:text-teal-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-teal-100 flex items-center gap-2"
-              >
-                ← Ganti RT
-              </button>
               <Register onRegister={handleLogin} onNavLogin={() => setAuthView('login')} />
             </motion.div>
           )
