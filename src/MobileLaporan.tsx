@@ -98,6 +98,7 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
                     {/* Bagian Judul & Status */}
                     <div className="flex justify-between items-start gap-3 border-b border-slate-50 pb-3">
                       <div className="flex-1">
+                        <div className="text-[10px] font-bold text-teal-600 mb-1 uppercase tracking-wider">{item.kategori || 'Keluhan'}</div>
                         <h5 className="text-sm font-bold text-slate-800 leading-tight">{item.judul}</h5>
                         <p className="text-xs font-medium text-slate-500 mt-1 flex items-center gap-1">
                           <span className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center text-[8px]">👤</span>
@@ -110,9 +111,27 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
                     </div>
 
                     {/* Keterangan */}
-                    <p className="text-sm text-slate-600 leading-relaxed">
+                    <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
                       {item.keterangan}
                     </p>
+                    
+                    {/* Media Tambahan */}
+                    {(item.foto || item.gps) && (
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        {item.foto && (
+                          <div className="rounded-xl overflow-hidden shadow-sm border border-slate-100 h-24">
+                            <img src={item.foto} alt="Lampiran Laporan" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        {item.gps && (
+                          <div className="rounded-xl bg-orange-50 border border-orange-100 p-2 flex flex-col justify-center items-center text-center">
+                            <svg className="w-6 h-6 text-orange-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            <span className="text-[9px] text-orange-600 font-medium truncate w-full">{item.gps}</span>
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.gps)}`} target="_blank" rel="noreferrer" className="text-[10px] text-orange-700 font-bold underline mt-1">Buka Map</a>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     {/* Action Buttons */}
                     {(isAdminOrPengurus || currentUser?.role === 'admin') && (

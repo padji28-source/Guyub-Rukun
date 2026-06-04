@@ -6,6 +6,9 @@ import { icons } from './App'; // Sesuaikan jika perlu
 export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () => void, currentUser: any, defaultTab?: 'Keluhan' | 'Tamu' }) => {
   const [judul, setJudul] = useState('');
   const [keterangan, setKeterangan] = useState('');
+  const [kategori, setKategori] = useState('Jalan rusak');
+  const [fotoDataUrl, setFotoDataUrl] = useState('');
+  const [gpsLocation, setGpsLocation] = useState('');
   
   // Tab Management
   // Jika tidak ada defaultTab, kita buat 'Keluhan' sebagai default agar layarnya tidak kosong
@@ -18,6 +21,41 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
 
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const categories = [
+    { label: '🚧 Jalan rusak', value: 'Jalan rusak' },
+    { label: '💡 Lampu mati', value: 'Lampu mati' },
+    { label: '🗑 Sampah', value: 'Sampah' },
+    { label: '💧 Air', value: 'Air' },
+    { label: '🐕 Hewan liar', value: 'Hewan liar' },
+    { label: '⚠ Keamanan', value: 'Keamanan' },
+  ];
+
+  const handleGetLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setGpsLocation(`${position.coords.latitude}, ${position.coords.longitude}`);
+        },
+        (error) => {
+          alert('Gagal mendapatkan lokasi GPS. Pastikan izin lokasi diberikan.');
+        }
+      );
+    } else {
+      alert('Geolocation tidak didukung di browser ini.');
+    }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFotoDataUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmitKeluhan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +75,9 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
         body: JSON.stringify({
           judul: tempJudul,
           keterangan: tempKet,
+          kategori,
+          foto: fotoDataUrl,
+          gps: gpsLocation,
           status: 'Pending',
           userId: currentUser?.id,
           userName: currentUser?.nama
@@ -202,6 +243,21 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-400" 
                     />
                   </div>
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Kategori Laporan</label>
+                    <select 
+                      value={kategori} 
+                      onChange={e => setKategori(e.target.value)} 
+                      required 
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all appearance-none"
+                    >
+                      {categories.map(cat => (
+                        <option key={cat.value} value={cat.value}>{cat.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">Keterangan & Lokasi Detail</label>
                     <textarea 
@@ -209,6 +265,32 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm h-28 resize-none focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-400"
                     ></textarea>
                   </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Foto Kondisi</label>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100" 
+                      />
+                      {fotoDataUrl && <div className="mt-2 text-[10px] text-teal-600 font-medium">✅ Foto ditambahkan</div>}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Titik GPS</label>
+                      <button 
+                        type="button"
+                        onClick={handleGetLocation}
+                        className="w-full py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Ambil Lokasi
+                      </button>
+                      {gpsLocation && <div className="mt-2 text-[10px] text-teal-600 font-medium truncate">📍 {gpsLocation}</div>}
+                    </div>
+                  </div>
+
                   <button type="submit" disabled={loading || !judul.trim() || !keterangan.trim()} className="w-full py-3.5 mt-2 bg-teal-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-teal-200 hover:bg-teal-700 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 transition-all flex items-center justify-center gap-2">
                     {loading ? 'Mengirim...' : 'Kirim Laporan Keluhan'}
                   </button>

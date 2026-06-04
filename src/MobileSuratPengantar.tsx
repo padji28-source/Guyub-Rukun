@@ -7,12 +7,21 @@ let cachedSuratData: any[] | null = null;
 
 export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
   const [data, setData] = useState<any[]>(cachedSuratData || []);
-  const [keperluan, setKeperluan] = useState('');
+  const [jenisSurat, setJenisSurat] = useState('Surat Domisili');
   const [keterangan, setKeterangan] = useState('');
   const [loading, setLoading] = useState(!cachedSuratData);
   const [showForm, setShowForm] = useState(false);
 
   const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
+
+  const typesOfSurat = [
+    'Surat Domisili',
+    'Surat Pengantar',
+    'Surat Keterangan Usaha',
+    'Surat Tidak Mampu',
+    'Surat Kelahiran',
+    'Surat Kematian'
+  ];
 
   const fetchData = async () => {
     try {
@@ -32,13 +41,13 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin mengajukan surat pengantar ini?")) return;
+    if (!window.confirm("Apakah Anda yakin ingin mengajukan surat ini?")) return;
     
     // Optimistic Update
     const tempId = 'temp-surat-' + Date.now();
     const newSurat = {
       id: tempId,
-      keperluan,
+      keperluan: jenisSurat,
       keterangan,
       status: 'pending',
       userId: currentUser?.id,
@@ -47,7 +56,6 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
     };
     
     setData(prev => [...prev, newSurat]);
-    setKeperluan('');
     setKeterangan('');
     setShowForm(false);
     
@@ -83,6 +91,70 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
       console.error(e); 
       fetchData();
     }
+  };
+
+  const handleDownloadPDF = (surat: any) => {
+    import('jspdf').then(({ jsPDF }) => {
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("PENGURUS RT 01", 105, 20, { align: "center" });
+      
+      doc.setFontSize(14);
+      doc.text("RUKUN TETANGGA 01 / RUKUN WARGA 02", 105, 27, { align: "center" });
+      
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text("Kelurahan Contoh, Kecamatan Teladan, Kota Percontohan", 105, 34, { align: "center" });
+      
+      // Garis
+      doc.setLineWidth(1);
+      doc.line(20, 40, 190, 40);
+      
+      // Judul Surat
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      const title = surat.keperluan ? surat.keperluan.toUpperCase() : "SURAT KETERANGAN";
+      doc.text(title, 105, 55, { align: "center" });
+      
+      // Content
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      
+      let y = 75;
+      const lineHeight = 7;
+      
+      doc.text("Yang bertanda tangan di bawah ini selaku Ketua RT 01 / RW 02, menerangkan bahwa:", 20, y);
+      
+      y += lineHeight * 2;
+      doc.text(`Nama Lengkap   : ${surat.userName || 'Warga'}`, 25, y);
+      y += lineHeight;
+      doc.text(`Keterangan     : ${surat.keterangan || '-'}`, 25, y);
+      
+      y += lineHeight * 2;
+      doc.text("Adalah benar warga yang berdomisili di RT 01 / RW 02. Surat ini dibuat untuk ", 20, y);
+      y += lineHeight;
+      doc.text("keperluan sebagaimana disebutkan di atas.", 20, y);
+      
+      y += lineHeight * 2;
+      doc.text("Demikian surat keterangan ini dibuat untuk dipergunakan sebagaimana mestinya.", 20, y);
+      
+      // Signature
+      y += lineHeight * 3;
+      const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      doc.text(`Kota Percontohan, ${today}`, 130, y);
+      
+      y += lineHeight;
+      doc.text("Ketua RT 01", 145, y);
+      
+      y += lineHeight * 4;
+      doc.setFont("helvetica", "bold");
+      doc.text("( Nama Ketua RT )", 143, y);
+      
+      doc.save(`${surat.keperluan.replace(/\s+/g, '_')}_${surat.userName}.pdf`);
+    });
   };
 
   // Memoisasi filter data agar performa lebih optimal
@@ -154,15 +226,17 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
                 >
                   <form onSubmit={handleSubmit} className="p-5 border-t border-slate-100 space-y-4 bg-white">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Keperluan</label>
-                      <input 
-                        type="text" 
-                        placeholder="Contoh: Pengantar SKCK, Domisili..." 
-                        value={keperluan} 
-                        onChange={e => setKeperluan(e.target.value)} 
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Jenis Surat</label>
+                      <select 
+                        value={jenisSurat} 
+                        onChange={e => setJenisSurat(e.target.value)} 
                         required 
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition-all placeholder:text-slate-400" 
-                      />
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition-all appearance-none"
+                      >
+                        {typesOfSurat.map(type => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1.5">Keterangan Tambahan <span className="text-slate-400 font-normal">(Opsional)</span></label>
@@ -175,7 +249,7 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
                     </div>
                     <button 
                       type="submit" 
-                      disabled={loading || !keperluan.trim()} 
+                      disabled={loading || !jenisSurat} 
                       className="w-full py-3 mt-2 bg-teal-600 text-white rounded-xl text-sm font-bold shadow-md shadow-teal-200 hover:bg-teal-700 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 transition-all flex items-center justify-center gap-2"
                     >
                       {loading ? (
@@ -239,6 +313,21 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                             </svg>
                             Tandai Telah Selesai
+                          </button>
+                        </div>
+                      )}
+                      
+                      {/* Action Download PDF */}
+                      {item.status === 'selesai' && (
+                        <div className="mt-3 pt-3 border-t border-slate-50">
+                          <button 
+                            onClick={() => handleDownloadPDF(item)} 
+                            className="w-full py-2.5 px-4 text-xs bg-blue-50 text-blue-700 rounded-xl font-bold hover:bg-blue-100 active:bg-blue-200 transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Download PDF
                           </button>
                         </div>
                       )}
