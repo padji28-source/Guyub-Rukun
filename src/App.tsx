@@ -54,6 +54,12 @@ import { MobileUMKM } from './MobileUMKM';
 
 // --- Modern Icons Set ---
 export const icons = {
+  voting: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12l5 5l10 -10" />
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    </svg>
+  ),
   dashboard: (props: any) => (
     <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="9" rx="1.5" />
@@ -1290,6 +1296,9 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
   const [selectedDate, setSelectedDate] = useState<number | null>(today.getDate());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [showYearPicker, setShowYearPicker] = useState(false);
+
   const [mediaList, setMediaList] = useState<any[]>(cachedMediaList || []);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [backendEvents, setBackendEvents] = useState<any[]>(cachedBackendEvents || []);
@@ -1417,44 +1426,101 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
       </motion.div>
 
       {/* 2. Mobile Calendar Widget */}
-      <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 p-5">
-        <div className="flex justify-between items-center mb-5">
+      <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 p-6 relative">
+        <div className="flex justify-between items-center mb-6">
            <div className="flex flex-col">
-             <div className="flex items-center gap-1.5">
-               <select 
-                 className="text-lg font-black text-slate-800 bg-transparent border-none outline-none cursor-pointer appearance-none p-0"
-                 value={currentMonth}
-                 onChange={(e) => setCurrentMonth(parseInt(e.target.value))}
-               >
-                 {monthNames.map((m, i) => <option key={i} value={i}>{m}</option>)}
-               </select>
-               <select 
-                 className="text-lg font-black text-teal-600 bg-transparent border-none outline-none cursor-pointer appearance-none p-0"
-                 value={currentYear}
-                 onChange={(e) => setCurrentYear(parseInt(e.target.value))}
-               >
-                 {Array.from({ length: 10 }, (_, i) => today.getFullYear() - 5 + i).map(y => (
-                   <option key={y} value={y}>{y}</option>
-                 ))}
-               </select>
+             <div className="flex items-center gap-2">
+               <div className="relative group">
+                 <button 
+                   onClick={() => { setShowMonthPicker(!showMonthPicker); setShowYearPicker(false); }}
+                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 hover:border-slate-200 transition-colors"
+                 >
+                   <span className="text-[15px] font-extrabold text-slate-800">{monthNames[currentMonth]}</span>
+                   <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showMonthPicker ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
+                 </button>
+                 
+                 {/* Custom Month Dropdown */}
+                 <AnimatePresence>
+                   {showMonthPicker && (
+                     <>
+                       <div className="fixed inset-0 z-40" onClick={() => setShowMonthPicker(false)}></div>
+                       <motion.div 
+                         initial={{ opacity: 0, y: -5, scale: 0.95 }}
+                         animate={{ opacity: 1, y: 0, scale: 1 }}
+                         exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                         transition={{ duration: 0.15 }}
+                         className="absolute top-10 left-0 z-50 w-48 bg-white rounded-[1.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] border border-slate-100/80 p-3 grid grid-cols-3 gap-1.5"
+                       >
+                         {monthNames.map((m, i) => (
+                           <div 
+                             key={i} 
+                             onClick={() => { setCurrentMonth(i); setShowMonthPicker(false); }}
+                             className={`px-1 py-2.5 rounded-xl text-center text-xs font-bold cursor-pointer transition-all ${currentMonth === i ? 'bg-teal-500 text-white shadow-[0_4px_12px_rgba(20,184,166,0.3)] hover:bg-teal-600' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent'}`}
+                           >
+                             {m.substring(0,3)}
+                           </div>
+                         ))}
+                       </motion.div>
+                     </>
+                   )}
+                 </AnimatePresence>
+               </div>
+               
+               <div className="relative group">
+                 <button 
+                   onClick={() => { setShowYearPicker(!showYearPicker); setShowMonthPicker(false); }}
+                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 border border-teal-100/50 hover:bg-teal-100 hover:border-teal-200/50 transition-colors"
+                 >
+                   <span className="text-[15px] font-extrabold text-teal-700">{currentYear}</span>
+                   <svg className={`w-3.5 h-3.5 text-teal-500 transition-transform ${showYearPicker ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
+                 </button>
+                 
+                 {/* Custom Year Dropdown */}
+                 <AnimatePresence>
+                   {showYearPicker && (
+                     <>
+                       <div className="fixed inset-0 z-40" onClick={() => setShowYearPicker(false)}></div>
+                       <motion.div 
+                         initial={{ opacity: 0, y: -5, scale: 0.95 }}
+                         animate={{ opacity: 1, y: 0, scale: 1 }}
+                         exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                         transition={{ duration: 0.15 }}
+                         className="absolute top-10 left-0 z-50 w-44 bg-white rounded-[1.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] border border-slate-100/80 p-3 grid grid-cols-2 gap-1.5 overflow-y-auto max-h-56"
+                       >
+                         {Array.from({ length: 10 }, (_, i) => today.getFullYear() - 5 + i).map((y) => (
+                           <div 
+                             key={y} 
+                             onClick={() => { setCurrentYear(y); setShowYearPicker(false); }}
+                             className={`px-1 py-2.5 rounded-xl text-center text-xs font-bold cursor-pointer transition-all ${currentYear === y ? 'bg-teal-500 text-white shadow-[0_4px_12px_rgba(20,184,166,0.3)] hover:bg-teal-600' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent'}`}
+                           >
+                             {y}
+                           </div>
+                         ))}
+                       </motion.div>
+                     </>
+                   )}
+                 </AnimatePresence>
+               </div>
              </div>
-             <p className="text-[10px] text-slate-400 font-bold mt-0.5 uppercase tracking-widest">Jadwal RT</p>
+             <p className="text-[10px] text-slate-400 font-extrabold mt-1.5 uppercase tracking-[0.2em]">Jadwal RT</p>
            </div>
            
            <motion.button 
              whileTap={{ scale: 0.9 }}
              onClick={() => onActionClick('Acara')}
-             className="w-10 h-10 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center shadow-sm"
+             className="w-10 h-10 bg-teal-50 hover:bg-teal-100 text-teal-600 rounded-full flex items-center justify-center transition-colors shadow-[0_2px_10px_-3px_rgba(20,184,166,0.3)]"
            >
-             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4"/></svg>
+             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4"/></svg>
            </motion.button>
         </div>
 
-        <div className="grid grid-cols-7 gap-2 text-center mb-3">
-          {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => <div key={d} className="text-[9px] font-extrabold text-slate-400 uppercase">{d}</div>)}
+        <div className="grid grid-cols-7 gap-2 text-center mb-4">
+          {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((d, idx) => (
+             <div key={d} className={`text-[10px] font-extrabold uppercase ${idx === 0 ? 'text-orange-500' : 'text-slate-400'}`}>{d}</div>
+          ))}
         </div>
         
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {weeks.map((week, i) => (
             <div key={i} className="grid grid-cols-7 gap-2 text-center">
               {week.map((date, j) => {
@@ -1472,14 +1538,14 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
                     key={j} 
                     whileTap={{ scale: 0.8 }}
                     onClick={() => setSelectedDate(date)}
-                    className={`relative aspect-square cursor-pointer flex flex-col items-center justify-center rounded-2xl text-xs font-bold transition-colors border-2 
-                      ${isSelected ? 'bg-teal-600 text-white border-teal-600 shadow-md' : 
-                        isToday ? 'bg-teal-50 text-teal-700 border-teal-200' : 
+                    className={`relative aspect-square cursor-pointer flex flex-col items-center justify-center rounded-full text-[13px] font-bold transition-all border-2 
+                      ${isSelected ? 'bg-teal-600 text-white border-teal-600 shadow-[0_4px_12px_rgba(13,148,136,0.3)]' : 
+                        isToday ? 'bg-teal-50 text-teal-700 border-teal-200 shadow-sm' : 
                         'border-transparent text-slate-700 hover:bg-slate-50'}`}
                   >
                     {date}
                     {isEvent && (
-                      <div className={`absolute bottom-1.5 w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-orange-500'}`}></div>
+                      <div className={`absolute bottom-1 w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-orange-500'}`}></div>
                     )}
                   </motion.div>
                 );
@@ -1489,22 +1555,28 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
         </div>
 
         {/* Daftar Acara Hari Terpilih */}
-        <div className="mt-6 space-y-3">
+        <div className="mt-8 pt-6 border-t border-slate-100/60 space-y-3">
            {selectedDateEvents.map((item) => (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={item.id} className="flex gap-3 items-center p-3 rounded-2xl bg-slate-50 border border-slate-100">
-              <div className="w-12 h-12 rounded-xl bg-orange-100 flex flex-col items-center justify-center shrink-0">
-                 <span className="text-[10px] font-bold text-orange-600 uppercase">{monthNames[currentMonth].substring(0,3)}</span>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={item.id} className="flex gap-3.5 items-center p-3 rounded-[1.25rem] bg-slate-50 border border-slate-100/80 transition-all hover:bg-slate-100 hover:border-slate-200 cursor-pointer">
+              <div className="w-12 h-12 rounded-[1rem] bg-orange-100 flex flex-col items-center justify-center shrink-0 border border-orange-200">
+                 <span className="text-[9px] font-extrabold text-orange-600 uppercase tracking-wider">{monthNames[currentMonth].substring(0,3)}</span>
                  <span className="text-sm font-black text-orange-700">{selectedDate}</span>
               </div>
-              <div className="flex-grow min-w-0">
-                <h5 className="text-xs font-bold text-slate-800 truncate">{item.title}</h5>
-                <p className="text-[10px] text-slate-500 mt-1 line-clamp-1">{item.time || 'Sesuai jadwal'} • {item.desc}</p>
+              <div className="flex-grow min-w-0 pr-1">
+                <h5 className="text-[13px] font-extrabold text-slate-800 leading-tight truncate mb-1">{item.title}</h5>
+                <p className="text-[11px] font-medium text-slate-500 mt-0.5 line-clamp-1 break-all flex items-center gap-1.5">
+                  <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  {item.time || 'Sesuai jadwal'}
+                </p>
               </div>
             </motion.div>
            ))}
            {selectedDate && selectedDateEvents.length === 0 && (
-             <div className="text-center py-4 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
-               <p className="text-[10px] font-bold text-slate-400">Tidak ada agenda di tanggal ini.</p>
+             <div className="text-center py-6 bg-[#f8fafc] rounded-2xl border border-slate-100/80">
+               <div className="w-10 h-10 bg-slate-100/80 rounded-full flex items-center justify-center mx-auto mb-3">
+                 <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+               </div>
+               <p className="text-[11px] font-bold text-slate-500">Tidak ada agenda di tanggal ini.</p>
              </div>
            )}
         </div>
@@ -1600,7 +1672,7 @@ const quickActions = [
   { name: 'UMKM', icon: icons.umkm, color: 'from-yellow-400 to-amber-500', shadow: 'shadow-yellow-200' },
   { name: 'Darurat', icon: icons.darurat, color: 'from-red-500 to-rose-600', shadow: 'shadow-red-200' },
   { name: 'Tamu', icon: icons.warga, color: 'from-sky-400 to-indigo-500', shadow: 'shadow-sky-200' },
-  { name: 'Voting', icon: icons.dokumen, color: 'from-indigo-400 to-indigo-600', shadow: 'shadow-indigo-200' },
+  { name: 'Voting', icon: icons.voting, color: 'from-indigo-400 to-indigo-600', shadow: 'shadow-indigo-200' },
 ];
 
 let cachedSaldoResult: any = null;

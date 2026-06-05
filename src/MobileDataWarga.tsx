@@ -364,48 +364,52 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
               const isExpanded = expandedId === warga.id;
               
               return (
-              <div key={warga.id + '_' + idx} className={`bg-white rounded-3xl border ${isExpanded ? 'border-teal-200 shadow-md' : 'border-gray-100 shadow-sm'} overflow-hidden transition-all duration-300`}>
+              <div key={warga.id + '_' + idx} className={`bg-white rounded-[1.5rem] border ${isExpanded ? 'border-teal-200 shadow-lg' : 'border-slate-100 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)]'} overflow-hidden transition-all duration-300`}>
                 <div 
-                  className="p-4 flex items-center justify-between cursor-pointer" 
+                  className="p-4 flex items-center gap-3 cursor-pointer select-none" 
                   onClick={() => setExpandedId(isExpanded ? null : warga.id)}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      {/* FOTO PROFIL ATAU INISIAL */}
+                  <div className="relative shrink-0">
                       {warga.photo ? (
                         <img 
                           src={warga.photo} 
                           alt={warga.nama} 
-                          className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm"
+                          className="w-[46px] h-[46px] rounded-full object-cover border-2 border-slate-50 shadow-[0_2px_8px_rgba(0,0,0,0.08)] bg-slate-100"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-teal-400 to-emerald-500 flex items-center justify-center text-white font-bold text-lg shadow-inner">
+                        <div className="w-[46px] h-[46px] rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-white font-extrabold text-[17px] shadow-[0_2px_8px_rgba(20,184,166,0.25)] border-[1.5px] border-white">
                           {warga.nama.charAt(0)}
                         </div>
                       )}
                       
-                      {warga.isOnline && (
-                        <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
-                      )}
-                    </div>
-                    <div>
-                      <h5 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                        {warga.nama} {currentUser?.id === warga.id && <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">Anda</span>}
-                        <span className="text-[10px] bg-sky-50 text-sky-600 px-2 py-0.5 rounded-full font-bold ml-auto">{warga.rt || 'RT 01'}</span>
-                      </h5>
-                      <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
-                        {warga.alamat} 
-                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span> 
-                        <span className="font-semibold text-teal-600">{members.length + 1} Orang</span>
-                      </p>
-                    </div>
+                      <span className="absolute bottom-[-2px] right-[-2px] w-3.5 h-3.5 bg-emerald-500 border-[1.5px] border-white rounded-full shadow-sm"></span>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${warga.role === 'admin' ? 'bg-amber-100 text-amber-700' : (warga.role === 'pengurus' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600')}`}>
-                      {warga.role === 'admin' ? 'Admin' : (warga.role === 'pengurus' ? 'Pengurus' : warga.status)}
-                    </span>
-                    <div className={`p-1.5 rounded-full transition-colors ${isExpanded ? 'bg-teal-50 text-teal-600' : 'bg-gray-50 text-gray-400'}`}>
-                      <icons.lainnya className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                  
+                  <div className="flex-1 min-w-0 pr-1">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <h5 className="font-extrabold text-slate-800 text-[15px] truncate">
+                          {warga.nama}
+                        </h5>
+                        {currentUser?.id === warga.id && <span className="bg-slate-100 text-slate-500 text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-widest shrink-0">Anda</span>}
+                      </div>
+                      <p className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
+                        <span className="font-semibold text-slate-600 truncate">{warga.alamat}</span>
+                        <span className="w-1 h-1 bg-slate-300 rounded-full shrink-0"></span> 
+                        <span className="font-extrabold text-teal-600 shrink-0">{members.length + 1} Orang</span>
+                      </p>
+                  </div>
+                  
+                  <div className="flex flex-col items-end justify-center gap-1.5 shrink-0 pl-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] bg-sky-50 text-sky-600 border border-sky-100 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-widest">
+                        {warga.rt || 'RT 01'}
+                      </span>
+                      <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-widest border ${warga.role === 'admin' ? 'bg-amber-50 text-amber-600 border-amber-100' : (warga.role === 'pengurus' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-slate-50 text-slate-500 border-slate-100')}`}>
+                        {warga.role === 'admin' ? 'Admin' : (warga.role === 'pengurus' ? 'Pengurus' : (warga.status || 'Warga').split(' ')[0])}
+                      </span>
+                    </div>
+                    <div className={`p-1 rounded-full transition-colors flex items-center justify-center ${isExpanded ? 'bg-teal-50 text-teal-600' : 'text-slate-400'}`}>
+                      <icons.lainnya className={`w-3.5 h-3.5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
                   </div>
                 </div>
