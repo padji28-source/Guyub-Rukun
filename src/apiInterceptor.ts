@@ -45,6 +45,11 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
   }
 
   const modifiedInit = { ...init };
+  modifiedInit.headers = new Headers(init?.headers);
+  const selectedRt = localStorage.getItem('selected_rt');
+  if (selectedRt) {
+    modifiedInit.headers.set('x-rt-id', selectedRt);
+  }
 
   // Append updaterName to POST/PUT payloads automatically
   if (!isGet && modifiedInit.body && typeof modifiedInit.body === 'string') {

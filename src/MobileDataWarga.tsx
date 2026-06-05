@@ -72,10 +72,12 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
     e.preventDefault();
     try {
       const alamat = `Blok ${newWargaBlok} No. ${newWargaNomor}`;
+      const rtValue = localStorage.getItem('selected_rt') || 'rt01';
+      const displayRt = rtValue.toUpperCase().replace('RT', 'RT ');
       await apiFetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({...newWarga, alamat})
+        body: JSON.stringify({...newWarga, alamat, rt: displayRt})
       });
       setShowAddWarga(false);
       setNewWarga({ username: '', nama: '', password: '', noHp: '', status: '', umur: '' });
@@ -356,13 +358,13 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                 (w.members || []).some((m: any) => m.name.toLowerCase().includes(searchQuery.toLowerCase()));
               const matchBlok = !filterBlok || w.alamat?.match(/Blok\s+([a-zA-Z0-9]+)/i)?.[1] === filterBlok;
               return matchName && matchBlok;
-            }).map((warga) => {
+            }).map((warga, idx) => {
               const members = warga.members || [];
               const canEditFamily = isAdmin || currentUser?.id === warga.id;
               const isExpanded = expandedId === warga.id;
               
               return (
-              <div key={warga.id} className={`bg-white rounded-3xl border ${isExpanded ? 'border-teal-200 shadow-md' : 'border-gray-100 shadow-sm'} overflow-hidden transition-all duration-300`}>
+              <div key={warga.id + '_' + idx} className={`bg-white rounded-3xl border ${isExpanded ? 'border-teal-200 shadow-md' : 'border-gray-100 shadow-sm'} overflow-hidden transition-all duration-300`}>
                 <div 
                   className="p-4 flex items-center justify-between cursor-pointer" 
                   onClick={() => setExpandedId(isExpanded ? null : warga.id)}
@@ -389,6 +391,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                     <div>
                       <h5 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                         {warga.nama} {currentUser?.id === warga.id && <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">Anda</span>}
+                        <span className="text-[10px] bg-sky-50 text-sky-600 px-2 py-0.5 rounded-full font-bold ml-auto">{warga.rt || 'RT 01'}</span>
                       </h5>
                       <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
                         {warga.alamat} 

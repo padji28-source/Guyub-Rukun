@@ -71,30 +71,54 @@ async function setDocData(id: string, data: any) {
   }
 }
 
-async function initDb() {
+async function initDb(rtId: string = '') {
   await connectDB();
   try {
-    let list = await getUsers();
-    if (!list.find((u: any) => u.username === "ketuart")) {
-      list.push({
-        id: "admin",
-        username: "ketuart",
-        password: "123456",
-        nama: "Ketua RT",
-        role: "admin",
-        alamat: "Jl. Bahagia No. 12, Kompleks Rukun, Kota Tegal",
-        noHp: "0812-3456-7890",
-        status: "Ketua RT 04 / RW 01"
-      });
-      await saveUsers(list);
+    let list = await getUsers(rtId);
+    let adminUsername = "ketuart1";
+    let adminPassword = "rt12345";
+    let statusText = "Ketua RT 01 / RW 21";
+    let namaKetua = "Ketua RT 01";
+
+    if (rtId === 'rt02') {
+      adminUsername = "ketuart2";
+      adminPassword = "rt12345";
+      statusText = "Ketua RT 02 / RW 21";
+      namaKetua = "Ketua RT 02";
+    } else if (rtId === 'rt03') {
+      adminUsername = "ketuart3";
+      adminPassword = "rt12345";
+      statusText = "Ketua RT 03 / RW 21";
+      namaKetua = "Ketua RT 03";
     }
 
-    const notifs = await getNotifications();
+    // CLEANUP: remove any existing admins that don't match the required username so we don't have duplicates
+    let cleanedList = list.filter((u: any) => u.role !== 'admin' || u.username === adminUsername);
+    if (cleanedList.length !== list.length) {
+      list = cleanedList;
+      await saveUsers(rtId, list);
+    }
+
+    if (!list.find((u: any) => u.username === adminUsername)) {
+      list.push({
+        id: "admin_" + adminUsername,
+        username: adminUsername,
+        password: adminPassword,
+        nama: namaKetua,
+        role: "admin",
+        alamat: "Jl. Bahagia No. 12, Kompleks Rukun",
+        noHp: "0812-3456-7890",
+        status: statusText
+      });
+      await saveUsers(rtId, list);
+    }
+
+    const notifs = await getNotifications(rtId);
     if (notifs.length === 0) {
       // not really needed to save but ok
     }
 
-    const appData = await getAppData();
+    const appData = await getAppData(rtId);
     if (!appData.darurat || appData.darurat.length === 0) {
       appData.darurat = [
         { id: "d1", name: 'Ambulance & Gawat Darurat', tel: '118', type: 'Medis' },
@@ -103,7 +127,7 @@ async function initDb() {
         { id: "d4", name: 'Ketua RT', tel: '081234567890', type: 'Lingkungan' },
         { id: "d5", name: 'Security Pos Depan', tel: '089876543210', type: 'Keamanan' }
       ];
-      await saveAppData(appData);
+      await saveAppData(rtId, appData);
     } else {
       let updated = false;
       appData.darurat = appData.darurat.map((d: any) => {
@@ -114,7 +138,7 @@ async function initDb() {
         return d;
       });
       if (updated) {
-        await saveAppData(appData);
+        await saveAppData(rtId, appData);
       }
     }
   } catch (e: any) {
@@ -134,28 +158,33 @@ function broadcastEvent(event: string, data: any) {
   }
 }
 
-async function getUsers() {
-  const data = await getDocData('users');
+async function getUsers(rtId: string = '') {
+  const docId = rtId ? `users_${rtId}` : 'users';
+  const data = await getDocData(docId);
   return data && data.list ? data.list : [];
 }
 
-async function saveUsers(users: any) {
-  await setDocData('users', { list: users });
-  broadcastEvent('update', { type: 'users' });
+async function saveUsers(rtId: string = '', users: any) {
+  const docId = rtId ? `users_${rtId}` : 'users';
+  await setDocData(docId, { list: users });
+  broadcastEvent('update', { type: 'users', rtId });
 }
 
-async function getNotifications() {
-  const data = await getDocData('notifications');
+async function getNotifications(rtId: string = '') {
+  const docId = rtId ? `notifications_${rtId}` : 'notifications';
+  const data = await getDocData(docId);
   return data && data.list ? data.list : [];
 }
 
-async function saveNotifications(notifs: any) {
-  await setDocData('notifications', { list: notifs });
-  broadcastEvent('update', { type: 'notifications' });
+async function saveNotifications(rtId: string = '', notifs: any) {
+  const docId = rtId ? `notifications_${rtId}` : 'notifications';
+  await setDocData(docId, { list: notifs });
+  broadcastEvent('update', { type: 'notifications', rtId });
 }
 
-async function getAppData() {
-  const doc = await getDocData('app_data');
+async function getAppData(rtId: string = '') {
+  const docId = rtId ? `app_data_${rtId}` : 'app_data';
+  const doc = await getDocData(docId);
   // Handle in case doc directly returns the data structure (depending on how it was saved previously)
   const data = doc ? (doc.data || doc) : {};
 
@@ -172,18 +201,19 @@ async function getAppData() {
     data.media = [
       { id: '1', imageUrl: 'https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=300&q=80', title: 'Kerja Bakti 2024', uploaderName: 'Admin', createdAt: new Date().toISOString() }
     ];
-    await saveAppData(data);
+    await saveAppData(rtId, data);
   }
   return data;
 }
 
-async function saveAppData(data: any) {
-  await setDocData('app_data', { data });
-  broadcastEvent('update', { type: 'app_data' });
+async function saveAppData(rtId: string = '', data: any) {
+  const docId = rtId ? `app_data_${rtId}` : 'app_data';
+  await setDocData(docId, { data });
+  broadcastEvent('update', { type: 'app_data', rtId });
 }
 
-export async function addNotification(title: string, message: string, updaterName: string = 'Sistem', resource?: string, resourceId?: string) {
-  const notifs = await getNotifications();
+export async function addNotification(rtId: string = '', title: string, message: string, updaterName: string = 'Sistem', resource?: string, resourceId?: string) {
+  const notifs = await getNotifications(rtId);
   if (notifs.length > 0) {
     const lastNotif = notifs[0];
     if (lastNotif.title === title && lastNotif.message === message && lastNotif.resourceId === resourceId) {
@@ -192,7 +222,7 @@ export async function addNotification(title: string, message: string, updaterNam
   }
   notifs.unshift({ id: Date.now().toString(), title, message, updaterName, resource, resourceId, time: new Date().toISOString(), read: false });
   if (notifs.length > 100) notifs.length = 100;
-  await saveNotifications(notifs);
+  await saveNotifications(rtId, notifs);
 }
 
 app.post("/api/register", async (req, res) => {
@@ -202,7 +232,7 @@ app.post("/api/register", async (req, res) => {
     return res.status(400).json({ error: "Username, nama dan password wajib diisi" });
   }
 
-  const users = await getUsers();
+  const users = await getUsers(req.headers['x-rt-id'] as string);
   if (users.find((u: any) => u.username === username)) {
     return res.status(400).json({ error: "Username sudah terdaftar" });
   }
@@ -222,9 +252,9 @@ app.post("/api/register", async (req, res) => {
   };
 
   users.push(newUser);
-  await saveUsers(users);
+  await saveUsers(req.headers['x-rt-id'] as string, users);
 
-  await addNotification("Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan. Menunggu verifikasi.`, req.body.updaterName || nama, "warga", newUser.id);
+  await addNotification(req.headers['x-rt-id'] as string, "Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan. Menunggu verifikasi.`, req.body.updaterName || nama, "warga", newUser.id);
 
   res.json({ message: "Registrasi berhasil", user: { ...newUser, role: "warga" } });
 });
@@ -248,7 +278,7 @@ setInterval(() => {
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
 
-  const users = await getUsers();
+  const users = await getUsers(req.headers['x-rt-id'] as string);
   const user = users.find((u: any) => u.username === username && u.password === password);
 
   if (user) {
@@ -306,7 +336,7 @@ app.get("/api/stream", (req, res) => {
 
 app.put("/api/password", async (req, res) => {
   const { id, oldPassword, newPassword } = req.body;
-  const users = await getUsers();
+  const users = await getUsers(req.headers['x-rt-id'] as string);
   const userIndex = users.findIndex((u: any) => u.id === id);
 
   if (userIndex !== -1) {
@@ -314,7 +344,7 @@ app.put("/api/password", async (req, res) => {
       return res.status(400).json({ error: "Password lama salah" });
     }
     users[userIndex].password = newPassword;
-    await saveUsers(users);
+    await saveUsers(req.headers['x-rt-id'] as string, users);
     res.json({ message: "Password berhasil diganti" });
   } else {
     res.status(404).json({ error: "User not found" });
@@ -324,7 +354,7 @@ app.put("/api/password", async (req, res) => {
 app.put("/api/profile", async (req, res) => {
   const { id, username, nama, alamat, noHp, status, photo, umur, dokumenKk, dokumenKtp } = req.body;
 
-  const users = await getUsers();
+  const users = await getUsers(req.headers['x-rt-id'] as string);
   const userIndex = users.findIndex((u: any) => u.id === id);
 
   if (userIndex !== -1) {
@@ -339,9 +369,9 @@ app.put("/api/profile", async (req, res) => {
       dokumenKk: dokumenKk !== undefined ? dokumenKk : users[userIndex].dokumenKk,
       dokumenKtp: dokumenKtp !== undefined ? dokumenKtp : users[userIndex].dokumenKtp
     };
-    await saveUsers(users);
+    await saveUsers(req.headers['x-rt-id'] as string, users);
     const updater = req.body.updaterName || nama || users[userIndex].nama || 'Sistem';
-    await addNotification("Profil Diperbarui", `Warga ${users[userIndex].nama} memperbarui profil.`, updater, "warga", id);
+    await addNotification(req.headers['x-rt-id'] as string, "Profil Diperbarui", `Warga ${users[userIndex].nama} memperbarui profil.`, updater, "warga", id);
     res.json({ message: "Profile updated successfully", user: users[userIndex] });
   } else {
     res.status(404).json({ error: "User not found" });
@@ -349,7 +379,7 @@ app.put("/api/profile", async (req, res) => {
 });
 
 app.get("/api/warga", async (req, res) => {
-  const users = await getUsers();
+  const users = await getUsers(req.headers['x-rt-id'] as string);
   const usersWithOnlineStatus = users.map((u: any) => ({
     ...u,
     isOnline: activeSessions.has(u.id) && Date.now() - activeSessions.get(u.id)! < 15000
@@ -358,24 +388,24 @@ app.get("/api/warga", async (req, res) => {
 });
 
 app.delete("/api/warga/:id", async (req, res) => {
-  const users = await getUsers();
+  const users = await getUsers(req.headers['x-rt-id'] as string);
   const user = users.find((u: any) => u.id === req.params.id);
   const newUsers = users.filter((u: any) => u.id !== req.params.id);
-  await saveUsers(newUsers);
-  if (user) await addNotification("Warga Dihapus", `Data warga ${user.nama} telah dihapus.`, req.body.updaterName || 'Admin', "warga", req.params.id);
+  await saveUsers(req.headers['x-rt-id'] as string, newUsers);
+  if (user) await addNotification(req.headers['x-rt-id'] as string, "Warga Dihapus", `Data warga ${user.nama} telah dihapus.`, req.body.updaterName || 'Admin', "warga", req.params.id);
   res.json({ message: "User deleted" });
 });
 
 app.post("/api/warga/:id/members", async (req, res) => {
   const { name, role, age } = req.body;
-  const users = await getUsers();
+  const users = await getUsers(req.headers['x-rt-id'] as string);
   const user = users.find((u: any) => u.id === req.params.id);
   if (user) {
     if (!user.members) user.members = [];
     const newMember = { id: Date.now().toString(), name, role, age };
     user.members.push(newMember);
-    await saveUsers(users);
-    await addNotification("Anggota Keluarga Bertambah", `Anggota baru ${name} ditambahkan ke KK ${user.nama}.`, req.body.updaterName || user.nama, "warga", user.id);
+    await saveUsers(req.headers['x-rt-id'] as string, users);
+    await addNotification(req.headers['x-rt-id'] as string, "Anggota Keluarga Bertambah", `Anggota baru ${name} ditambahkan ke KK ${user.nama}.`, req.body.updaterName || user.nama, "warga", user.id);
     res.json({ message: "Family member added", member: newMember, user });
   } else {
     res.status(404).json({ error: "User not found" });
@@ -384,15 +414,15 @@ app.post("/api/warga/:id/members", async (req, res) => {
 
 app.put("/api/warga/:id/members/:memberId", async (req, res) => {
   const { name, role, age } = req.body;
-  const users = await getUsers();
+  const users = await getUsers(req.headers['x-rt-id'] as string);
   const user = users.find((u: any) => u.id === req.params.id);
   if (user && user.members) {
     const memberIndex = user.members.findIndex((m: any) => m.id === req.params.memberId);
     if (memberIndex !== -1) {
       user.members[memberIndex] = { ...user.members[memberIndex], name, role, age };
-      await saveUsers(users);
+      await saveUsers(req.headers['x-rt-id'] as string, users);
       const updater = req.body.updaterName || user.nama || 'Sistem';
-      await addNotification("Anggota Keluarga Diperbarui", `Data anggota ${name} di KK ${user.nama} diperbarui.`, updater, "warga", user.id);
+      await addNotification(req.headers['x-rt-id'] as string, "Anggota Keluarga Diperbarui", `Data anggota ${name} di KK ${user.nama} diperbarui.`, updater, "warga", user.id);
       res.json({ message: "Family member updated", user });
     } else {
       res.status(404).json({ error: "Member not found" });
@@ -403,14 +433,14 @@ app.put("/api/warga/:id/members/:memberId", async (req, res) => {
 });
 
 app.delete("/api/warga/:id/members/:memberId", async (req, res) => {
-  const users = await getUsers();
+  const users = await getUsers(req.headers['x-rt-id'] as string);
   const user = users.find((u: any) => u.id === req.params.id);
   if (user && user.members) {
     const member = user.members.find((m: any) => m.id === req.params.memberId);
     user.members = user.members.filter((m: any) => m.id !== req.params.memberId);
-    await saveUsers(users);
+    await saveUsers(req.headers['x-rt-id'] as string, users);
     const updater = req.body.updaterName || user.nama || 'Sistem';
-    if (member) await addNotification("Anggota Keluarga Dihapus", `Anggota ${member.name} dihapus dari KK ${user.nama}.`, updater, "warga", user.id);
+    if (member) await addNotification(req.headers['x-rt-id'] as string, "Anggota Keluarga Dihapus", `Anggota ${member.name} dihapus dari KK ${user.nama}.`, updater, "warga", user.id);
     res.json({ message: "Family member deleted", user });
   } else {
     res.status(404).json({ error: "User or member not found" });
@@ -419,13 +449,13 @@ app.delete("/api/warga/:id/members/:memberId", async (req, res) => {
 
 app.put("/api/warga/:id/role", async (req, res) => {
   const { role } = req.body;
-  const users = await getUsers();
+  const users = await getUsers(req.headers['x-rt-id'] as string);
   const userIndex = users.findIndex((u: any) => u.id === req.params.id);
   if (userIndex !== -1 && users[userIndex].id !== "admin") {
     users[userIndex].role = role;
-    await saveUsers(users);
+    await saveUsers(req.headers['x-rt-id'] as string, users);
     const updater = req.body.updaterName || 'Admin';
-    await addNotification("Peran Warga Diperbarui", `Peran warga ${users[userIndex].nama} diubah menjadi ${role}.`, updater, "warga", users[userIndex].id);
+    await addNotification(req.headers['x-rt-id'] as string, "Peran Warga Diperbarui", `Peran warga ${users[userIndex].nama} diubah menjadi ${role}.`, updater, "warga", users[userIndex].id);
     res.json({ message: "Role updated successfully", user: users[userIndex] });
   } else {
     res.status(400).json({ error: "Gagal update role" });
@@ -434,14 +464,14 @@ app.put("/api/warga/:id/role", async (req, res) => {
 
 app.put("/api/warga/:id/approval", async (req, res) => {
   const { isApproved } = req.body;
-  const users = await getUsers();
+  const users = await getUsers(req.headers['x-rt-id'] as string);
   const userIndex = users.findIndex((u: any) => u.id === req.params.id);
   if (userIndex !== -1 && users[userIndex].id !== "admin") {
     users[userIndex].isApproved = isApproved;
-    await saveUsers(users);
+    await saveUsers(req.headers['x-rt-id'] as string, users);
     const updater = req.body.updaterName || 'Admin';
     const statusText = isApproved ? 'disetujui' : 'dibatalkan';
-    await addNotification("Status Warga Diperbarui", `Status warga ${users[userIndex].nama} ${statusText}.`, updater, "warga", users[userIndex].id);
+    await addNotification(req.headers['x-rt-id'] as string, "Status Warga Diperbarui", `Status warga ${users[userIndex].nama} ${statusText}.`, updater, "warga", users[userIndex].id);
     res.json({ message: "Status approval updated successfully", user: users[userIndex] });
   } else {
     res.status(400).json({ error: "Gagal update status approval" });
@@ -449,13 +479,13 @@ app.put("/api/warga/:id/approval", async (req, res) => {
 });
 
 app.get("/api/notifications", async (req, res) => {
-  res.json({ notifications: await getNotifications() });
+  res.json({ notifications: await getNotifications(req.headers['x-rt-id'] as string) });
 });
 
 app.post("/api/notifications/read", async (req, res) => {
-  const notifs = await getNotifications();
+  const notifs = await getNotifications(req.headers['x-rt-id'] as string);
   const updated = notifs.map((n: any) => ({ ...n, read: true }));
-  await saveNotifications(updated);
+  await saveNotifications(req.headers['x-rt-id'] as string, updated);
   res.json({ success: true });
 });
 
@@ -467,26 +497,26 @@ app.post("/api/transactions", async (req, res) => {
   let notifTitle = `Transaksi ${type || 'Baru'}`;
   let notifMessage = message || `Terdapat transaksi ${type ? type.toLowerCase() : 'baru'} masuk sebesar ${formattedAmount} dari ${name || 'Warga'}.`;
 
-  await addNotification(notifTitle, notifMessage);
+  await addNotification(req.headers['x-rt-id'] as string, notifTitle, notifMessage);
   res.json({ success: true, message: "Transaksi berhasil dan notifikasi dikirim" });
 });
 
 app.post("/api/broadcast", async (req, res) => {
   const { title, message, updaterName } = req.body;
   if (!message) return res.status(400).json({ error: "Pesan tidak boleh kosong" });
-  await addNotification(title || "📢 Pengumuman RT", message, updaterName || 'Admin', "broadcast");
+  await addNotification(req.headers['x-rt-id'] as string, title || "📢 Pengumuman RT", message, updaterName || 'Admin', "broadcast");
   res.json({ success: true, message: "Pesan broadcast berhasil dikirim ke semua warga" });
 });
 
 app.get("/api/data/:resource", async (req, res) => {
-  const data = await getAppData();
+  const data = await getAppData(req.headers['x-rt-id'] as string);
   const resource = req.params.resource;
   if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
   res.json({ data: data[resource] });
 });
 
 app.post("/api/data/:resource", async (req, res) => {
-  const data = await getAppData();
+  const data = await getAppData(req.headers['x-rt-id'] as string);
   const resource = req.params.resource;
   if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
 
@@ -538,7 +568,7 @@ app.post("/api/data/:resource", async (req, res) => {
     }
   }
 
-  await saveAppData(data);
+  await saveAppData(req.headers['x-rt-id'] as string, data);
 
   const creator = req.body.nama || req.body.name || req.body.uploaderName || req.body.pembuat || req.body.updaterName || 'Sistem';
   let title = `Input Baru: ${resource}`;
@@ -549,13 +579,13 @@ app.post("/api/data/:resource", async (req, res) => {
   if (resource === 'acara') title = 'Acara Baru';
   if (resource === 'surat') title = 'Surat Keluar Baru';
 
-  await addNotification(title, `Terdapat data baru pada modul ${resource} oleh ${creator}.`, creator, resource, newItem.id);
+  await addNotification(req.headers['x-rt-id'] as string, title, `Terdapat data baru pada modul ${resource} oleh ${creator}.`, creator, resource, newItem.id);
 
   res.json({ message: "Created successfully", item: newItem });
 });
 
 app.put("/api/data/:resource/:id", async (req, res) => {
-  const data = await getAppData();
+  const data = await getAppData(req.headers['x-rt-id'] as string);
   const resource = req.params.resource;
   if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
 
@@ -564,14 +594,14 @@ app.put("/api/data/:resource/:id", async (req, res) => {
     const oldItem = data[resource][index];
     const newItem = { ...oldItem, ...req.body };
     data[resource][index] = newItem;
-    await saveAppData(data);
+    await saveAppData(req.headers['x-rt-id'] as string, data);
 
     if (resource === 'surat' && oldItem.status !== newItem.status && newItem.status === 'selesai') {
-      await addNotification('Surat Selesai', `Surat pengajuan untuk ${newItem.keperluan || 'anda'} sudah bisa diambil.`, req.body.updaterName || 'Admin', resource, newItem.id);
+      await addNotification(req.headers['x-rt-id'] as string, 'Surat Selesai', `Surat pengajuan untuk ${newItem.keperluan || 'anda'} sudah bisa diambil.`, req.body.updaterName || 'Admin', resource, newItem.id);
     } else if (resource === 'laporan' && oldItem.status !== newItem.status) {
-      await addNotification('Update Laporan', `Laporan ${newItem.judul || 'warga'} kini berstatus: ${newItem.status}.`, req.body.updaterName || 'Admin', resource, newItem.id);
+      await addNotification(req.headers['x-rt-id'] as string, 'Update Laporan', `Laporan ${newItem.judul || 'warga'} kini berstatus: ${newItem.status}.`, req.body.updaterName || 'Admin', resource, newItem.id);
     } else if (resource === 'iuran' && oldItem.status !== newItem.status && newItem.status === 'verifikasi') {
-      await addNotification('Iuran Diverifikasi', `Iuran dari ${newItem.nama || 'warga'} sebesar Rp ${newItem.nominal} telah diverifikasi dan masuk kas.`, req.body.updaterName || 'Admin', resource, newItem.id);
+      await addNotification(req.headers['x-rt-id'] as string, 'Iuran Diverifikasi', `Iuran dari ${newItem.nama || 'warga'} sebesar Rp ${newItem.nominal} telah diverifikasi dan masuk kas.`, req.body.updaterName || 'Admin', resource, newItem.id);
       const nominal = parseInt(newItem.nominal || '0', 10);
       
       if (newItem.jenis === 'Wifi') {
@@ -616,10 +646,10 @@ app.put("/api/data/:resource/:id", async (req, res) => {
           });
         }
       }
-      await saveAppData(data);
+      await saveAppData(req.headers['x-rt-id'] as string, data);
     } else {
       const updater = req.body.updaterName || 'Sistem';
-      await addNotification(`Data Diupdate: ${resource}`, `Terdapat perubahan data pada modul ${resource} oleh ${updater}.`, updater, resource, newItem.id);
+      await addNotification(req.headers['x-rt-id'] as string, `Data Diupdate: ${resource}`, `Terdapat perubahan data pada modul ${resource} oleh ${updater}.`, updater, resource, newItem.id);
     }
 
     res.json({ message: "Updated successfully", item: newItem });
@@ -629,7 +659,7 @@ app.put("/api/data/:resource/:id", async (req, res) => {
 });
 
 app.delete("/api/data/:resource/:id", async (req, res) => {
-  const data = await getAppData();
+  const data = await getAppData(req.headers['x-rt-id'] as string);
   const resource = req.params.resource;
   if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
 
@@ -647,9 +677,9 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
   }
 
   data[resource] = data[resource].filter((item: any) => item.id !== req.params.id);
-  await saveAppData(data);
+  await saveAppData(req.headers['x-rt-id'] as string, data);
   const updater = req.body?.updaterName || 'Sistem';
-  await addNotification(`Data Dihapus: ${resource}`, `Terdapat penghapusan data pada modul ${resource} oleh ${updater}.`, updater);
+  await addNotification(req.headers['x-rt-id'] as string, `Data Dihapus: ${resource}`, `Terdapat penghapusan data pada modul ${resource} oleh ${updater}.`, updater);
   res.json({ message: "Deleted successfully" });
 });
 
@@ -660,7 +690,9 @@ app.get("/api/health", (req, res) => {
 export async function startServer(listen = true) {
   // Hanya inisiasi full database jika tidak berjalan di environment serverless (Vercel)
   if (!process.env.VERCEL) {
-    await initDb();
+    await initDb('rt01');
+    await initDb('rt02');
+    await initDb('rt03');
   } else {
     await connectDB();
   }
