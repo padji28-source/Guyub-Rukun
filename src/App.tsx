@@ -54,6 +54,9 @@ import { MobileUMKM } from './MobileUMKM';
 
 // --- Modern Icons Set ---
 export const icons = {
+  financial: (props: any) => (
+    <img src="/fk.png" alt="Financial" className={props.className} style={{ objectFit: 'contain' }} />
+  ),
   voting: (props: any) => (
     <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 12l5 5l10 -10" />
@@ -1232,6 +1235,8 @@ const MobileProfile = ({ user }: { user: any }) => {
 };
 
 const MobileQuickActions = ({ onActionClick }: { onActionClick: (action: string) => void }) => {
+  const [showAll, setShowAll] = useState(false);
+
   // Setup variasi animasi framer-motion
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -1246,11 +1251,20 @@ const MobileQuickActions = ({ onActionClick }: { onActionClick: (action: string)
     show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 250, damping: 20 } }
   };
 
+  const displayedActions = showAll ? quickActions : quickActions.slice(0, 8);
+
   return (
     <section className="px-5 mb-8">
       <div className="flex justify-between items-center mb-3">
         <h3 className="font-extrabold text-gray-800 text-sm">Layanan Warga</h3>
-        <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full cursor-pointer active:scale-95 transition-transform">Lihat Semua</span>
+        {quickActions.length > 8 && (
+          <span 
+            onClick={() => setShowAll(!showAll)}
+            className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full cursor-pointer active:scale-95 transition-transform"
+          >
+            {showAll ? 'Sembunyikan' : 'Lihat Semua'}
+          </span>
+        )}
       </div>
       
       <motion.div 
@@ -1259,12 +1273,18 @@ const MobileQuickActions = ({ onActionClick }: { onActionClick: (action: string)
         animate="show" 
         className="grid grid-cols-4 gap-y-5 gap-x-3 bg-white p-5 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100"
       >
-        {quickActions.map((action, index) => (
+        {displayedActions.map((action, index) => (
           <motion.button 
             key={index} 
             variants={itemVariants}
             whileTap={{ scale: 0.85 }} // Mengecil saat ditekan
-            onClick={() => onActionClick(action.name)} 
+            onClick={() => {
+              if (action.url) {
+                window.open(action.url, '_blank');
+              } else {
+                onActionClick(action.name);
+              }
+            }} 
             className="flex flex-col items-center text-center gap-2.5 group outline-none"
           >
             {/* Box Ikon Modern */}
@@ -1667,8 +1687,9 @@ const quickActions = [
   { name: 'Media', icon: icons.media, color: 'from-purple-400 to-fuchsia-500', shadow: 'shadow-purple-200' },
   { name: 'Iuran', icon: icons.iuran, color: 'from-emerald-400 to-teal-500', shadow: 'shadow-emerald-200' },
   { name: 'Kas', icon: icons.kas, color: 'from-cyan-400 to-blue-500', shadow: 'shadow-cyan-200' },
-  { name: 'Sedekah', icon: icons.sedekah, color: 'from-pink-400 to-rose-500', shadow: 'shadow-pink-200' },
   { name: 'Data Warga', icon: icons.warga, color: 'from-violet-400 to-purple-500', shadow: 'shadow-violet-200' },
+  { name: 'App Financial', url: 'https://fin-support.vercel.app/', icon: icons.financial, color: 'from-green-400 to-emerald-600', shadow: 'shadow-green-200' },
+  { name: 'Sedekah', icon: icons.sedekah, color: 'from-pink-400 to-rose-500', shadow: 'shadow-pink-200' },
   { name: 'UMKM', icon: icons.umkm, color: 'from-yellow-400 to-amber-500', shadow: 'shadow-yellow-200' },
   { name: 'Darurat', icon: icons.darurat, color: 'from-red-500 to-rose-600', shadow: 'shadow-red-200' },
   { name: 'Tamu', icon: icons.warga, color: 'from-sky-400 to-indigo-500', shadow: 'shadow-sky-200' },
