@@ -683,6 +683,49 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
   res.json({ message: "Deleted successfully" });
 });
 
+// Voting Routes
+app.get("/api/voting", async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  const data = await getAppData(rtId);
+  res.json({ data: data.voting || [] });
+});
+
+app.post("/api/voting", async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  const data = await getAppData(rtId);
+  const newVote = { id: Date.now().toString(), date: new Date().toISOString(), status: 'aktif', votes: [], ...req.body };
+  data.voting = [newVote, ...(data.voting || [])];
+  await saveAppData(rtId, data);
+  await addNotification(rtId, `Voting Baru: ${req.body.title}`, `Mari berpartisipasi pada voting baru: ${req.body.title}`, req.body.createdBy || 'Pengurus');
+  res.json({ message: "Voting created", data: newVote });
+});
+
+app.put("/api/voting/:id", async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  const data = await getAppData(rtId);
+  data.voting = (data.voting || []).map((v: any) => v.id === req.params.id ? { ...v, ...req.body } : v);
+  await saveAppData(rtId, data);
+  res.json({ message: "Voting updated" });
+});
+
+app.post("/api/voting/:id/vote", async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  const data = await getAppData(rtId);
+  const { optionId, userId } = req.body;
+  data.voting = (data.voting || []).map((v: any) => {
+    if (v.id === req.params.id) {
+      if (!v.votes.find((vt: any) => vt.userId === userId)) {
+        v.votes.push({ userId, optionId, date: new Date().toISOString() });
+      } else {
+        v.votes = v.votes.map((vt: any) => vt.userId === userId ? { ...vt, optionId, date: new Date().toISOString() } : vt);
+      }
+    }
+    return v;
+  });
+  await saveAppData(rtId, data);
+  res.json({ message: "Vote submitted" });
+});
+
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });

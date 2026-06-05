@@ -9,6 +9,44 @@ import { MobileLaporan } from './MobileLaporan';
 import { MobileDarurat } from './MobileDarurat';
 import { MobileDokumen } from './MobileDokumen';
 import { MobileTamu } from './MobileTamu';
+import { MobileVoting } from './MobileVoting';
+
+const MobileVotingNotification = ({ onActionClick, notifications }: { onActionClick: (n: string) => void, notifications: any[] }) => {
+  const [activeVotings, setActiveVotings] = useState<any[]>([]);
+  
+  useEffect(() => {
+    apiFetch('/api/voting')
+      .then(res => res.json())
+      .then(json => {
+        const votings = json.data || [];
+        setActiveVotings(votings.filter((v: any) => v.status === 'aktif'));
+      });
+  }, []);
+
+  if (activeVotings.length === 0) return null;
+
+  return (
+    <section className="px-5 mb-4 mt-0">
+      <div 
+        onClick={() => onActionClick('Voting')}
+        className="bg-white rounded-2xl p-4 shadow-sm border border-teal-100 flex items-center justify-between cursor-pointer hover:border-teal-300 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-teal-50 rounded-full flex items-center justify-center animate-pulse">
+            <icons.dokumen className="w-5 h-5 text-teal-600" />
+          </div>
+          <div>
+            <h3 className="text-13px font-bold text-gray-900 leading-tight">Voting Aktif ({activeVotings.length})</h3>
+            <p className="text-[10px] text-gray-500 mt-0.5">Mari berpartisipasi dalam musyawarah RT</p>
+          </div>
+        </div>
+        <div className="text-teal-600">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+        </div>
+      </div>
+    </section>
+  );
+};
 import { MobileAcaraPage } from './MobileAcara';
 import { MobileIuran } from './MobileIuran';
 import { MobileKas } from './MobileKas';
@@ -1163,18 +1201,25 @@ const MobileProfile = ({ user }: { user: any }) => {
   const displayAlamat = user?.alamat || 'Jl. Bahagia No. 12, Kompleks Rukun';
   
   return (
-  <section className="p-4 bg-teal-50 flex items-center justify-between gap-3 rounded-b-3xl mb-4">
-    <div className="flex-grow">
-      <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: fontStyle }}>Halo, {shortName}!</h2>
-      <p className="text-xs text-gray-600 mt-1">Warga RT 01, {displayAlamat.length > 25 ? displayAlamat.substring(0, 25) + '...' : displayAlamat}</p>
+  <section className="relative px-5 py-6 bg-gradient-to-br from-[#f0fbf8] to-[#e4f6ef] flex items-center justify-between gap-3 rounded-b-[2rem] mb-6 overflow-hidden border-b border-teal-100/50 shadow-sm">
+    <div className="absolute top-0 right-0 w-32 h-32 bg-teal-200/20 rounded-full translate-x-12 -translate-y-12 blur-2xl"></div>
+    <div className="absolute bottom-0 left-0 w-24 h-24 bg-emerald-200/30 rounded-full -translate-x-8 translate-y-8 blur-xl"></div>
+    
+    <div className="flex-grow z-10">
+      <h2 className="text-[22px] font-extrabold text-slate-800 tracking-tight" style={{ fontFamily: fontStyle }}>Halo, {shortName}!</h2>
+      <p className="text-xs font-medium text-slate-500 mt-1">Warga RT 01, {displayAlamat.length > 25 ? displayAlamat.substring(0, 25) + '...' : displayAlamat}</p>
     </div>
-    <div className="relative">
-      {user?.photo ? (
-        <img src={user.photo} alt="Profile" className="w-14 h-14 rounded-full border border-teal-100 object-cover" />
-      ) : (
-        <ProfileAvatar size="14"/>
-      )}
-      <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-teal-50"></div>
+    <div className="relative z-10 shrink-0">
+      <div className="w-14 h-14 bg-slate-200 rounded-full flex items-center justify-center overflow-hidden border border-slate-200 shadow-sm">
+        {user?.photo ? (
+          <img src={user.photo} alt="Profile" className="w-full h-full object-cover" />
+        ) : (
+          <svg className="w-10 h-10 text-slate-400 mt-2" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4.5c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 13c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+          </svg>
+        )}
+      </div>
+      <div className="absolute bottom-0 right-0 w-[14px] h-[14px] bg-[#02df8f] rounded-full border-2 border-[#e4f6ef]"></div>
     </div>
   </section>
   );
@@ -1555,6 +1600,7 @@ const quickActions = [
   { name: 'UMKM', icon: icons.umkm, color: 'from-yellow-400 to-amber-500', shadow: 'shadow-yellow-200' },
   { name: 'Darurat', icon: icons.darurat, color: 'from-red-500 to-rose-600', shadow: 'shadow-red-200' },
   { name: 'Tamu', icon: icons.warga, color: 'from-sky-400 to-indigo-500', shadow: 'shadow-sky-200' },
+  { name: 'Voting', icon: icons.dokumen, color: 'from-indigo-400 to-indigo-600', shadow: 'shadow-indigo-200' },
 ];
 
 let cachedSaldoResult: any = null;
@@ -1598,28 +1644,31 @@ const MobileSaldoCard = () => {
   const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' });
 
   return (
-    <section className="px-4 mb-5 mt-2">
-      <div className="bg-gradient-to-r from-teal-600 to-emerald-500 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full translate-x-12 -translate-y-8"></div>
-          <div className="flex justify-between items-center mb-1">
-            <p className="text-[11px] font-medium opacity-90 uppercase tracking-widest">Saldo Kas RT 01</p>
+    <section className="px-5 mb-6 mt-0">
+      <div className="bg-[#0eb18a] bg-gradient-to-br from-[#10b981] to-[#0eb18a] rounded-[1.5rem] p-5 text-white shadow-xl shadow-teal-500/20 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-36 h-36 bg-white opacity-10 rounded-full translate-x-12 -translate-y-8"></div>
+          <div className="absolute bottom-0 right-0 w-24 h-24 bg-white opacity-[0.05] rounded-full translate-x-8 translate-y-8 blur-md"></div>
+          <div className="flex justify-between items-center mb-1 relative z-10">
+            <p className="text-xs font-semibold opacity-90 uppercase tracking-widest">Saldo Kas RT 01</p>
             <icons.kas className="w-5 h-5 opacity-80"/>
           </div>
-          {loading ? (
-             <div className="h-8 w-40 bg-white/20 animate-pulse rounded mt-1 mb-1"></div>
-          ) : (
-             <h3 className="text-2xl font-bold tracking-tight mt-1 mb-1 text-white" style={{ fontFamily: fontStyle }}>{formatter.format(saldo)}</h3>
-          )}
-          <div className="flex items-center gap-2 mt-2 truncate">
+          <div className="relative z-10">
+            {loading ? (
+               <div className="h-8 w-40 bg-white/20 animate-pulse rounded mt-1 mb-1"></div>
+            ) : (
+               <h3 className="text-3xl font-bold tracking-tight mt-1 mb-2 text-white" style={{ fontFamily: fontStyle }}>{formatter.format(saldo)}</h3>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-3 truncate relative z-10">
             {loading ? (
               <>
-                <div className="h-4 w-20 bg-white/20 animate-pulse rounded-full"></div>
-                <div className="h-4 w-24 bg-white/20 animate-pulse rounded-full"></div>
+                <div className="h-5 w-24 bg-white/20 animate-pulse rounded-full"></div>
+                <div className="h-5 w-32 bg-white/20 animate-pulse rounded-full"></div>
               </>
             ) : (
               <>
-                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm font-medium">Sosial: {formatter.format(danaSosial)}</span>
-                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm font-medium">Kematian: {formatter.format(danaKematian)}</span>
+                <span className="text-[10px] bg-white/20 px-2.5 py-1 rounded-full backdrop-blur-sm font-semibold tracking-wide">Sosial: {formatter.format(danaSosial)}</span>
+                <span className="text-[10px] bg-white/20 px-2.5 py-1 rounded-full backdrop-blur-sm font-semibold tracking-wide">Kematian: {formatter.format(danaKematian)}</span>
               </>
             )}
           </div>
@@ -1862,7 +1911,7 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Blok Rumah</label>
                  <select value={profileBlok} onChange={e => setProfileBlok(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-bold text-slate-800 outline-none appearance-none transition-all">
                    <option value="">Pilih</option>
-                   {['A','B','C','D','E','F','G'].map(b => <option key={b} value={b}>Blok {b}</option>)}
+                   {['A','B','C','D','E','F','G','H','I','J'].map(b => <option key={b} value={b}>Blok {b}</option>)}
                  </select>
                </div>
                <div className="flex-1">
@@ -1894,12 +1943,10 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col w-full min-h-screen bg-slate-50 pb-28">
       
       {/* Absolute Header Background */}
-      <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 rounded-b-[3rem] shadow-lg overflow-hidden">
-         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-[0.05] rounded-full translate-x-20 -translate-y-20 blur-2xl"></div>
-         <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-300 opacity-20 rounded-full -translate-x-16 translate-y-16 blur-2xl"></div>
+      <div className="absolute top-0 left-0 right-0 h-[280px] bg-gradient-to-b from-[#13b097] to-[#0b7c5e] rounded-b-[3rem] shadow-md overflow-hidden">
       </div>
 
-      <div className="relative z-10 px-5 pt-8 flex flex-col items-center">
+      <div className="relative z-10 px-5 pt-12 flex flex-col items-center">
         {/* Sukses Alert Dinamis */}
         <AnimatePresence>
           {successMsg && (
@@ -1910,24 +1957,24 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
         </AnimatePresence>
 
         {/* Profil Avatar (Hero) */}
-        <div className="relative mt-8">
-          <div className="w-28 h-28 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-slate-100">
+        <div className="relative">
+          <div className="w-[110px] h-[110px] rounded-full border-4 border-white shadow-[0_8px_16px_rgba(0,0,0,0.15)] overflow-hidden bg-[#e9ebed] flex items-center justify-center">
              {profile.photo ? (
                 <img src={profile.photo} alt="Profile" className="w-full h-full object-cover" />
              ) : (
-                <ProfileAvatar size="28"/>
+                <svg className="w-[80px] h-[80px] text-[#9098a5] mt-4" fill="currentColor" viewBox="0 0 24 24">
+                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4.5c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 13c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                </svg>
              )}
           </div>
-          <div className="absolute bottom-1 right-2 w-6 h-6 bg-emerald-400 border-2 border-white rounded-full flex items-center justify-center shadow-sm">
-             <div className="w-full h-full bg-emerald-400 rounded-full animate-ping opacity-75"></div>
-          </div>
+          <div className="absolute bottom-[2px] right-[2px] w-6 h-6 bg-[#02df8f] border-2 border-[#098363] rounded-full shadow-sm"></div>
         </div>
 
         {/* Info Singkat */}
-        <div className="text-center mt-5 text-white drop-shadow-md">
-          <h2 className="text-2xl font-extrabold tracking-tight">{profile.name}</h2>
-          <div className="inline-flex items-center gap-1.5 mt-2 bg-white/20 backdrop-blur-sm px-3.5 py-1 rounded-full border border-white/20">
-             <svg className="w-3.5 h-3.5 text-teal-100" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+        <div className="text-center mt-4 text-white">
+          <h2 className="text-[22px] font-bold tracking-tight drop-shadow-sm">{profile.name}</h2>
+          <div className="inline-flex items-center gap-1.5 mt-2 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 shadow-sm">
+             <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
              <span className="text-xs font-bold uppercase tracking-wider">{profile.role}</span>
           </div>
         </div>
@@ -2398,12 +2445,14 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                           <ProfileAvatar size="8" />
                         </div>
                       </section>
+                      <MobileVotingNotification onActionClick={setActiveMobileTab} notifications={notifications} />
                       <MobileSaldoCard/>
                       <MobileQuickActions onActionClick={setActiveMobileTab}/>
                       <MobileEvents onActionClick={setActiveMobileTab} />
                     </>
                   )}
 
+                  {activeMobileTab === 'Voting' && <MobileVoting currentUser={user} onBack={() => setActiveMobileTab('Beranda')} />}
                   {activeMobileTab === 'Acara' && <MobileAcaraPage currentUser={user} />}
                   {activeMobileTab === 'Laporan' && <MobileLaporan onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
                   {activeMobileTab === 'Surat' || activeMobileTab === 'Surat Pengantar' ? <MobileSuratPengantar onBack={() => setActiveMobileTab('Beranda')} currentUser={user} /> : null}

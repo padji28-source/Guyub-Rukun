@@ -244,7 +244,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
             <div className="flex gap-3">
                <select value={newWargaBlok} onChange={e => setNewWargaBlok(e.target.value)} required className="w-1/2 text-sm p-3 bg-gray-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl transition-all outline-none appearance-none">
                  <option value="">Pilih Blok</option>
-                 {['A','B','C','D','E','F','G'].map(b => <option key={b} value={b}>Blok {b}</option>)}
+                 {['A','B','C','D','E','F','G','H','I','J'].map(b => <option key={b} value={b}>Blok {b}</option>)}
                </select>
                <input type="text" placeholder="No Rumah (Cth: 12)" value={newWargaNomor} onChange={e => setNewWargaNomor(e.target.value)} required className="w-1/2 text-sm p-3 bg-gray-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl transition-all outline-none" />
             </div>
