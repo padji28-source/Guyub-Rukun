@@ -41,7 +41,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
 
   const handleTambah = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin menyimpan data ini?")) return;
+    
     
     // Optimistic Update
     const tempId = 'temp-acara-' + Date.now();
@@ -66,7 +66,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Hapus data acara ini secara permanen?")) return;
+    
     
     setData(prev => prev.filter(item => item.id !== id));
     

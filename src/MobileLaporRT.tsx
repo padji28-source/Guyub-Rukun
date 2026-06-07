@@ -38,11 +38,11 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
           setGpsLocation(`${position.coords.latitude}, ${position.coords.longitude}`);
         },
         (error) => {
-          alert('Gagal mendapatkan lokasi GPS. Pastikan izin lokasi diberikan.');
+          console.log('Gagal mendapatkan lokasi GPS. Pastikan izin lokasi diberikan.');
         }
       );
     } else {
-      alert('Geolocation tidak didukung di browser ini.');
+      console.log('Geolocation tidak didukung di browser ini.');
     }
   };
 
@@ -59,7 +59,7 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
 
   const handleSubmitKeluhan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin mengirim laporan ini?")) return;
+    
     setSuccessMsg('');
     const tempJudul = judul;
     const tempKet = keterangan;
@@ -96,7 +96,7 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
 
   const handleSubmitTamu = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin mengirim laporan tamu ini?")) return;
+    
     setSuccessMsg('');
     
     const tempKeluarga = hubunganTamu;

@@ -107,9 +107,9 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   };
 
   const submitPembayaran = async () => {
-    if (!window.confirm("Apakah Anda yakin ingin mengirim pembayaran ini?")) return;
+    
     if (!buktiBase64) {
-      alert('Harap unggah bukti pembayaran terlebih dahulu.');
+      console.log('Harap unggah bukti pembayaran terlebih dahulu.');
       return;
     }
     
@@ -160,7 +160,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
   const handleTambahAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Simpan data iuran warga?")) return;
+    
     if (!adminSelectedUserId) return;
     
     const targetUsers = adminSelectedUserId === 'all' 

@@ -31,7 +31,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
 
   const handleTambah = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm('Apakah Anda yakin ingin menyimpan data UMKM ini?')) return;
+    
     
     const tempId = 'temp-umkm-' + Date.now();
     const newData = {
@@ -62,7 +62,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus data UMKM ini?')) return;
+    
     
     setData(prev => prev.filter(item => item.id !== id));
     

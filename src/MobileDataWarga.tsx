@@ -83,7 +83,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
       setNewWarga({ username: '', nama: '', password: '', noHp: '', status: '', umur: '' });
       setNewWargaBlok('');
       setNewWargaNomor('');
-      alert('🎉 Warga berhasil ditambahkan!');
+      console.log('🎉 Warga berhasil ditambahkan!');
       fetchWarga();
     } catch(e) { console.error(e); }
   };
@@ -107,13 +107,13 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
       setShowMemberForm(false);
       setEditingMember(null);
       setMemberForm({ name: '', role: '', age: '', tglLahir: '' });
-      alert(editingMember ? '✅ Data anggota keluarga berhasil diubah!' : '✅ Data anggota keluarga berhasil ditambahkan!');
+      console.log(editingMember ? '✅ Data anggota keluarga berhasil diubah!' : '✅ Data anggota keluarga berhasil ditambahkan!');
       fetchWarga();
     } catch(e) { console.error(e); }
   };
 
   const handleDeleteMember = async (wargaId: string, memberId: string) => {
-    if(!window.confirm("Yakin ingin menghapus anggota keluarga ini?")) return;
+    
     try {
       await apiFetch(`/api/warga/${wargaId}/members/${memberId}`, { method: 'DELETE' });
       fetchWarga();
@@ -125,13 +125,13 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
     try {
       const user = wargaData.find(w => w.id === wargaId);
       if (!user || !user.dokumenKk) {
-        alert("Warga ini belum mengunggah Kartu Keluarga.");
+        console.log("Warga ini belum mengunggah Kartu Keluarga.");
         setExtractingId(null);
         return;
       }
 
       if (!process.env.GEMINI_API_KEY) {
-        alert("API Key Gemini belum dikonfigurasi.");
+        console.log("API Key Gemini belum dikonfigurasi.");
         setExtractingId(null);
         return;
       }
@@ -187,11 +187,11 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
         }
       }
 
-      alert(`✨ Berhasil menambahkan ${addedCount} anggota keluarga baru secara otomatis dari KK!`);
+      console.log(`✨ Berhasil menambahkan ${addedCount} anggota keluarga baru secara otomatis dari KK!`);
       fetchWarga();
     } catch (e) {
       console.error("Extraction error:", e);
-      alert('Terjadi kesalahan saat mengekstrak data dari KK.');
+      console.log('Terjadi kesalahan saat mengekstrak data dari KK.');
     } finally {
       setExtractingId(null);
     }
@@ -456,7 +456,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                                 <option value="tidak_aktif">Tidak Aktif</option>
                               </select>
                             </div>
-                            <button onClick={(e) => { e.stopPropagation(); apiFetch(`/api/warga/${warga.id}`,{method:'DELETE'}).then(()=> { alert('Warga berhasil dihapus!'); fetchWarga(); }); }} className="text-red-600 bg-red-50 hover:bg-red-100 font-semibold px-3 py-2 rounded-xl text-xs transition-colors h-[34px]">
+                            <button onClick={(e) => { e.stopPropagation(); apiFetch(`/api/warga/${warga.id}`,{method:'DELETE'}).then(()=> { console.log('Warga berhasil dihapus!'); fetchWarga(); }); }} className="text-red-600 bg-red-50 hover:bg-red-100 font-semibold px-3 py-2 rounded-xl text-xs transition-colors h-[34px]">
                               Hapus Warga
                             </button>
                           </div>
@@ -483,7 +483,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                                   docs.push({ url: warga.dokumenKtp, title: 'KTP' });
                                 }
                                 if (docs.length > 0) setPreviewDocs({ docs, currentIndex: 0, wargaName: warga.nama });
-                                else alert('Belum ada dokumen yang diunggah.');
+                                else console.log('Belum ada dokumen yang diunggah.');
                               }} className="text-xs text-blue-700 font-semibold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-colors">
                                 Lihat File
                               </button>

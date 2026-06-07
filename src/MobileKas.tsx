@@ -43,7 +43,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
 
   const handleTambah = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin menyimpan data ini?")) return;
+    
     
     // Optimistic Update
     const nominal = parseInt(amount.replace(/\D/g, '') || '0');
@@ -115,15 +115,15 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
 
   const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin mentransfer dana ini?")) return;
+    
     
     const nominal = parseInt(transferAmount.replace(/\D/g, '') || '0');
     if (nominal <= 0) {
-      alert("Nominal transfer tidak valid.");
+      console.log("Nominal transfer tidak valid.");
       return;
     }
     if (nominal > getSaldo('Kas RT')) {
-      alert("Saldo Kas RT tidak mencukupi.");
+      console.log("Saldo Kas RT tidak mencukupi.");
       return;
     }
     

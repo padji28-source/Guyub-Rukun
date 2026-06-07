@@ -37,14 +37,14 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
   };
 
   const handleDeleteLaporan = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus laporan ini?')) return;
+    
     setData(prev => prev.filter(item => item.id !== id));
     try {
       await apiFetch(`/api/data/laporan/${id}`, { method: 'DELETE' });
       fetchData();
     } catch (e) {
       console.error(e);
-      alert('Gagal menghapus laporan');
+      console.log('Gagal menghapus laporan');
       fetchData();
     }
   };

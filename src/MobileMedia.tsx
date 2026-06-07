@@ -74,7 +74,7 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
             fetchData();
           } catch(err) {
             console.error(err);
-            alert('Gagal mengunggah foto.');
+            console.log('Gagal mengunggah foto.');
           } finally {
             setLoading(false);
           }
@@ -87,13 +87,13 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus foto ini?")) return;
+    
     try {
       await apiFetch(`/api/data/media/${id}`, { method: 'DELETE' });
       fetchData();
     } catch(e) { 
       console.error(e); 
-      alert('Gagal menghapus foto');
+      console.log('Gagal menghapus foto');
     }
   };
 

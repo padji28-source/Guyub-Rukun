@@ -35,7 +35,7 @@ export const MobileVoting = ({ currentUser, onBack }: { currentUser: any, onBack
   };
 
   const handleCreate = async () => {
-    if (!title || options.some(o => !o.text)) return alert('Harap lengkapi judul dan semua opsi');
+    if (!title || options.some(o => !o.text)) return console.log('Harap lengkapi judul dan semua opsi');
     
     setLoading(true);
     await apiFetch('/api/voting', {

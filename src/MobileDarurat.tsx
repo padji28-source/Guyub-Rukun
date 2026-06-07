@@ -33,11 +33,11 @@ export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, cur
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tel: newTel })
       });
-      alert('Data kontak darurat berhasil diperbarui!');
+      console.log('Data kontak darurat berhasil diperbarui!');
       fetchData();
     } catch(e) { 
       console.error(e); 
-      alert('Gagal memperbarui nomor darurat.');
+      console.log('Gagal memperbarui nomor darurat.');
     }
   };
 

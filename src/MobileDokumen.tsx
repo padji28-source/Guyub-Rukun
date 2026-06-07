@@ -63,7 +63,7 @@ export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: (
   };
 
   const handleSave = async () => {
-    if (!window.confirm("Apakah Anda yakin ingin menyimpan dokumen ini?")) return;
+    
     setLoading(true);
     setSuccessMsg('');
     try {
@@ -85,11 +85,11 @@ export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: (
         setSuccessMsg('Dokumen berhasil disimpan!');
         setTimeout(() => setSuccessMsg(''), 3000);
       } else {
-        alert(data.error || 'Gagal mengunggah dokumen');
+        console.log(data.error || 'Gagal mengunggah dokumen');
       }
     } catch (e) {
       console.error(e);
-      alert('Terjadi kesalahan sistem');
+      console.log('Terjadi kesalahan sistem');
     }
     setLoading(false);
   };

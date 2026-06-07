@@ -41,7 +41,7 @@ export const MobileSuratPengantar = ({ onBack, currentUser }: { onBack: () => vo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("Apakah Anda yakin ingin mengajukan surat ini?")) return;
+    
     
     // Optimistic Update
     const tempId = 'temp-surat-' + Date.now();

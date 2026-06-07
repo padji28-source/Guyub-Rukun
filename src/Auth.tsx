@@ -137,16 +137,6 @@ export function Login({ onLogin, onNavRegister }: any) {
           </button>
         </form>
         <p className="mt-6 text-center text-xs text-gray-500">Belum punya akun? <button type="button" onClick={onNavRegister} className="text-teal-600 font-bold hover:underline">Daftar</button></p>
-        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-center">
-          <button 
-            type="button" 
-            onClick={() => { localStorage.removeItem('selected_rt'); window.location.reload(); }} 
-            className="text-xs font-semibold text-slate-500 hover:text-red-500 transition-colors flex items-center gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-            Ganti RT
-          </button>
-        </div>
       </div>
   );
 }
@@ -183,7 +173,7 @@ export function Register({ onRegister, onNavLogin }: any) {
       });
       const data = await res.json();
       if (res.ok) {
-        alert('Registrasi berhasil! Silahkan masuk terlebih dahulu.');
+        console.log('Registrasi berhasil! Silahkan masuk terlebih dahulu.');
         onNavLogin();
       } else {
         setError(data.error);
@@ -266,16 +256,6 @@ export function Register({ onRegister, onNavLogin }: any) {
           </button>
         </form>
         <p className="mt-6 text-center text-xs text-gray-500">Sudah punya akun? <button type="button" onClick={onNavLogin} className="text-teal-600 font-bold hover:underline">Masuk</button></p>
-        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-center">
-          <button 
-            type="button" 
-            onClick={() => { localStorage.removeItem('selected_rt'); window.location.reload(); }} 
-            className="text-xs font-semibold text-slate-500 hover:text-red-500 transition-colors flex items-center gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-            Ganti RT
-          </button>
-        </div>
       </div>
   );
 }

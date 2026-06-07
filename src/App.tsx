@@ -370,7 +370,7 @@ const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNot
                             if (onNotificationClick) {
                                onNotificationClick(n);
                             } else {
-                               alert(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
+                               console.log(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
                             }
                             setShowNotifications(false);
                           }}
@@ -607,11 +607,41 @@ const WebDateWidget = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
   const [selectedDateState, setSelectedDateState] = useState<number>(date.getDate());
+  const [reminders, setReminders] = useState<string[]>(() => {
+    const saved = localStorage.getItem('event_reminders');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setInterval(() => setDate(new Date()), 1000);
+    localStorage.setItem('event_reminders', JSON.stringify(reminders));
+  }, [reminders]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setDate(now);
+
+      // Check for reminders
+      events.forEach(e => {
+        if (reminders.includes(e.id) && e.time) {
+          const eventDate = new Date(e.date);
+          const [hours, minutes] = e.time.split(':').map(Number);
+          eventDate.setHours(hours, minutes, 0, 0);
+
+          const timeDiff = eventDate.getTime() - now.getTime();
+          // Notify if strictly between 9 and 10 minutes (600000ms = 10m)
+          if (timeDiff > 0 && timeDiff <= 10 * 60 * 1000 && timeDiff > 9 * 60 * 1000) {
+            setToastMessage(`Pengingat: Acara "${e.title}" akan mulai dalam 10 menit!`);
+            // Remove from reminders after notifying to avoid spam
+            setReminders(prev => prev.filter(id => id !== e.id));
+            setTimeout(() => setToastMessage(null), 10000);
+          }
+        }
+      });
+    }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [events, reminders]);
 
   useEffect(() => {
     apiFetch('/api/data/acara').then(r => r.json()).then(json => {
@@ -637,8 +667,25 @@ const WebDateWidget = () => {
     return d.getDate() === selectedDateState && d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear();
   });
 
+  const upcomingEventsCount = events.filter(e => {
+    const d = new Date(e.date);
+    return d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear() && d.getDate() >= date.getDate();
+  }).length;
+
   return (
     <div className="relative col-span-1 xl:col-span-2 select-none z-20">
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute -top-12 left-0 right-0 z-50 bg-rose-500 text-white text-xs font-bold py-2 px-4 rounded-xl shadow-lg border border-rose-400 text-center"
+          >
+            {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
       <motion.div 
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.98 }}
@@ -659,6 +706,12 @@ const WebDateWidget = () => {
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7"/>
             </motion.svg>
+            {upcomingEventsCount > 0 && (
+              <span className="flex h-2 w-2 relative ml-1">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+              </span>
+            )}
           </p>
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight drop-shadow-sm">{tanggal} <span className="text-teal-200">{bulan}</span> {tahun}</h2>
         </div>
@@ -666,6 +719,11 @@ const WebDateWidget = () => {
         <div className="relative z-10 bg-white/10 backdrop-blur-md px-5 py-3 rounded-xl border border-white/20 shadow-inner group-hover:bg-white/20 transition-all">
           <span className="text-xl md:text-2xl font-black tracking-wider text-white drop-shadow-md">{waktu}</span>
         </div>
+        {upcomingEventsCount > 0 && (
+          <div className="absolute top-0 right-0 m-2 mt-4 mr-4 px-2 py-1 bg-rose-500/90 text-white text-[9px] font-bold rounded-lg shadow-sm border border-rose-400 backdrop-blur-sm animate-pulse">
+            {upcomingEventsCount} Agenda Terdekat
+          </div>
+        )}
       </motion.div>
       
       <AnimatePresence>
@@ -729,11 +787,36 @@ const WebDateWidget = () => {
 
               <div className="flex-1 overflow-y-auto pr-2 space-y-4 no-scrollbar">
                 {selectedDateEvents.length > 0 ? (
-                  selectedDateEvents.map((e, idx) => (
-                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.1 }} key={idx} className="relative pl-4 border-l-2 border-orange-400">
-                      <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-white border-2 border-orange-400"></div>
-                      <div className="text-xs font-extrabold text-orange-600 bg-orange-50 inline-block px-2 py-0.5 rounded mb-1">{e.time || 'Waktu tidak ditentukan'}</div>
-                      <div className="text-sm font-bold text-gray-800 leading-tight">{e.title}</div>
+                  selectedDateEvents.map((e, idx) => {
+                    const isReminded = reminders.includes(e.id);
+                    return (
+                    <motion.div 
+                      initial={{ opacity: 0, x: 20 }} 
+                      animate={{ opacity: 1, x: 0 }} 
+                      transition={{ delay: idx * 0.1 }} 
+                      key={idx} 
+                      onClick={() => {
+                        if (isReminded) {
+                          setReminders(prev => prev.filter(id => id !== e.id));
+                        } else {
+                          setReminders(prev => [...prev, e.id]);
+                        }
+                      }}
+                      className={`relative pl-4 border-l-2 cursor-pointer transition-colors hover:bg-slate-50 p-2 rounded-r-xl ${isReminded ? 'border-rose-500' : 'border-orange-400'}`}
+                    >
+                      <div className={`absolute -left-[5px] top-3 w-2 h-2 rounded-full bg-white border-2 ${isReminded ? 'border-rose-500' : 'border-orange-400'}`}></div>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className={`text-xs font-extrabold inline-block px-2 py-0.5 rounded mb-1 ${isReminded ? 'text-rose-600 bg-rose-50' : 'text-orange-600 bg-orange-50'}`}>{e.time || 'Waktu tidak ditentukan'}</div>
+                          <div className="text-sm font-bold text-gray-800 leading-tight">{e.title}</div>
+                        </div>
+                        {isReminded && (
+                          <svg className="w-4 h-4 text-rose-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/></svg>
+                        )}
+                        {!isReminded && (
+                          <svg className="w-4 h-4 text-gray-300 hover:text-rose-400 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                        )}
+                      </div>
                       {e.location && (
                         <div className="text-[11px] font-medium text-gray-500 mt-1.5 flex items-start gap-1.5">
                           <svg className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -741,7 +824,8 @@ const WebDateWidget = () => {
                         </div>
                       )}
                     </motion.div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-gray-400 py-10 opacity-70">
                     <svg className="w-12 h-12 text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -1324,6 +1408,37 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
   const [backendEvents, setBackendEvents] = useState<any[]>(cachedBackendEvents || []);
   const [loadingMedia, setLoadingMedia] = useState(!cachedMediaList);
 
+  const [reminders, setReminders] = useState<string[]>(() => {
+    const saved = localStorage.getItem('event_reminders');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('event_reminders', JSON.stringify(reminders));
+  }, [reminders]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      backendEvents.forEach((e: any) => {
+        if (reminders.includes(e.id) && e.time) {
+          const eventDate = new Date(e.date);
+          const [hours, minutes] = e.time.split(':').map(Number);
+          eventDate.setHours(hours, minutes, 0, 0);
+
+          const timeDiff = eventDate.getTime() - now.getTime();
+          if (timeDiff > 0 && timeDiff <= 10 * 60 * 1000 && timeDiff > 9 * 60 * 1000) {
+            setToastMessage(`Pengingat: Acara "${e.title}" akan mulai dalam 10 menit!`);
+            setReminders(prev => prev.filter(id => id !== e.id));
+            setTimeout(() => setToastMessage(null), 10000);
+          }
+        }
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [backendEvents, reminders]);
+
   useEffect(() => {
     setLoadingMedia(!cachedMediaList);
     apiFetch('/api/data/media').then(r => r.json()).then(json => {
@@ -1576,21 +1691,40 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
 
         {/* Daftar Acara Hari Terpilih */}
         <div className="mt-8 pt-6 border-t border-slate-100/60 space-y-3">
-           {selectedDateEvents.map((item) => (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={item.id} className="flex gap-3.5 items-center p-3 rounded-[1.25rem] bg-slate-50 border border-slate-100/80 transition-all hover:bg-slate-100 hover:border-slate-200 cursor-pointer">
-              <div className="w-12 h-12 rounded-[1rem] bg-orange-100 flex flex-col items-center justify-center shrink-0 border border-orange-200">
-                 <span className="text-[9px] font-extrabold text-orange-600 uppercase tracking-wider">{monthNames[currentMonth].substring(0,3)}</span>
-                 <span className="text-sm font-black text-orange-700">{selectedDate}</span>
+           {selectedDateEvents.map((item) => {
+            const isReminded = reminders.includes(item.id);
+            return (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              key={item.id} 
+              onClick={() => {
+                if (isReminded) {
+                  setReminders(prev => prev.filter(id => id !== item.id));
+                } else {
+                  setReminders(prev => [...prev, item.id]);
+                }
+              }}
+              className={`flex gap-3.5 items-center p-3 rounded-[1.25rem] bg-slate-50 border transition-all hover:bg-slate-100 cursor-pointer ${isReminded ? 'border-rose-200 bg-rose-50' : 'border-slate-100/80 hover:border-slate-200'}`}
+            >
+              <div className={`w-12 h-12 rounded-[1rem] flex flex-col items-center justify-center shrink-0 border ${isReminded ? 'bg-rose-100 border-rose-200 text-rose-600' : 'bg-orange-100 border-orange-200 text-orange-600'}`}>
+                 <span className={`text-[9px] font-extrabold uppercase tracking-wider ${isReminded ? 'text-rose-600' : 'text-orange-600'}`}>{monthNames[currentMonth].substring(0,3)}</span>
+                 <span className={`text-sm font-black ${isReminded ? 'text-rose-700' : 'text-orange-700'}`}>{selectedDate}</span>
               </div>
               <div className="flex-grow min-w-0 pr-1">
                 <h5 className="text-[13px] font-extrabold text-slate-800 leading-tight truncate mb-1">{item.title}</h5>
-                <p className="text-[11px] font-medium text-slate-500 mt-0.5 line-clamp-1 break-all flex items-center gap-1.5">
-                  <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <p className={`text-[11px] font-medium mt-0.5 line-clamp-1 break-all flex items-center gap-1.5 ${isReminded ? 'text-rose-500' : 'text-slate-500'}`}>
+                  {isReminded ? (
+                    <svg className="w-3 h-3 text-rose-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/></svg>
+                  ) : (
+                    <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  )}
                   {item.time || 'Sesuai jadwal'}
                 </p>
               </div>
             </motion.div>
-           ))}
+            );
+           })}
            {selectedDate && selectedDateEvents.length === 0 && (
              <div className="text-center py-6 bg-[#f8fafc] rounded-2xl border border-slate-100/80">
                <div className="w-10 h-10 bg-slate-100/80 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -2278,7 +2412,7 @@ const BroadcastModalView = ({ onClose, onSuccess, user }: { onClose: () => void,
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return alert("Pesan tidak boleh kosong");
+    if (!message.trim()) return console.log("Pesan tidak boleh kosong");
     setLoading(true);
     try {
        const res = await apiFetch('/api/broadcast', {
@@ -2290,7 +2424,7 @@ const BroadcastModalView = ({ onClose, onSuccess, user }: { onClose: () => void,
          onSuccess();
          onClose();
        } else {
-         alert("Gagal mengirim pesan broadcast.");
+         console.log("Gagal mengirim pesan broadcast.");
        }
     } catch(e) { console.error(e); }
     setLoading(false);
@@ -2448,7 +2582,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
             onShowNotifications={handleShowNotifications} 
             onOpenBroadcast={() => setShowBroadcastModal(true)}
             onNotificationClick={(n) => {
-               alert(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
+               console.log(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
                if (n.resource) {
                   const mod = n.resource.charAt(0).toUpperCase() + n.resource.slice(1);
                   setActiveWebTab(mod === 'Warga' ? 'Data Warga' : mod === 'Surat' ? 'Surat Pengantar' : mod);
@@ -2457,7 +2591,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
             }}
           />
           <main className="flex-grow p-4 lg:p-8 overflow-y-auto ml-20 lg:ml-[16rem] transition-all duration-300" style={{ backgroundColor: themeColors.neutral.bg }}>
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
               <motion.div
                 key={activeWebTab}
                 initial={{ opacity: 0, y: 5 }}
@@ -2509,7 +2643,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
         <MobileHeader notifications={notifications} onShowNotifications={handleShowNotifications} />
         <MobileProfile user={user} />
         <div className="flex-grow overflow-hidden bg-white relative">
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             <motion.div
               key={activeMobileTab}
               initial={{ opacity: 0, x: 5 }}
@@ -2593,7 +2727,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                     <div 
                       key={n.id} 
                       onClick={() => {
-                         alert(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
+                         console.log(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
                          if (n.resource && typeof setActiveMobileTab === 'function') {
                             const mod = n.resource.charAt(0).toUpperCase() + n.resource.slice(1);
                             setActiveWebTab(mod === 'Warga' ? 'Data Warga' : mod === 'Surat' ? 'Surat Pengantar' : mod);
@@ -2631,7 +2765,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
               onClose={() => setShowBroadcastModal(false)} 
               onSuccess={() => {
                  fetchNotifications();
-                 alert("Broadcast berhasil dikirim ke semua warga!");
+                 console.log("Broadcast berhasil dikirim ke semua warga!");
               }} 
            />
         </div>
@@ -2708,7 +2842,7 @@ const RtSelection = ({ onSelectRt }: { onSelectRt: (rt: string) => void }) => {
 const SplashScreen = ({ onFinish }: { onFinish: () => void, key?: string }) => {
 
   useEffect(() => {
-    const timer = setTimeout(onFinish, 2500); // splash duration
+    const timer = setTimeout(onFinish, 0); // Remove artificial delay
     return () => clearTimeout(timer);
   }, [onFinish]);
 
@@ -2716,7 +2850,7 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void, key?: string }) => {
     <motion.div 
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.05, filter: "blur(5px)" }}
-      transition={{ duration: 0.8, ease: "easeInOut" }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
       className="fixed inset-0 bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 z-[9999] flex flex-col items-center justify-center overflow-hidden"
     >
       <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-[0.05] rounded-full translate-x-20 -translate-y-20 blur-2xl"></div>
