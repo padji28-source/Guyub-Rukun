@@ -134,6 +134,21 @@ const SuratSchema = new mongoose.Schema({
   keperluan: { type: String },
   status: { type: String, default: 'proses' }, // 'proses', 'selesai'
   nama: { type: String },
+  tempatLahir: { type: String },
+  tanggalLahir: { type: String },
+  statusPerkawinan: { type: String },
+  jenisKelamin: { type: String },
+  agama: { type: String },
+  pekerjaan: { type: String },
+  noKtpKk: { type: String },
+  alamatSekarang: { type: String },
+  alamatAsal: { type: String },
+  mohonDibuatkan: { type: String },
+  nomorSurat: { type: String },
+  signaturePemohon: { type: String },
+  signatureKetuaRt: { type: String },
+  userId: { type: String },
+  userName: { type: String },
   rtId: { type: String, required: true },
   createdAt: { type: String, required: true }
 }, { timestamps: true });
@@ -225,6 +240,21 @@ const DokumenSchema = new mongoose.Schema({
 }, { timestamps: true });
 const DokumenModel: mongoose.Model<any> = mongoose.models.Dokumen || mongoose.model("Dokumen", DokumenSchema);
 
+// 15. Inventaris Schema
+const InventarisSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  category: { type: String, required: true }, // 'Tenda', 'Kursi', 'Alat Kebersihan', 'Lainnya'
+  quantity: { type: Number, default: 1 },
+  condition: { type: String, enum: ['baik', 'rusak_ringan', 'rusak_berat'], default: 'baik' },
+  location: { type: String },
+  status: { type: String, enum: ['tersedia', 'dipinjam'], default: 'tersedia' },
+  notes: { type: String },
+  rtId: { type: String, required: true },
+  createdAt: { type: String, required: true }
+}, { timestamps: true });
+const InventarisModel: mongoose.Model<any> = mongoose.models.Inventaris || mongoose.model("Inventaris", InventarisSchema);
+
 
 
 // ==========================================
@@ -267,7 +297,8 @@ async function migrateLegacyDataIfAny(rtId: string) {
         tamu: TamuModel,
         media: MediaModel,
         voting: VotingModel,
-        dokumen: DokumenModel
+        dokumen: DokumenModel,
+        inventaris: InventarisModel
       };
 
       for (const [key, model] of Object.entries(map)) {
@@ -370,7 +401,7 @@ async function saveNotifications(rtId: string = '', notifs: any[]) {
 
 async function getAppData(rtId: string = '') {
   await connectDB();
-  const [surat, laporan, acara, umkm, kas, iuran, darurat, tamu, media, voting, dokumen] = await Promise.all([
+  const [surat, laporan, acara, umkm, kas, iuran, darurat, tamu, media, voting, dokumen, inventaris] = await Promise.all([
     SuratModel.find({ rtId }).lean(),
     LaporanModel.find({ rtId }).lean(),
     AcaraModel.find({ rtId }).lean(),
@@ -381,7 +412,8 @@ async function getAppData(rtId: string = '') {
     TamuModel.find({ rtId }).lean(),
     MediaModel.find({ rtId }).lean(),
     VotingModel.find({ rtId }).lean(),
-    DokumenModel.find({ rtId }).lean()
+    DokumenModel.find({ rtId }).lean(),
+    InventarisModel.find({ rtId }).lean()
   ]);
 
   return {
@@ -395,7 +427,8 @@ async function getAppData(rtId: string = '') {
     tamu: tamu || [],
     media: media || [],
     voting: voting || [],
-    dokumen: dokumen || []
+    dokumen: dokumen || [],
+    inventaris: inventaris || []
   };
 }
 
@@ -412,7 +445,8 @@ async function saveAppData(rtId: string = '', data: any) {
     tamu: TamuModel,
     media: MediaModel,
     voting: VotingModel,
-    dokumen: DokumenModel
+    dokumen: DokumenModel,
+    inventaris: InventarisModel
   };
 
   for (const [key, model] of Object.entries(map)) {
@@ -483,11 +517,11 @@ async function initDb(rtId: string = '') {
     const daruratCount = await DaruratModel.countDocuments({ rtId });
     if (daruratCount === 0) {
       const initialDarurat = [
-        { id: "d1", name: 'Ambulance & Gawat Darurat', tel: '118', type: 'Medis', rtId: rtId || 'rt01' },
-        { id: "d2", name: 'Polisi', tel: '110', type: 'Keamanan', rtId: rtId || 'rt01' },
-        { id: "d3", name: 'Pemadam Kebakaran', tel: '113', type: 'Kebakaran', rtId: rtId || 'rt01' },
-        { id: "d4", name: 'Ketua RT', tel: '081234567890', type: 'Lingkungan', rtId: rtId || 'rt01' },
-        { id: "d5", name: 'Security Pos Depan', tel: '089876543210', type: 'Keamanan', rtId: rtId || 'rt01' }
+        { id: `${rtId}_d1`, name: 'Ambulance & Gawat Darurat', tel: '118', type: 'Medis', rtId: rtId || 'rt01' },
+        { id: `${rtId}_d2`, name: 'Polisi', tel: '110', type: 'Keamanan', rtId: rtId || 'rt01' },
+        { id: `${rtId}_d3`, name: 'Pemadam Kebakaran', tel: '113', type: 'Kebakaran', rtId: rtId || 'rt01' },
+        { id: `${rtId}_d4`, name: 'Ketua RT', tel: '081234567890', type: 'Lingkungan', rtId: rtId || 'rt01' },
+        { id: `${rtId}_d5`, name: 'Security Pos Depan', tel: '089876543210', type: 'Keamanan', rtId: rtId || 'rt01' }
       ];
       await DaruratModel.insertMany(initialDarurat);
     }
@@ -496,7 +530,7 @@ async function initDb(rtId: string = '') {
     const mediaCount = await MediaModel.countDocuments({ rtId });
     if (mediaCount === 0) {
       await MediaModel.create({
-        id: '1',
+        id: `${rtId}_media1`,
         imageUrl: 'https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=300&q=80',
         title: 'Kerja Bakti 2024',
         uploaderName: 'Admin',
@@ -714,6 +748,27 @@ app.post("/api/notifications/read", async (req, res) => {
     res.json({ success: true });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to mark notifications as read" });
+  }
+});
+
+app.get("/api/tangerang-logo-proxy", async (req, res) => {
+  try {
+    const url = "https://tangerangkab.go.id/tangerangkab-web/images/logo_kabupatentangerang_perda.png";
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch logo: ${response.statusText}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "public, max-age=604800"); // 1 week cache
+    res.send(buffer);
+  } catch (error: any) {
+    console.error("Logo proxy error:", error);
+    // Return empty 1x1 transparent PNG as fallback to prevent app crashing
+    const transparentPngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+    res.setHeader("Content-Type", "image/png");
+    res.send(Buffer.from(transparentPngBase64, 'base64'));
   }
 });
 
@@ -957,7 +1012,8 @@ app.post("/api/data/:resource", async (req, res) => {
     darurat: DaruratModel,
     tamu: TamuModel,
     media: MediaModel,
-    dokumen: DokumenModel
+    dokumen: DokumenModel,
+    inventaris: InventarisModel
   };
 
   const model = map[resource];
@@ -986,6 +1042,26 @@ app.post("/api/data/:resource", async (req, res) => {
     createdAt: new Date().toISOString(),
     ...req.body
   };
+
+  // Auto numbering list for surat
+  if (resource === 'surat') {
+    const count = await SuratModel.countDocuments({ rtId });
+    const sequence = String(count + 1).padStart(2, '0');
+    
+    // Extract digit numbers from rtId
+    const rtNum = rtId.match(/\d+/)?.[0] || '1';
+    const formattedRt = `RT-${String(rtNum).padStart(3, '0')}`;
+    
+    // Bulan Roma (standard Indonesian letter numbering) & Tahun
+    const d = new Date();
+    const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+    const currentMonth = months[d.getMonth()];
+    const year = d.getFullYear();
+    
+    // Format: (berurutan dimulai dari 01)/RT-001/RW-021/(Bulan pembuatan)/(Tahun pembuatan)
+    const generatedNomor = `${sequence}/${formattedRt}/RW-021/${currentMonth}/${year}`;
+    newItemData.nomorSurat = generatedNomor;
+  }
 
   // Enforce values to numbers if needed
   if (resource === 'iuran' && typeof newItemData.nominal === 'string') {
@@ -1079,7 +1155,8 @@ app.put("/api/data/:resource/:id", async (req, res) => {
     darurat: DaruratModel,
     tamu: TamuModel,
     media: MediaModel,
-    dokumen: DokumenModel
+    dokumen: DokumenModel,
+    inventaris: InventarisModel
   };
 
   const model = map[resource];
@@ -1176,7 +1253,8 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
     darurat: DaruratModel,
     tamu: TamuModel,
     media: MediaModel,
-    dokumen: DokumenModel
+    dokumen: DokumenModel,
+    inventaris: InventarisModel
   };
 
   const model = map[resource];

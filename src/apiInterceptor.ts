@@ -38,7 +38,12 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
           console.error('API Error: Expected JSON but got HTML for', url, text.substring(0, 100));
           return { data: [], users: [], notifications: [], error: 'Failed to parse JSON' };
         }
-        return originalJsonCloned();
+        try {
+          return await originalJsonCloned();
+        } catch (err) {
+          console.error('API Error: Expecting JSON but failed to parse for', url, err);
+          return { data: [], users: [], notifications: [], error: 'Failed to parse JSON', raw: text };
+        }
       };
       return finalRes;
     }
@@ -97,7 +102,12 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
         console.error('API Error: Expected JSON but got HTML for', input, text.substring(0, 100));
         return { data: [], users: [], notifications: [], error: 'Failed to parse JSON' };
       }
-      return originalJson();
+      try {
+        return await originalJson();
+      } catch (err) {
+        console.error('API Error: Expecting JSON but failed to parse for', input, err);
+        return { data: [], users: [], notifications: [], error: 'Failed to parse JSON', raw: text };
+      }
     };
     return res;
   }).finally(() => {

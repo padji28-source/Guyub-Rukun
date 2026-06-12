@@ -382,7 +382,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                         </div>
                       )}
                       
-                      <span className="absolute bottom-[-2px] right-[-2px] w-3.5 h-3.5 bg-emerald-500 border-[1.5px] border-white rounded-full shadow-sm"></span>
+                      <span className={`absolute bottom-[-2px] right-[-2px] w-3.5 h-3.5 ${warga.isOnline ? 'bg-emerald-500' : 'bg-slate-300'} border-[1.5px] border-white rounded-full shadow-sm`}></span>
                   </div>
                   
                   <div className="flex-1 min-w-0 pr-1">

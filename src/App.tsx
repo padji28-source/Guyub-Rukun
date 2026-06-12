@@ -5,6 +5,7 @@ import { MobileDataWarga } from './MobileDataWarga';
 import { MobileSuratPengantar } from './MobileSuratPengantar';
 import { MobileLaporRT } from './MobileLaporRT';
 import { MobileLaporan } from './MobileLaporan';
+import { WebSuratOnlinePage } from './components/WebSuratOnlinePage';
 
 import { MobileDarurat } from './MobileDarurat';
 import { MobileDokumen } from './MobileDokumen';
@@ -53,6 +54,7 @@ import { MobileKas } from './MobileKas';
 import { MobileUMKM } from './MobileUMKM';
 import { WebSmartRtAiPage } from './components/WebSmartRtAiPage';
 import { WebDashboardRtView } from './components/WebDashboardRtView';
+import { WebInventarisPage } from './components/WebInventarisPage';
 
 // --- Modern Icons Set ---
 export const icons = {
@@ -200,6 +202,13 @@ export const icons = {
       <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
     </svg>
   ),
+  inventaris: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  ),
   arrowLeft: (props: any) => (
     <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
       <line x1="19" y1="12" x2="5" y2="12" />
@@ -290,6 +299,7 @@ const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange
         { name: 'Media', icon: icons.media },
         { name: 'UMKM', icon: icons.umkm },
         { name: 'Tamu', icon: icons.warga },
+        { name: 'Inventaris', icon: icons.inventaris },
         { name: 'Smart RT AI', icon: icons.gemini },
         { name: 'Pengaturan', icon: icons.pengaturan },
       ].map((item) => (
@@ -1059,15 +1069,6 @@ const WebDokumenPage = ({ user, onUpdateUser }: { user: any, onUpdateUser: (u: a
   <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
     <div className="p-4 md:p-8">
       <MobileDokumen onBack={() => {}} currentUser={user} onUpdateUser={onUpdateUser} />
-    </div>
-  </div>
-);
-
-const WebSuratOnlinePage = ({ user }: { user: any }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full h-full min-h-[500px] overflow-auto">
-    <div className="p-4 md:p-8 max-w-4xl mx-auto w-full">
-      <h2 className="text-2xl font-bold text-slate-800 mb-6">Manajemen Surat Online</h2>
-      <MobileSuratPengantar onBack={() => {}} currentUser={user} />
     </div>
   </div>
 );
@@ -2212,6 +2213,7 @@ const quickActions = [
   { name: 'Darurat', icon: icons.darurat, color: 'from-red-500 to-rose-600', shadow: 'shadow-red-200' },
   { name: 'Tamu', icon: icons.warga, color: 'from-sky-400 to-indigo-500', shadow: 'shadow-sky-200' },
   { name: 'Voting', icon: icons.voting, color: 'from-indigo-400 to-indigo-600', shadow: 'shadow-indigo-200' },
+  { name: 'Inventaris', icon: icons.inventaris, color: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-250' },
   { name: 'Smart RT AI', icon: icons.gemini, color: 'from-teal-400 to-cyan-500', shadow: 'shadow-teal-200' },
 ];
 
@@ -2868,6 +2870,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [selectedSuratId, setSelectedSuratId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const prevNotifIds = React.useRef<Set<string>>(new Set());
   const isInitialLoad = React.useRef(true);
@@ -2970,8 +2973,11 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                console.log(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
                if (n.resource) {
                   const mod = n.resource.charAt(0).toUpperCase() + n.resource.slice(1);
-                  setActiveWebTab(mod === 'Warga' ? 'Data Warga' : mod === 'Surat' ? 'Surat Pengantar' : mod);
-                  setActiveMobileTab(mod === 'Warga' ? 'Data Warga' : mod === 'Surat' ? 'Layanan' : mod);
+                  if (n.resource === 'surat') {
+                     setSelectedSuratId(n.resourceId || null);
+                  }
+                  setActiveWebTab(mod === 'Warga' ? 'Warga' : mod === 'Surat' ? 'Surat Online' : mod);
+                  setActiveMobileTab(mod === 'Warga' ? 'Data Warga' : mod === 'Surat' ? 'Surat' : mod);
                }
             }}
           />
@@ -3004,13 +3010,20 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                     {user.isApproved && activeWebTab === 'Warga' && <WebWargaPage user={user} />}
                     {user.isApproved && activeWebTab === 'Iuran' && <WebIuranPage user={user} />}
                     {user.isApproved && activeWebTab === 'Kas' && <WebKasPage user={user} />}
-                    {user.isApproved && activeWebTab === 'Surat Online' && <WebSuratOnlinePage user={user} />}
+                    {user.isApproved && activeWebTab === 'Surat Online' && (
+                      <WebSuratOnlinePage 
+                        user={user} 
+                        hittedSuratId={selectedSuratId} 
+                        clearHighlight={() => setSelectedSuratId(null)} 
+                      />
+                    )}
                     {user.isApproved && activeWebTab === 'Dokumen' && <WebDokumenPage user={user} onUpdateUser={onUpdateUser} />}
                     {user.isApproved && activeWebTab === 'Laporan' && <WebLaporanPage user={user} />}
                     {user.isApproved && activeWebTab === 'Pengumuman' && <WebPengumumanPage user={user} />}
                     {user.isApproved && activeWebTab === 'Media' && <WebMediaPage user={user} />}
                     {user.isApproved && activeWebTab === 'UMKM' && <WebUMKMPage user={user} />}
                     {user.isApproved && activeWebTab === 'Tamu' && <WebTamuPage user={user} />}
+                    {user.isApproved && activeWebTab === 'Inventaris' && <WebInventarisPage user={user} />}
                     {user.isApproved && activeWebTab === 'Smart RT AI' && <WebSmartRtAiPage user={user} />}
                     {user.isApproved && activeWebTab === 'Pengaturan' && <WebPengaturanPage user={user} onLogout={onLogout} />}
                   </>
@@ -3065,7 +3078,14 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                   {activeMobileTab === 'Voting' && <MobileVoting currentUser={user} onBack={() => setActiveMobileTab('Beranda')} />}
                   {activeMobileTab === 'Acara' && <MobileAcaraPage currentUser={user} />}
                   {activeMobileTab === 'Laporan' && <MobileLaporan onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Surat' || activeMobileTab === 'Surat Pengantar' ? <MobileSuratPengantar onBack={() => setActiveMobileTab('Beranda')} currentUser={user} /> : null}
+                  {activeMobileTab === 'Surat' || activeMobileTab === 'Surat Pengantar' ? (
+                    <MobileSuratPengantar 
+                      onBack={() => setActiveMobileTab('Beranda')} 
+                      currentUser={user} 
+                      hittedSuratId={selectedSuratId}
+                      clearHighlight={() => setSelectedSuratId(null)}
+                    />
+                  ) : null}
                   {activeMobileTab === 'Iuran' && <MobileIuran onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
                   {activeMobileTab === 'Kas' && <MobileKas onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
                   {activeMobileTab === 'Sedekah' && <MobileSedekah onBack={() => setActiveMobileTab('Beranda')} user={user} />}
@@ -3076,6 +3096,14 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                   {activeMobileTab === 'Darurat' && <MobileDarurat onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
                   {activeMobileTab === 'Dokumen' && <MobileDokumen onBack={() => setActiveMobileTab('Beranda')} currentUser={user} onUpdateUser={onUpdateUser} />}
                    {activeMobileTab === 'Tamu' && <MobileTamu onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                   {activeMobileTab === 'Inventaris' && (
+                     <div className="p-4 overflow-y-auto max-h-[calc(100vh-140px)]">
+                       <button className="flex items-center gap-2 mb-4 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-full outline-none pointer-events-auto cursor-pointer" onClick={() => setActiveMobileTab('Beranda')}>
+                         <icons.arrowLeft className="w-4 h-4" /> Kembali ke Beranda
+                       </button>
+                       <WebInventarisPage user={user} />
+                     </div>
+                   )}
                   {activeMobileTab === 'Smart RT AI' && (
                     <div className="p-4 overflow-y-auto max-h-[calc(100vh-140px)]">
                       <button className="flex items-center gap-2 mb-4 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-full outline-none pointer-events-auto cursor-pointer" onClick={() => setActiveMobileTab('Beranda')}>
@@ -3086,7 +3114,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                   )}
 
                   {/* Fallback for unrecognized tabs */}
-                  {!['Beranda', 'Acara', 'Laporan', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu', 'Smart RT AI'].includes(activeMobileTab) && (
+                  {!['Beranda', 'Acara', 'Laporan', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu', 'Inventaris', 'Smart RT AI'].includes(activeMobileTab) && (
                     <div className="flex flex-col items-center justify-center h-full opacity-50 py-20">
                       <icons.dashboard className="w-12 h-12 text-gray-300 mb-3" />
                       <h2 className="text-lg font-semibold text-gray-500">Halaman {activeMobileTab}</h2>
@@ -3120,9 +3148,19 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                       onClick={() => {
                          console.log(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
                          if (n.resource && typeof setActiveMobileTab === 'function') {
-                            const mod = n.resource.charAt(0).toUpperCase() + n.resource.slice(1);
-                            setActiveWebTab(mod === 'Warga' ? 'Data Warga' : mod === 'Surat' ? 'Surat Pengantar' : mod);
-                            setActiveMobileTab(mod === 'Warga' ? 'Data Warga' : mod === 'Surat' ? 'Layanan' : mod);
+                            const resLower = n.resource.toLowerCase();
+                            if (resLower === 'surat') {
+                               setSelectedSuratId(n.resourceId || null);
+                               setActiveWebTab('Surat Online');
+                               setActiveMobileTab('Surat');
+                            } else if (resLower === 'warga') {
+                               setActiveWebTab('Warga');
+                               setActiveMobileTab('Data Warga');
+                            } else {
+                               const mod = n.resource.charAt(0).toUpperCase() + n.resource.slice(1);
+                               setActiveWebTab(mod);
+                               setActiveMobileTab(mod);
+                            }
                          }
                          setShowNotifications(false);
                       }}
