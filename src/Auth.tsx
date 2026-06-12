@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, useAnimation } from 'motion/react';
 import { icons } from './App';
 
-const CuteMascot = ({ isFocusedPassword }: { isFocusedPassword?: boolean }) => {
+export const CuteMascot = ({ isFocusedPassword }: { isFocusedPassword?: boolean }) => {
   return (
     <div className="w-32 h-32 mx-auto relative mb-4">
       <motion.svg 

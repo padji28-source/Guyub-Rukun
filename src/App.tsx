@@ -51,6 +51,8 @@ import { MobileAcaraPage } from './MobileAcara';
 import { MobileIuran } from './MobileIuran';
 import { MobileKas } from './MobileKas';
 import { MobileUMKM } from './MobileUMKM';
+import { WebSmartRtAiPage } from './components/WebSmartRtAiPage';
+import { WebDashboardRtView } from './components/WebDashboardRtView';
 
 // --- Modern Icons Set ---
 export const icons = {
@@ -193,6 +195,11 @@ export const icons = {
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
     </svg>
   ),
+  gemini: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
+    </svg>
+  ),
   arrowLeft: (props: any) => (
     <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
       <line x1="19" y1="12" x2="5" y2="12" />
@@ -283,6 +290,7 @@ const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange
         { name: 'Media', icon: icons.media },
         { name: 'UMKM', icon: icons.umkm },
         { name: 'Tamu', icon: icons.warga },
+        { name: 'Smart RT AI', icon: icons.gemini },
         { name: 'Pengaturan', icon: icons.pengaturan },
       ].map((item) => (
         <button 
@@ -1136,6 +1144,33 @@ const WebPengaturanPage = ({ user, onLogout }: { user: any, onLogout: () => void
   const [passwordError, setPasswordError] = useState('');
   const [savingPass, setSavingPass] = useState(false);
 
+  // Audit and backup states
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [searchLog, setSearchLog] = useState('');
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  const [exportingBackup, setExportingBackup] = useState(false);
+  const [showConfirmBackup, setShowConfirmBackup] = useState(false);
+
+  const isAdminOrPengurus = user?.role === 'admin' || user?.role === 'pengurus' || user?.role === 'bendahara' || user?.role === 'sekretaris';
+
+  const fetchAuditLogs = async () => {
+    if (!isAdminOrPengurus) return;
+    setLoadingLogs(true);
+    try {
+      const res = await apiFetch('/api/audit-logs');
+      const json = await res.json();
+      setAuditLogs(json.data || []);
+    } catch (e) {
+      console.error("Gagal memuat audit logs:", e);
+    }
+    setLoadingLogs(false);
+  };
+
+  useEffect(() => {
+    fetchAuditLogs();
+  }, []);
+
   const handleUpdatePassword = async () => {
     setPasswordError('');
     setPasswordMsg('');
@@ -1168,65 +1203,414 @@ const WebPengaturanPage = ({ user, onLogout }: { user: any, onLogout: () => void
     setSavingPass(false);
   };
 
+  // Point 10: JSON Backup Download Handler
+  const handleExportJson = async () => {
+    setExportingBackup(true);
+    try {
+      const selectedRt = localStorage.getItem('selected_rt') || 'rt01';
+      const response = await apiFetch('/api/backup/export');
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `CADANGAN_DATA_RT_${selectedRt.toUpperCase()}_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        alert("Gagal mengekspor data.");
+      }
+    } catch (e) {
+      console.error("Error backing up data:", e);
+      alert("Kesalahan sistem saat backup data.");
+    }
+    setExportingBackup(false);
+  };
+
+  // Point 10: Print/Export formatted PDF Report
+  const handleExportPdf = async () => {
+    setExportingBackup(true);
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF() as any;
+      const selectedRt = localStorage.getItem('selected_rt') || 'rt01';
+
+      // 1. Fetch data for PDF content
+      const kasRes = await apiFetch('/api/data/kas');
+      const iuranRes = await apiFetch('/api/data/iuran');
+      const wargaRes = await apiFetch('/api/warga');
+      
+      const kasData = (await kasRes.json()).data || [];
+      const iuranData = (await iuranRes.json()).data || [];
+      const wargaData = (await wargaRes.json()).users || [];
+
+      // Calculate brief financial stats
+      const totalMasuk = kasData.filter((k: any) => k.type === 'Masuk').reduce((sum: number, k: any) => sum + (Number(k.amount) || 0), 0);
+      const totalKeluar = kasData.filter((k: any) => k.type === 'Keluar').reduce((sum: number, k: any) => sum + (Number(k.amount) || 0), 0);
+      const sisaSaldo = totalMasuk - totalKeluar;
+
+      // 2. Draft PDF Design
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(20);
+      doc.setTextColor(20, 110, 120); // Teal color
+      doc.text("LAPORAN KAS & KEUANGAN RT", 14, 20);
+      
+      doc.setFont("Helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Kawasan: Rukun Tetangga ${selectedRt.toUpperCase()} - RW 21, Kompleks Rukun, Jakarta`, 14, 26);
+      doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 31);
+      
+      // Divider line
+      doc.setDrawColor(200);
+      doc.line(14, 35, 196, 35);
+
+      // Brief Summary boxes
+      doc.setFillColor(245, 247, 248);
+      doc.rect(14, 40, 182, 22, "F");
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(80);
+      doc.text("RINGKASAN PORTAL KEUANGAN:", 18, 46);
+      doc.setFont("Helvetica", "normal");
+      doc.text(`Total Iuran Masuk: Rp ${totalMasuk.toLocaleString('id-ID')} | Total Kas Keluar: Rp ${totalKeluar.toLocaleString('id-ID')}`, 18, 52);
+      doc.setFont("Helvetica", "bold");
+      doc.text(`Saldo Kas Aktif: Rp ${sisaSaldo.toLocaleString('id-ID')}`, 18, 57);
+
+      doc.setFontSize(12);
+      doc.setTextColor(20, 110, 120);
+      doc.text("DAFTAR TRANSAKSI KAS", 14, 72);
+
+      // Render Transaction Table formatted
+      const headers = [["No", "Tanggal", "Jenis", "Nominal", "Kategori", "Keterangan", "Oleh"]];
+      const rows = kasData.slice(0, 25).map((item: any, idx: number) => [
+        idx + 1,
+        item.createdAt ? item.createdAt.substring(0, 10) : '-',
+        item.type || 'Masuk',
+        `Rp ${(item.amount || 0).toLocaleString('id-ID')}`,
+        item.category || 'Kas RT',
+        item.message || '',
+        item.name || 'Warga'
+      ]);
+
+      const startY = 78;
+      const colWidths = [10, 22, 20, 32, 28, 45, 25];
+      
+      doc.setFont("Helvetica", "bold");
+      doc.setFillColor(20, 110, 120);
+      doc.setTextColor(255);
+      
+      let curX = 14;
+      headers[0].forEach((h, i) => {
+        doc.rect(curX, startY, colWidths[i], 8, "F");
+        doc.text(h, curX + 2, startY + 5.5);
+        curX += colWidths[i];
+      });
+
+      doc.setFont("Helvetica", "normal");
+      doc.setTextColor(50);
+      let curY = startY + 8;
+      
+      rows.forEach((row: any) => {
+        if (curY > 270) {
+          doc.addPage();
+          curY = 20;
+        }
+        let rowX = 14;
+        row.forEach((cell: any, cellIdx: number) => {
+          doc.rect(rowX, curY, colWidths[cellIdx], 8);
+          doc.text(String(cell), rowX + 2, curY + 5.5);
+          rowX += colWidths[cellIdx];
+        });
+        curY += 8;
+      });
+
+      // Save output
+      doc.save(`Laporan_Kas_Keuangan_RT_${selectedRt.toUpperCase()}_${Date.now()}.pdf`);
+    } catch (e) {
+      console.error("PDF generation exception:", e);
+      alert("Terjadi kesalahan ketika mencetak PDF.");
+    }
+    setExportingBackup(false);
+  };
+
+  // Point 10: Print/Export Spreadsheet CSV format
+  const handleExportCsv = async () => {
+    setExportingBackup(true);
+    try {
+      const selectedRt = localStorage.getItem('selected_rt') || 'rt01';
+      const response = await apiFetch('/api/data/kas');
+      const kasData = (await response.json()).data || [];
+
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "ID,Tanggal,Jenis,Kategori,Nominal,Keterangan,Pencatat\n";
+
+      kasData.forEach((item: any) => {
+        const row = [
+          item.id,
+          item.createdAt || '',
+          item.type || '',
+          item.category || '',
+          item.amount || 0,
+          `"${(item.message || '').replace(/"/g, '""')}"`,
+          item.name || ''
+        ].join(",");
+        csvContent += row + "\n";
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Data_Kas_RT_${selectedRt.toUpperCase()}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      console.error(e);
+      alert("Gagal mengekspor berkas CSV.");
+    }
+    setExportingBackup(false);
+  };
+
+  // Filter logs for search
+  const filteredLogs = auditLogs.filter(log => {
+    const searchLow = searchLog.toLowerCase();
+    return (
+      (log.user && log.user.toLowerCase().includes(searchLow)) ||
+      (log.action && log.action.toLowerCase().includes(searchLow)) ||
+      (log.details && log.details.toLowerCase().includes(searchLow))
+    );
+  });
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col w-full min-h-[500px]">
-      <div className="p-8 border-b border-gray-50">
-        <h2 className="text-xl font-bold text-gray-800">Pengaturan Web</h2>
-        <p className="text-sm text-gray-500 mt-1">Kelola preferensi dan sistem aplikasi RT.</p>
-      </div>
-      <div className="p-8 space-y-6">
-        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
-          <div>
-            <h3 className="font-semibold text-gray-800 text-sm">Notifikasi Web</h3>
-            <p className="text-xs text-gray-500 mt-1">Terima pop-up notifikasi saat ada aktivitas baru.</p>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" className="sr-only peer" defaultChecked />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
-          </label>
+    <div className="space-y-8 w-full">
+      {/* 1. Base settings */}
+      <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-col w-full overflow-hidden">
+        <div className="p-8 border-b border-slate-50">
+          <h2 className="text-xl font-black text-slate-800 tracking-tight">Pengaturan Web & Preferensi</h2>
+          <p className="text-sm text-slate-500 mt-1 font-medium">Kelola akun dan sistem digital lingkungan RT.</p>
         </div>
-        
-        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
-          <div>
-            <h3 className="font-semibold text-gray-800 text-sm">Tema Aplikasi</h3>
-            <p className="text-xs text-gray-500 mt-1">Ubah tampilan terang atau gelap.</p>
+        <div className="p-8 space-y-6">
+          <div className="flex justify-between items-center bg-slate-50 p-5 rounded-2xl border border-slate-100">
+            <div>
+              <h3 className="font-extrabold text-slate-800 text-sm">Notifikasi Web</h3>
+              <p className="text-xs text-slate-400 mt-1 font-medium">Terima pop-up notifikasi saat ada aktivitas baru.</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" className="sr-only peer" defaultChecked />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+            </label>
           </div>
-          <select className="text-sm border border-gray-200 rounded-lg bg-white p-2 text-gray-700 outline-none">
-            <option>Terang (Default)</option>
-            <option>Gelap</option>
-            <option>Otomatis</option>
-          </select>
-        </div>
+          
+          <div className="flex justify-between items-center bg-slate-50 p-5 rounded-2xl border border-slate-100">
+            <div>
+              <h3 className="font-extrabold text-slate-800 text-sm">Tema Aplikasi</h3>
+              <p className="text-xs text-slate-400 mt-1 font-medium">Pilih warna aksen visual utama.</p>
+            </div>
+            <select className="text-xs font-bold border border-slate-200 rounded-xl bg-white p-2.5 px-4 text-slate-700 outline-none shadow-sm">
+              <option>Teal & Tosca (Default)</option>
+              <option>Dark Mode Slate</option>
+              <option>Retro Aesthetic</option>
+            </select>
+          </div>
 
-        <div className="bg-gray-50 p-4 rounded-xl space-y-4">
-          <div>
-             <h3 className="font-semibold text-gray-800 text-sm">Ubah Password</h3>
-             <p className="text-xs text-gray-500 mt-1">Ganti password akun anda demi keamanan.</p>
+          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
+            <div>
+               <h3 className="font-extrabold text-slate-800 text-sm">Ubah Password Pengguna</h3>
+               <p className="text-xs text-slate-500 mt-1 font-medium">Ganti kata sandi akun anda demi keamanan data.</p>
+            </div>
+            {passwordMsg && <div className="p-3 bg-teal-50 text-teal-700 text-xs font-bold rounded-xl border border-teal-100">{passwordMsg}</div>}
+            {passwordError && <div className="p-3 bg-red-50 text-red-700 text-xs font-bold rounded-xl border border-red-100">{passwordError}</div>}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+               <input type="password" placeholder="Password Lama" value={oldPassword} onChange={e => setOldPassword(e.target.value)} className="w-full text-sm bg-white border border-slate-200 focus:border-teal-500 rounded-xl p-3 outline-none font-semibold text-slate-700" />
+               <input type="password" placeholder="Password Baru" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full text-sm bg-white border border-slate-200 focus:border-teal-500 rounded-xl p-3 outline-none font-semibold text-slate-700" />
+               <input type="password" placeholder="Konfirmasi Password Baru" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full text-sm bg-white border border-slate-200 focus:border-teal-500 rounded-xl p-3 outline-none font-semibold text-slate-700" />
+            </div>
+            <div className="flex justify-end pt-2">
+               <button onClick={handleUpdatePassword} disabled={savingPass} className="px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition disabled:opacity-50 shadow-md shadow-teal-500/10">
+                 {savingPass ? 'Menyimpan...' : 'Perbarui Kata Sandi'}
+               </button>
+            </div>
           </div>
-          {passwordMsg && <div className="p-2 bg-green-100 text-green-700 text-xs rounded-lg">{passwordMsg}</div>}
-          {passwordError && <div className="p-2 bg-red-100 text-red-700 text-xs rounded-lg">{passwordError}</div>}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-             <input type="password" placeholder="Password Lama" value={oldPassword} onChange={e => setOldPassword(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg p-2" />
-             <input type="password" placeholder="Password Baru" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg p-2" />
-             <input type="password" placeholder="Konfirmasi Password Baru" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg p-2" />
-          </div>
-          <div className="flex justify-end">
-             <button onClick={handleUpdatePassword} disabled={savingPass} className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-semibold hover:bg-teal-700 transition disabled:opacity-50">
-               {savingPass ? 'Menyimpan...' : 'Simpan Password'}
-             </button>
-          </div>
-        </div>
 
-        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
-          <div>
-            <h3 className="font-semibold text-gray-800 text-sm">Logout</h3>
-            <p className="text-xs text-gray-500 mt-1">Keluar dari sesi admin web saat ini.</p>
+          <div className="flex justify-between items-center bg-rose-50/50 p-5 rounded-2xl border border-rose-100/50">
+            <div>
+              <h3 className="font-extrabold text-rose-800 text-sm">Keluar dari Sesi</h3>
+              <p className="text-xs text-rose-400 mt-1 font-medium">Keluar dari sesi portal web Guyub Rukun saat ini.</p>
+            </div>
+            <button onClick={onLogout} className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-rose-200">
+              Keluar Aplikasi
+            </button>
           </div>
-          <button onClick={onLogout} className="px-6 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition">
-            Keluar Aplikasi
-          </button>
         </div>
       </div>
+
+      {/* 2. Point 10: BACKUP MANAGER & EXPORT (ADMINS ONLY) */}
+      {isAdminOrPengurus && (
+        <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-col overflow-hidden">
+          <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-black text-slate-800 tracking-tight">Pusat Cadangan & Ekspor Data (Backup)</h2>
+              <p className="text-xs text-slate-500 mt-1 font-medium">Ekspor laporan, iuran, transaksi kas, dan backup utuh database RT.</p>
+            </div>
+            <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full">Secure Backup Enabled</span>
+          </div>
+          
+          <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center mb-4">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                </div>
+                <h4 className="font-extrabold text-sm text-slate-800">Unduh Backup JSON Database</h4>
+                <p className="text-xs text-slate-400 mt-2 font-medium leading-relaxed">Backup utuh seluruh koleksi database RT ke penyimpanan lokal dalam format JSON yang kompatibel.</p>
+              </div>
+              <button 
+                onClick={handleExportJson}
+                disabled={exportingBackup}
+                className="w-full mt-6 py-3 bg-slate-800 hover:bg-slate-900 border-none text-white rounded-xl text-xs font-extrabold transition shadow-sm"
+              >
+                {exportingBackup ? 'Memproses...' : 'Ekspor JSON Database'}
+              </button>
+            </div>
+
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-600 flex items-center justify-center mb-4">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                </div>
+                <h4 className="font-extrabold text-sm text-slate-800">Cetak Laporan Keuangan (PDF)</h4>
+                <p className="text-xs text-slate-400 mt-2 font-medium leading-relaxed">Ciptakan berkas laporan kas, neraca keuangan, dan iuran warga berformat PDF rapi siap cetak fisik.</p>
+              </div>
+              <button 
+                onClick={handleExportPdf}
+                disabled={exportingBackup}
+                className="w-full mt-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-extrabold transition shadow-sm shadow-teal-500/10"
+              >
+                {exportingBackup ? 'Memproses...' : 'Cetak & Ekspor Laporan PDF'}
+              </button>
+            </div>
+
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-4">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                </div>
+                <h4 className="font-extrabold text-sm text-slate-800">Ekspor Lembar Kas (CSV)</h4>
+                <p className="text-xs text-slate-400 mt-2 font-medium leading-relaxed">Ekspor tabel jurnal kas mutasi transaksi warga ke berkas CSV yang bisa dibuka di Excel / Google Sheets.</p>
+              </div>
+              <button 
+                onClick={handleExportCsv}
+                disabled={exportingBackup}
+                className="w-full mt-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition shadow-sm shadow-emerald-500/10"
+              >
+                {exportingBackup ? 'Memproses...' : 'Ekspor Lembar Kas CSV'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Point 7: RIWAYAT AUDIT TRAIL LOGS (ADMINS ONLY) */}
+      {isAdminOrPengurus && (
+        <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-col overflow-hidden">
+          <div className="p-8 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-black text-slate-800 tracking-tight">Riwayat Pengawasan Sistem (Audit Trail Logs)</h2>
+              <p className="text-xs text-slate-500 mt-1 font-medium">Log aktivitas pencatatan sistem, update role, transaksi keuangan, dan perubahan KK.</p>
+            </div>
+            <div className="flex gap-2 items-center">
+              <input 
+                type="text" 
+                placeholder="Cari log..." 
+                value={searchLog}
+                onChange={e => setSearchLog(e.target.value)}
+                className="text-xs font-semibold bg-slate-50 border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-100 rounded-xl p-2 px-3 outline-none w-48 text-slate-700" 
+              />
+              <button 
+                onClick={fetchAuditLogs}
+                className="p-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-xl transition-all"
+                title="Muat Ulang Logs"
+              >
+                <svg className={`w-4 h-4 ${loadingLogs ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17" /></svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            {loadingLogs ? (
+              <div className="p-12 text-center text-xs font-semibold text-slate-400">Sedang memproses & memuat log audit terbaru...</div>
+            ) : filteredLogs.length === 0 ? (
+              <div className="p-12 text-center text-xs font-semibold text-slate-400">Belum ada riwayat aktivitas log terekam.</div>
+            ) : (
+              <div className="divide-y divide-slate-50 p-6 space-y-3">
+                {filteredLogs.map((log: any) => (
+                  <div key={log.id} className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100/30 text-xs text-slate-600 transition hover:bg-slate-50">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded tracking-wider border ${
+                          log.action.includes('CREATE') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                          log.action.includes('UPDATE') ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                          log.action.includes('DELETE') ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                          'bg-amber-50 text-amber-600 border-amber-100'
+                        }`}>
+                          {log.action}
+                        </span>
+                        <span className="font-extrabold text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[10px] shadow-sm">
+                          👤 {log.user}
+                        </span>
+                        <span className="font-medium text-slate-500 leading-relaxed">{log.details}</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
+                        ⏰ {log.timestamp ? new Date(log.timestamp).toLocaleString('id-ID') : '-'}
+                      </span>
+                    </div>
+
+                    {/* Diff toggle button */}
+                    {(log.before || log.after) && (
+                      <div className="mt-3">
+                        <button 
+                          onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
+                          className="text-[9px] text-teal-600 hover:text-teal-700 font-extrabold uppercase tracking-widest flex items-center gap-1 focus:outline-none"
+                        >
+                          <span>{expandedLogId === log.id ? 'Tutup Rincian Nilai' : 'Lihat Rincian Nilai (Diff)'}</span>
+                          <svg className={`w-2.5 h-2.5 transition-transform ${expandedLogId === log.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        
+                        <AnimatePresence>
+                          {expandedLogId === log.id && (
+                            <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="mt-3 overflow-hidden grid grid-cols-1 md:grid-cols-2 gap-3 pt-2"
+                            >
+                              <div className="bg-white p-3 rounded-xl border border-slate-100">
+                                <span className="text-[9px] font-black text-slate-400 block mb-1.5 uppercase tracking-widest border-b pb-1">Nilai / Objek Sebelum (Before)</span>
+                                <pre className="font-mono text-[10px] bg-slate-50 text-slate-500 p-2 rounded-lg max-h-36 overflow-auto">
+                                  {log.before ? JSON.stringify(log.before, null, 2) : '[KOSONG]'}
+                                </pre>
+                              </div>
+                              <div className="bg-white p-3 rounded-xl border border-slate-100">
+                                <span className="text-[9px] font-black text-slate-400 block mb-1.5 uppercase tracking-widest border-b pb-1">Nilai / Objek Sesudah (After)</span>
+                                <pre className="font-mono text-[10px] bg-slate-50 text-slate-500 p-2 rounded-lg max-h-36 overflow-auto">
+                                  {log.after ? JSON.stringify(log.after, null, 2) : '[KOSONG]'}
+                                </pre>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1828,6 +2212,7 @@ const quickActions = [
   { name: 'Darurat', icon: icons.darurat, color: 'from-red-500 to-rose-600', shadow: 'shadow-red-200' },
   { name: 'Tamu', icon: icons.warga, color: 'from-sky-400 to-indigo-500', shadow: 'shadow-sky-200' },
   { name: 'Voting', icon: icons.voting, color: 'from-indigo-400 to-indigo-600', shadow: 'shadow-indigo-200' },
+  { name: 'Smart RT AI', icon: icons.gemini, color: 'from-teal-400 to-cyan-500', shadow: 'shadow-teal-200' },
 ];
 
 let cachedSaldoResult: any = null;
@@ -2609,12 +2994,9 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                   </div>
                 ) : activeWebTab === 'Dashboard' ? (
                   <>
-                    <WebStatsCards/>
-                    <WebMediaSlider/>
-                    <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
-                      <WebDateWidget/>
-                      <WebLaporanTable/>
-                      <WebIuranChart/>
+                    <WebDashboardRtView/>
+                    <div className="px-6 pb-6">
+                      <WebMediaSlider/>
                     </div>
                   </>
                 ) : (
@@ -2629,6 +3011,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                     {user.isApproved && activeWebTab === 'Media' && <WebMediaPage user={user} />}
                     {user.isApproved && activeWebTab === 'UMKM' && <WebUMKMPage user={user} />}
                     {user.isApproved && activeWebTab === 'Tamu' && <WebTamuPage user={user} />}
+                    {user.isApproved && activeWebTab === 'Smart RT AI' && <WebSmartRtAiPage user={user} />}
                     {user.isApproved && activeWebTab === 'Pengaturan' && <WebPengaturanPage user={user} onLogout={onLogout} />}
                   </>
                 )}
@@ -2692,10 +3075,18 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                   {activeMobileTab === 'Media' && <MobileMedia onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
                   {activeMobileTab === 'Darurat' && <MobileDarurat onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
                   {activeMobileTab === 'Dokumen' && <MobileDokumen onBack={() => setActiveMobileTab('Beranda')} currentUser={user} onUpdateUser={onUpdateUser} />}
-                  {activeMobileTab === 'Tamu' && <MobileTamu onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                   {activeMobileTab === 'Tamu' && <MobileTamu onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                  {activeMobileTab === 'Smart RT AI' && (
+                    <div className="p-4 overflow-y-auto max-h-[calc(100vh-140px)]">
+                      <button className="flex items-center gap-2 mb-4 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-full outline-none pointer-events-auto cursor-pointer" onClick={() => setActiveMobileTab('Beranda')}>
+                        <icons.arrowLeft className="w-4 h-4" /> Kembali ke Beranda
+                      </button>
+                      <WebSmartRtAiPage user={user} />
+                    </div>
+                  )}
 
                   {/* Fallback for unrecognized tabs */}
-                  {!['Beranda', 'Acara', 'Laporan', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu'].includes(activeMobileTab) && (
+                  {!['Beranda', 'Acara', 'Laporan', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu', 'Smart RT AI'].includes(activeMobileTab) && (
                     <div className="flex flex-col items-center justify-center h-full opacity-50 py-20">
                       <icons.dashboard className="w-12 h-12 text-gray-300 mb-3" />
                       <h2 className="text-lg font-semibold text-gray-500">Halaman {activeMobileTab}</h2>
@@ -2774,7 +3165,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
   );
 }
 
-import { Login, Register } from './Auth';
+import { Login, Register, CuteMascot } from './Auth';
 
 const RtSelection = ({ onSelectRt }: { onSelectRt: (rt: string) => void }) => {
   const rts = ['RT 01', 'RT 02', 'RT 03'];
@@ -2788,11 +3179,7 @@ const RtSelection = ({ onSelectRt }: { onSelectRt: (rt: string) => void }) => {
       
       <div className="relative text-center mb-10 mt-4">
         {/* Logo or Icon */}
-        <div className="w-20 h-20 bg-gradient-to-tr from-teal-500 to-sky-400 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-teal-500/30 rotate-3">
-          <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
-        </div>
+        <CuteMascot />
         
         <h2 className="text-3xl font-black text-slate-800 tracking-tight">
           Sistem Warga

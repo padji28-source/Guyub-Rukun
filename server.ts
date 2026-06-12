@@ -2,78 +2,443 @@ import express from "express";
 import fs from "fs";
 import path from "path";
 import mongoose from "mongoose";
+import dotenv from "dotenv";
+import { z } from "zod";
+import { GoogleGenAI } from "@google/genai";
+
+dotenv.config();
 
 export const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(async (req, res, next) => {
-  if (process.env.VERCEL) {
-    if (!isDbConnected) {
-      await connectDB(); // Hanya connect DB, tidak initDb() yang berat setiap request
-    }
-  }
-  next();
-});
-
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://muhammadadji:28April1996!@guyubrukun.ylesvlo.mongodb.net/guyubrukun?appName=guyubrukun";
+// Point 2: ROTATE & HIDE DATABASE CREDENTIALS (NO HARDCODING)
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/guyubrukun";
 
+// Legacy fallback model for auto-migration
 const SystemDataSchema = new mongoose.Schema({
   _id: String,
   data: mongoose.Schema.Types.Mixed
 }, { strict: false });
-
 const SystemDataModel: mongoose.Model<any> = mongoose.models.SystemData || mongoose.model("SystemData", SystemDataSchema);
 
+// ==========================================
+// POINT 3: DEDICATED GRANULAR COLLECTION SCHEMAS
+// ==========================================
+
+// 1. User Schema
+const UserSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  username: { type: String, required: true },
+  nama: { type: String, required: true },
+  password: { type: String, required: true },
+  alamat: { type: String },
+  noHp: { type: String },
+  status: { type: String },
+  role: { type: String, enum: ['admin', 'warga', 'bendahara', 'sekretaris', 'pengurus'], default: 'warga' },
+  isApproved: { type: Boolean, default: false },
+  rtId: { type: String, required: true },
+  umur: { type: Number },
+  members: [{
+    id: String,
+    name: String,
+    role: String,
+    age: Number,
+    tglLahir: String
+  }],
+  photo: String,
+  dokumenKk: String,
+  dokumenKtp: String,
+}, { timestamps: true });
+const UserModel: mongoose.Model<any> = mongoose.models.User || mongoose.model("User", UserSchema);
+
+// 2. Iuran Schema
+const IuranSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  nama: { type: String, required: true },
+  nominal: { type: Number, required: true, min: 0 },
+  jenis: { type: String, required: true },
+  status: { type: String, required: true }, // 'verifikasi', 'lunas', 'butuh_konfirmasi'
+  rtId: { type: String, required: true },
+  createdAt: { type: String, required: true },
+  proofUrl: { type: String }
+}, { timestamps: true });
+const IuranModel: mongoose.Model<any> = mongoose.models.Iuran || mongoose.model("Iuran", IuranSchema);
+
+// 3. Kas Schema
+const KasSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  type: { type: String, enum: ['Masuk', 'Keluar'], required: true },
+  amount: { type: Number, required: true, min: 0 },
+  name: { type: String, required: true },
+  message: { type: String, required: true },
+  category: { type: String, required: true }, // 'Kas RT', 'Dana Kematian', 'Lainnya'
+  iuranId: { type: String },
+  rtId: { type: String, required: true },
+  status: { type: String, enum: ['setuju', 'butuh_konfirmasi', 'selesai'], default: 'selesai' },
+  createdAt: { type: String, required: true }
+}, { timestamps: true });
+const KasModel: mongoose.Model<any> = mongoose.models.Kas || mongoose.model("Kas", KasSchema);
+
+// 4. Voting Schema
+const VotingSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  description: { type: String },
+  options: [{ id: String, text: String, count: Number }],
+  votes: [{
+    userId: { type: String, required: true },
+    optionId: { type: String, required: true },
+    date: { type: String, required: true }
+  }],
+  status: { type: String, enum: ['aktif', 'selesai'], default: 'aktif' },
+  createdBy: { type: String },
+  rtId: { type: String, required: true },
+  createdAt: { type: String, required: true }
+}, { timestamps: true });
+const VotingModel: mongoose.Model<any> = mongoose.models.Voting || mongoose.model("Voting", VotingSchema);
+
+// 5. Acara Schema
+const AcaraSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  desc: { type: String },
+  date: { type: String, required: true },
+  time: { type: String },
+  location: { type: String },
+  rtId: { type: String, required: true },
+  createdAt: { type: String, required: true }
+}, { timestamps: true });
+const AcaraModel: mongoose.Model<any> = mongoose.models.Acara || mongoose.model("Acara", AcaraSchema);
+
+// 6. Laporan Schema
+const LaporanSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  judul: { type: String, required: true },
+  deskripsi: { type: String, required: true },
+  status: { type: String, default: 'baru' }, // 'baru', 'proses', 'selesai'
+  nama: { type: String },
+  rtId: { type: String, required: true },
+  createdAt: { type: String, required: true },
+  latitude: { type: Number },
+  longitude: { type: Number }
+}, { timestamps: true });
+const LaporanModel: mongoose.Model<any> = mongoose.models.Laporan || mongoose.model("Laporan", LaporanSchema);
+
+// 7. Surat Schema
+const SuratSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  jenis: { type: String, required: true },
+  keperluan: { type: String },
+  status: { type: String, default: 'proses' }, // 'proses', 'selesai'
+  nama: { type: String },
+  rtId: { type: String, required: true },
+  createdAt: { type: String, required: true }
+}, { timestamps: true });
+const SuratModel: mongoose.Model<any> = mongoose.models.Surat || mongoose.model("Surat", SuratSchema);
+
+// 8. UMKM Schema
+const UmkmSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  owner: { type: String, required: true },
+  category: { type: String, required: true },
+  phone: { type: String },
+  desc: { type: String },
+  price: { type: String },
+  rtId: { type: String, required: true },
+  createdAt: { type: String, required: true }
+}, { timestamps: true });
+const UmkmModel: mongoose.Model<any> = mongoose.models.Umkm || mongoose.model("Umkm", UmkmSchema);
+
+// 9. Tamu Schema
+const TamuSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  keperluan: { type: String },
+  durasi: { type: String },
+  alamatAsal: { type: String },
+  rtId: { type: String, required: true },
+  createdAt: { type: String, required: true }
+}, { timestamps: true });
+const TamuModel: mongoose.Model<any> = mongoose.models.Tamu || mongoose.model("Tamu", TamuSchema);
+
+// 10. Media Schema
+const MediaSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  imageUrl: { type: String, required: true },
+  title: { type: String },
+  uploaderName: { type: String },
+  rtId: { type: String, required: true },
+  createdAt: { type: String, required: true }
+}, { timestamps: true });
+const MediaModel: mongoose.Model<any> = mongoose.models.Media || mongoose.model("Media", MediaSchema);
+
+// 11. Darurat Schema
+const DaruratSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  tel: { type: String, required: true },
+  type: { type: String },
+  rtId: { type: String, required: true }
+});
+const DaruratModel: mongoose.Model<any> = mongoose.models.Darurat || mongoose.model("Darurat", DaruratSchema);
+
+// 12. Audit Log Schema (POINT 7)
+const AuditLogSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  user: { type: String, required: true },
+  action: { type: String, required: true },
+  details: { type: String },
+  before: mongoose.Schema.Types.Mixed,
+  after: mongoose.Schema.Types.Mixed,
+  rtId: { type: String, required: true },
+  timestamp: { type: String, required: true }
+});
+const AuditLogModel: mongoose.Model<any> = mongoose.models.AuditLog || mongoose.model("AuditLog", AuditLogSchema);
+
+// 13. Notification Schema
+const NotificationSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  message: { type: String, required: true },
+  updaterName: { type: String },
+  resource: { type: String },
+  resourceId: { type: String },
+  time: { type: String },
+  read: { type: Boolean, default: false },
+  rtId: { type: String, required: true }
+});
+const NotificationModel: mongoose.Model<any> = mongoose.models.Notification || mongoose.model("Notification", NotificationSchema);
+
+// 14. Dokumen Schema
+const DokumenSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  category: { type: String, required: true }, // 'KK', 'KTP', 'Surat RT', 'Peraturan', 'Lainnya'
+  fileUrl: { type: String, required: true }, // base64 or URL
+  uploaderId: { type: String },
+  uploaderName: { type: String },
+  rtId: { type: String, required: true }
+}, { timestamps: true });
+const DokumenModel: mongoose.Model<any> = mongoose.models.Dokumen || mongoose.model("Dokumen", DokumenSchema);
+
+
+
+// ==========================================
+// MIGRATOR: BACKWARD COMPATIBLE SYSTEM
+// ==========================================
+async function migrateLegacyDataIfAny(rtId: string) {
+  try {
+    // 1. Migrate Users
+    const legacyDocId = rtId ? `users_${rtId}` : 'users';
+    const legacyDoc = await SystemDataModel.findById(legacyDocId);
+    if (legacyDoc && legacyDoc.data && legacyDoc.data.list) {
+      console.log(`[Migration] Legacy users found for ${rtId}. Upgrading to dedicated UserModel...`);
+      for (const u of legacyDoc.data.list) {
+        const exists = await UserModel.findOne({ id: u.id });
+        if (!exists) {
+          await UserModel.create({
+            ...u,
+            rtId: rtId || 'rt01'
+          });
+        }
+      }
+      await SystemDataModel.findByIdAndDelete(legacyDocId);
+    }
+
+    // 2. Migrate Other App Resources
+    const legacyAppId = rtId ? `app_data_${rtId}` : 'app_data';
+    const legacyApp = await SystemDataModel.findById(legacyAppId);
+    if (legacyApp && legacyApp.data) {
+      const data = legacyApp.data;
+      console.log(`[Migration] Legacy App Data found for ${rtId}. Separating into collection modules...`);
+      
+      const map: { [key: string]: mongoose.Model<any> } = {
+        surat: SuratModel,
+        laporan: LaporanModel,
+        acara: AcaraModel,
+        umkm: UmkmModel,
+        kas: KasModel,
+        iuran: IuranModel,
+        darurat: DaruratModel,
+        tamu: TamuModel,
+        media: MediaModel,
+        voting: VotingModel,
+        dokumen: DokumenModel
+      };
+
+      for (const [key, model] of Object.entries(map)) {
+        if (data[key] && Array.isArray(data[key])) {
+          for (const item of data[key]) {
+            const exists = await model.findOne({ id: item.id });
+            if (!exists) {
+              await model.create({
+                ...item,
+                rtId: rtId || 'rt01'
+              });
+            }
+          }
+        }
+      }
+      await SystemDataModel.findByIdAndDelete(legacyAppId);
+    }
+  } catch (error) {
+    console.error(`[Migration Error] Fault migrating legacy documents of ${rtId}:`, error);
+  }
+}
+
+// Global DB Connection marker
 let isDbConnected = false;
 
 async function connectDB() {
-  if (!MONGODB_URI) {
-    console.warn("MONGODB_URI is not set. Data will not be saved persistently.");
-    return;
-  }
+  if (isDbConnected) return;
   try {
     await mongoose.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 5000,
     });
     isDbConnected = true;
-    console.log("Connected to MongoDB");
+    console.log("Connected securely to MongoDB database system.");
   } catch (err) {
-    console.error("MongoDB connection error:", err);
+    console.error("MongoDB connection exception:", err);
   }
 }
 
-async function getDocData(id: string) {
-  if (!isDbConnected) return null;
-
+// Audit trail injection
+async function logAudit(rtId: string, user: string, action: string, details: string, before?: any, after?: any) {
   try {
-    const doc = await SystemDataModel.findById(id);
-    if (doc) {
-      return doc.data;
-    }
-    return null;
+    await AuditLogModel.create({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+      user: user || "Sistem / Tamu",
+      action,
+      details,
+      before,
+      after,
+      rtId: rtId || "rt01",
+      timestamp: new Date().toISOString()
+    });
   } catch (e) {
-    console.error(`Error getting ${id}:`, e);
-    return null;
+    console.error("Failed to write audit trail log:", e);
   }
 }
 
-async function setDocData(id: string, data: any) {
-  if (isDbConnected) {
-    try {
-      await SystemDataModel.findByIdAndUpdate(id, { data }, { upsert: true });
-    } catch (e) {
-      console.error(`Error saving ${id}:`, e);
+
+// ==========================================
+// COMPATIBILITY HOOKS FOR API HANDLERS
+// ==========================================
+async function getUsers(rtId: string = '') {
+  await connectDB();
+  const q = rtId ? { rtId } : {};
+  return await UserModel.find(q).lean();
+}
+
+async function saveUsers(rtId: string = '', users: any[]) {
+  await connectDB();
+  for (const user of users) {
+    await UserModel.findOneAndUpdate(
+      { id: user.id },
+      { ...user, rtId: rtId || user.rtId || 'rt01' },
+      { upsert: true, new: true }
+    );
+  }
+  const currentIds = users.map(u => u.id);
+  if (rtId) {
+    await UserModel.deleteMany({ rtId, id: { $nin: currentIds } });
+  }
+  broadcastEvent('update', { type: 'users', rtId });
+}
+
+async function getNotifications(rtId: string = '') {
+  await connectDB();
+  const q = rtId ? { rtId } : {};
+  return await NotificationModel.find(q).sort({ time: -1 }).limit(100).lean();
+}
+
+async function saveNotifications(rtId: string = '', notifs: any[]) {
+  await connectDB();
+  if (rtId) {
+    await NotificationModel.deleteMany({ rtId });
+  }
+  for (const n of notifs) {
+    await NotificationModel.create({ ...n, rtId: rtId || 'rt01' });
+  }
+  broadcastEvent('update', { type: 'notifications', rtId });
+}
+
+async function getAppData(rtId: string = '') {
+  await connectDB();
+  const [surat, laporan, acara, umkm, kas, iuran, darurat, tamu, media, voting, dokumen] = await Promise.all([
+    SuratModel.find({ rtId }).lean(),
+    LaporanModel.find({ rtId }).lean(),
+    AcaraModel.find({ rtId }).lean(),
+    UmkmModel.find({ rtId }).lean(),
+    KasModel.find({ rtId }).lean(),
+    IuranModel.find({ rtId }).lean(),
+    DaruratModel.find({ rtId }).lean(),
+    TamuModel.find({ rtId }).lean(),
+    MediaModel.find({ rtId }).lean(),
+    VotingModel.find({ rtId }).lean(),
+    DokumenModel.find({ rtId }).lean()
+  ]);
+
+  return {
+    surat: surat || [],
+    laporan: laporan || [],
+    acara: acara || [],
+    umkm: umkm || [],
+    kas: kas || [],
+    iuran: iuran || [],
+    darurat: darurat || [],
+    tamu: tamu || [],
+    media: media || [],
+    voting: voting || [],
+    dokumen: dokumen || []
+  };
+}
+
+async function saveAppData(rtId: string = '', data: any) {
+  await connectDB();
+  const map: { [key: string]: mongoose.Model<any> } = {
+    surat: SuratModel,
+    laporan: LaporanModel,
+    acara: AcaraModel,
+    umkm: UmkmModel,
+    kas: KasModel,
+    iuran: IuranModel,
+    darurat: DaruratModel,
+    tamu: TamuModel,
+    media: MediaModel,
+    voting: VotingModel,
+    dokumen: DokumenModel
+  };
+
+  for (const [key, model] of Object.entries(map)) {
+    if (data[key] && Array.isArray(data[key])) {
+      const ids = data[key].map((item: any) => item.id);
+      if (rtId) {
+        await model.deleteMany({ rtId, id: { $nin: ids } });
+      }
+      for (const item of data[key]) {
+        await model.findOneAndUpdate(
+          { id: item.id },
+          { ...item, rtId: rtId || 'rt01' },
+          { upsert: true, new: true }
+        );
+      }
     }
   }
+  broadcastEvent('update', { type: 'app_data', rtId });
 }
 
 async function initDb(rtId: string = '') {
   await connectDB();
   try {
+    // Run automated legacy migrations to preserve old database states
+    await migrateLegacyDataIfAny(rtId);
+
     let list = await getUsers(rtId);
     let adminUsername = "ketuart1";
     let adminPassword = "rt12345";
@@ -92,7 +457,7 @@ async function initDb(rtId: string = '') {
       namaKetua = "Ketua RT 03";
     }
 
-    // CLEANUP: remove any existing admins that don't match the required username so we don't have duplicates
+    // Clean duplicate admins
     let cleanedList = list.filter((u: any) => u.role !== 'admin' || u.username === adminUsername);
     if (cleanedList.length !== list.length) {
       list = cleanedList;
@@ -100,7 +465,7 @@ async function initDb(rtId: string = '') {
     }
 
     if (!list.find((u: any) => u.username === adminUsername)) {
-      list.push({
+      await UserModel.create({
         id: "admin_" + adminUsername,
         username: adminUsername,
         password: adminPassword,
@@ -108,41 +473,40 @@ async function initDb(rtId: string = '') {
         role: "admin",
         alamat: "Jl. Bahagia No. 12, Kompleks Rukun",
         noHp: "0812-3456-7890",
-        status: statusText
+        status: statusText,
+        isApproved: true,
+        rtId: rtId || 'rt01'
       });
-      await saveUsers(rtId, list);
     }
 
-    const notifs = await getNotifications(rtId);
-    if (notifs.length === 0) {
-      // not really needed to save but ok
-    }
-
-    const appData = await getAppData(rtId);
-    if (!appData.darurat || appData.darurat.length === 0) {
-      appData.darurat = [
-        { id: "d1", name: 'Ambulance & Gawat Darurat', tel: '118', type: 'Medis' },
-        { id: "d2", name: 'Polisi', tel: '110', type: 'Keamanan' },
-        { id: "d3", name: 'Pemadam Kebakaran', tel: '113', type: 'Kebakaran' },
-        { id: "d4", name: 'Ketua RT', tel: '081234567890', type: 'Lingkungan' },
-        { id: "d5", name: 'Security Pos Depan', tel: '089876543210', type: 'Keamanan' }
+    // Seed Darurat contacts if none exist
+    const daruratCount = await DaruratModel.countDocuments({ rtId });
+    if (daruratCount === 0) {
+      const initialDarurat = [
+        { id: "d1", name: 'Ambulance & Gawat Darurat', tel: '118', type: 'Medis', rtId: rtId || 'rt01' },
+        { id: "d2", name: 'Polisi', tel: '110', type: 'Keamanan', rtId: rtId || 'rt01' },
+        { id: "d3", name: 'Pemadam Kebakaran', tel: '113', type: 'Kebakaran', rtId: rtId || 'rt01' },
+        { id: "d4", name: 'Ketua RT', tel: '081234567890', type: 'Lingkungan', rtId: rtId || 'rt01' },
+        { id: "d5", name: 'Security Pos Depan', tel: '089876543210', type: 'Keamanan', rtId: rtId || 'rt01' }
       ];
-      await saveAppData(rtId, appData);
-    } else {
-      let updated = false;
-      appData.darurat = appData.darurat.map((d: any) => {
-        if (d.id === "d4" && d.name === "Ketua RT 04 (Bpk. Adji)") {
-          updated = true;
-          return { ...d, name: 'Ketua RT' };
-        }
-        return d;
-      });
-      if (updated) {
-        await saveAppData(rtId, appData);
-      }
+      await DaruratModel.insertMany(initialDarurat);
     }
+
+    // Seed default media for interactive showcase
+    const mediaCount = await MediaModel.countDocuments({ rtId });
+    if (mediaCount === 0) {
+      await MediaModel.create({
+        id: '1',
+        imageUrl: 'https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=300&q=80',
+        title: 'Kerja Bakti 2024',
+        uploaderName: 'Admin',
+        rtId: rtId || 'rt01',
+        createdAt: new Date().toISOString()
+      });
+    }
+
   } catch (e: any) {
-    console.error("DB Init Error:", e);
+    console.error("DB Initialization Error:", e);
   }
 }
 
@@ -158,60 +522,6 @@ function broadcastEvent(event: string, data: any) {
   }
 }
 
-async function getUsers(rtId: string = '') {
-  const docId = rtId ? `users_${rtId}` : 'users';
-  const data = await getDocData(docId);
-  return data && data.list ? data.list : [];
-}
-
-async function saveUsers(rtId: string = '', users: any) {
-  const docId = rtId ? `users_${rtId}` : 'users';
-  await setDocData(docId, { list: users });
-  broadcastEvent('update', { type: 'users', rtId });
-}
-
-async function getNotifications(rtId: string = '') {
-  const docId = rtId ? `notifications_${rtId}` : 'notifications';
-  const data = await getDocData(docId);
-  return data && data.list ? data.list : [];
-}
-
-async function saveNotifications(rtId: string = '', notifs: any) {
-  const docId = rtId ? `notifications_${rtId}` : 'notifications';
-  await setDocData(docId, { list: notifs });
-  broadcastEvent('update', { type: 'notifications', rtId });
-}
-
-async function getAppData(rtId: string = '') {
-  const docId = rtId ? `app_data_${rtId}` : 'app_data';
-  const doc = await getDocData(docId);
-  // Handle in case doc directly returns the data structure (depending on how it was saved previously)
-  const data = doc ? (doc.data || doc) : {};
-
-  if (!data.surat) data.surat = [];
-  if (!data.laporan) data.laporan = [];
-  if (!data.acara) data.acara = [];
-  if (!data.umkm) data.umkm = [];
-  if (!data.kas) data.kas = [];
-  if (!data.iuran) data.iuran = [];
-  if (!data.darurat) data.darurat = [];
-  if (!data.tamu) data.tamu = [];
-
-  if (!data.media) {
-    data.media = [
-      { id: '1', imageUrl: 'https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=300&q=80', title: 'Kerja Bakti 2024', uploaderName: 'Admin', createdAt: new Date().toISOString() }
-    ];
-    await saveAppData(rtId, data);
-  }
-  return data;
-}
-
-async function saveAppData(rtId: string = '', data: any) {
-  const docId = rtId ? `app_data_${rtId}` : 'app_data';
-  await setDocData(docId, { data });
-  broadcastEvent('update', { type: 'app_data', rtId });
-}
-
 export async function addNotification(rtId: string = '', title: string, message: string, updaterName: string = 'Sistem', resource?: string, resourceId?: string) {
   const notifs = await getNotifications(rtId);
   if (notifs.length > 0) {
@@ -220,24 +530,97 @@ export async function addNotification(rtId: string = '', title: string, message:
       return;
     }
   }
-  notifs.unshift({ id: Date.now().toString(), title, message, updaterName, resource, resourceId, time: new Date().toISOString(), read: false });
-  if (notifs.length > 100) notifs.length = 100;
-  await saveNotifications(rtId, notifs);
+  const newNotif = {
+    id: Date.now().toString(),
+    title,
+    message,
+    updaterName,
+    resource,
+    resourceId,
+    time: new Date().toISOString(),
+    read: false,
+    rtId: rtId || 'rt01'
+  };
+  await NotificationModel.create(newNotif);
+  broadcastEvent('update', { type: 'notifications', rtId });
 }
 
-app.post("/api/register", async (req, res) => {
+// ==========================================
+// POINT 6: REQUESTS VALIDATION (ZOD SYSTEM)
+// ==========================================
+const RegisterValidator = z.object({
+  username: z.string().min(3, "Username minimal 3 karakter"),
+  nama: z.string().min(2, "Nama minimal 2 karakter"),
+  password: z.string().min(5, "Password minimal 5 karakter"),
+  alamat: z.string().optional(),
+  noHp: z.string().optional(),
+  status: z.string().optional(),
+  umur: z.any().optional()
+});
+
+const LoginValidator = z.object({
+  username: z.string(),
+  password: z.string()
+});
+
+const KasTransactionValidator = z.object({
+  type: z.enum(['Masuk', 'Keluar']),
+  amount: z.number().positive("Jumlah kas harus bilangan bernilai positif"),
+  name: z.string(),
+  message: z.string().min(1, "Berikan deksrispi transaksi"),
+  category: z.string(),
+  status: z.enum(['setuju', 'butuh_konfirmasi', 'selesai']).optional()
+});
+
+const IuranValidator = z.object({
+  nama: z.string(),
+  nominal: z.number().positive("Nominal iuran harus positif"),
+  jenis: z.string(),
+  status: z.string()
+});
+
+// Middleware helper validation
+function validateRequest(schema: z.ZodObject<any>) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    try {
+      schema.parse(req.body);
+      next();
+    } catch (e: any) {
+      res.status(400).json({ error: e.errors?.[0]?.message || "Input validation failed!" });
+    }
+  };
+}
+
+// ==========================================
+// POINT 4: ROLE BASED PERMISSION ENFORCER
+// ==========================================
+function enforceRoles(allowed: string[]) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const role = (req.headers['x-user-role'] as string) || 'warga';
+    if (allowed.includes(role)) {
+      next();
+    } else {
+      res.status(403).json({ error: `Akses ditolak: role '${role}' tidak memiliki authorize di resource ini.` });
+    }
+  };
+}
+
+
+// ==========================================
+// API REST ROUTES GROUPINGS (POINT 5)
+// ==========================================
+
+// --- AUTH & SIGNUP ---
+app.post("/api/register", validateRequest(RegisterValidator), async (req, res) => {
   const { username, nama, password, alamat, noHp, status, umur } = req.body;
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
 
-  if (!username || !nama || !password) {
-    return res.status(400).json({ error: "Username, nama dan password wajib diisi" });
-  }
-
-  const users = await getUsers(req.headers['x-rt-id'] as string);
-  if (users.find((u: any) => u.username === username)) {
+  const userExists = await UserModel.findOne({ rtId, username });
+  if (userExists) {
     return res.status(400).json({ error: "Username sudah terdaftar" });
   }
 
-  const newUser = {
+  const newUser = await UserModel.create({
     id: Date.now().toString(),
     username,
     nama,
@@ -247,16 +630,15 @@ app.post("/api/register", async (req, res) => {
     status,
     role: "warga",
     isApproved: false,
-    umur,
+    umur: Number(umur) || undefined,
+    rtId,
     members: []
-  };
+  });
 
-  users.push(newUser);
-  await saveUsers(req.headers['x-rt-id'] as string, users);
+  await logAudit(rtId, nama, "REGISTER_WARGA", `Warga baru ${nama} mendaftarkan dengan role warga`, null, newUser);
+  await addNotification(rtId, "Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan. Menunggu verifikasi.`, nama, "warga", newUser.id);
 
-  await addNotification(req.headers['x-rt-id'] as string, "Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan. Menunggu verifikasi.`, req.body.updaterName || nama, "warga", newUser.id);
-
-  res.json({ message: "Registrasi berhasil", user: { ...newUser, role: "warga" } });
+  res.json({ message: "Registrasi sukses", user: newUser });
 });
 
 const activeSessions = new Map<string, number>();
@@ -275,26 +657,19 @@ setInterval(() => {
   }
 }, 5000);
 
-app.post("/api/login", async (req, res) => {
+app.post("/api/login", validateRequest(LoginValidator), async (req, res) => {
   const { username, password } = req.body;
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
 
-  const users = await getUsers(req.headers['x-rt-id'] as string);
-  const user = users.find((u: any) => u.username === username && u.password === password);
+  await connectDB();
+  const user = await UserModel.findOne({ rtId, username, password });
 
   if (user) {
     if (activeSessions.has(user.id) && Date.now() - activeSessions.get(user.id)! < 10000) {
-      return res.status(409).json({ error: "User sedang digunakan di perangkat lain" });
+      return res.status(409).json({ error: "User sedang aktif digunakan pada perangkat lain" });
     }
     activeSessions.set(user.id, Date.now());
-
-    // Auto-approve admin and dummy users if they don't have isApproved set
-    if (user.role === 'admin' && user.isApproved === undefined) {
-      user.isApproved = true;
-    } else if (user.isApproved === undefined) {
-      user.isApproved = true; // Auto approve existing legacy users
-    }
-
-    res.json({ message: "Login berhasil", user });
+    res.json({ message: "Login Berhasil", user });
   } else {
     res.status(401).json({ error: "Username atau password salah" });
   }
@@ -306,7 +681,7 @@ app.post("/api/ping", (req, res) => {
     const wasOnline = activeSessions.has(id);
     activeSessions.set(id, Date.now());
     if (!wasOnline) {
-       broadcastEvent('update', { type: 'online_status' });
+      broadcastEvent('update', { type: 'online_status' });
     }
   }
   res.json({ success: true });
@@ -319,6 +694,27 @@ app.post("/api/logout", (req, res) => {
     broadcastEvent('update', { type: 'online_status' });
   }
   res.json({ success: true });
+});
+
+app.get("/api/notifications", async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  try {
+    const list = await getNotifications(rtId);
+    res.json({ notifications: list });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch notifications" });
+  }
+});
+
+app.post("/api/notifications/read", async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  try {
+    await NotificationModel.updateMany({ rtId }, { $set: { read: true } });
+    broadcastEvent('update', { type: 'notifications', rtId });
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to mark notifications as read" });
+  }
 });
 
 app.get("/api/stream", (req, res) => {
@@ -336,76 +732,95 @@ app.get("/api/stream", (req, res) => {
 
 app.put("/api/password", async (req, res) => {
   const { id, oldPassword, newPassword } = req.body;
-  const users = await getUsers(req.headers['x-rt-id'] as string);
-  const userIndex = users.findIndex((u: any) => u.id === id);
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
 
-  if (userIndex !== -1) {
-    if (users[userIndex].password !== oldPassword) {
-      return res.status(400).json({ error: "Password lama salah" });
+  const user = await UserModel.findOne({ id, rtId });
+  if (user) {
+    if (user.password !== oldPassword) {
+      return res.status(400).json({ error: "Password lama tidak sesuai" });
     }
-    users[userIndex].password = newPassword;
-    await saveUsers(req.headers['x-rt-id'] as string, users);
+    const beforeObj = { password: user.password };
+    user.password = newPassword;
+    await user.save();
+    
+    await logAudit(rtId, user.nama, "PASSWORD_UPDATE", `Mengubah password akun`, beforeObj, { password: "*****" });
     res.json({ message: "Password berhasil diganti" });
   } else {
-    res.status(404).json({ error: "User not found" });
+    res.status(404).json({ error: "User tidak ditemukan" });
   }
 });
 
 app.put("/api/profile", async (req, res) => {
   const { id, username, nama, alamat, noHp, status, photo, umur, dokumenKk, dokumenKtp } = req.body;
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
 
-  const users = await getUsers(req.headers['x-rt-id'] as string);
-  const userIndex = users.findIndex((u: any) => u.id === id);
-
-  if (userIndex !== -1) {
-    users[userIndex] = {
-      ...users[userIndex],
-      nama: nama || users[userIndex].nama,
-      alamat: alamat || users[userIndex].alamat,
-      noHp: noHp || users[userIndex].noHp,
-      status: status || users[userIndex].status,
-      photo: photo || users[userIndex].photo,
-      umur: umur !== undefined ? umur : users[userIndex].umur,
-      dokumenKk: dokumenKk !== undefined ? dokumenKk : users[userIndex].dokumenKk,
-      dokumenKtp: dokumenKtp !== undefined ? dokumenKtp : users[userIndex].dokumenKtp
-    };
-    await saveUsers(req.headers['x-rt-id'] as string, users);
-    const updater = req.body.updaterName || nama || users[userIndex].nama || 'Sistem';
-    await addNotification(req.headers['x-rt-id'] as string, "Profil Diperbarui", `Warga ${users[userIndex].nama} memperbarui profil.`, updater, "warga", id);
-    res.json({ message: "Profile updated successfully", user: users[userIndex] });
+  const user = await UserModel.findOne({ id, rtId });
+  if (user) {
+    const beforeObj = user.toObject();
+    
+    user.nama = nama || user.nama;
+    user.alamat = alamat || user.alamat;
+    user.noHp = noHp || user.noHp;
+    user.status = status || user.status;
+    user.photo = photo || user.photo;
+    user.umur = umur !== undefined ? Number(umur) : user.umur;
+    user.dokumenKk = dokumenKk !== undefined ? dokumenKk : user.dokumenKk;
+    user.dokumenKtp = dokumenKtp !== undefined ? dokumenKtp : user.dokumenKtp;
+    
+    const updatedUser = await user.save();
+    await logAudit(rtId, user.nama, "PROFILE_UPDATE", `Memperbarui rincian profil`, beforeObj, updatedUser);
+    
+    const updater = req.body.updaterName || nama || user.nama || 'Sistem';
+    await addNotification(rtId, "Profil Diperbarui", `Warga ${user.nama} memperbarui profil.`, updater, "warga", id);
+    
+    res.json({ message: "Profile updated successfully", user: updatedUser });
   } else {
-    res.status(404).json({ error: "User not found" });
+    res.status(404).json({ error: "User tidak ditemukan" });
   }
 });
 
+// --- CITIZEN DATA & APPROVAL MANAGEMENT ---
 app.get("/api/warga", async (req, res) => {
-  const users = await getUsers(req.headers['x-rt-id'] as string);
-  const usersWithOnlineStatus = users.map((u: any) => ({
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  const users = await UserModel.find({ rtId }).lean();
+  const sortedUsers = users.map((u: any) => ({
     ...u,
     isOnline: activeSessions.has(u.id) && Date.now() - activeSessions.get(u.id)! < 15000
   }));
-  res.json({ users: usersWithOnlineStatus });
+  res.json({ users: sortedUsers });
 });
 
-app.delete("/api/warga/:id", async (req, res) => {
-  const users = await getUsers(req.headers['x-rt-id'] as string);
-  const user = users.find((u: any) => u.id === req.params.id);
-  const newUsers = users.filter((u: any) => u.id !== req.params.id);
-  await saveUsers(req.headers['x-rt-id'] as string, newUsers);
-  if (user) await addNotification(req.headers['x-rt-id'] as string, "Warga Dihapus", `Data warga ${user.nama} telah dihapus.`, req.body.updaterName || 'Admin', "warga", req.params.id);
-  res.json({ message: "User deleted" });
-});
-
-app.post("/api/warga/:id/members", async (req, res) => {
-  const { name, role, age } = req.body;
-  const users = await getUsers(req.headers['x-rt-id'] as string);
-  const user = users.find((u: any) => u.id === req.params.id);
+app.delete("/api/warga/:id", enforceRoles(['admin']), async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  const user = await UserModel.findOne({ id: req.params.id, rtId });
   if (user) {
+    const beforeData = user.toObject();
+    await UserModel.deleteOne({ id: req.params.id, rtId });
+    
+    await logAudit(rtId, req.headers['x-user-id'] as string || 'Admin', "DELETE_WARGA", `Menghapus data warga ${user.nama}`, beforeData, null);
+    await addNotification(rtId, "Warga Dihapus", `Data warga ${user.nama} telah dihapus.`, 'Admin', "warga", req.params.id);
+    res.json({ message: "User deleted" });
+  } else {
+    res.status(404).json({ error: "Warga tidak ditemukan" });
+  }
+});
+
+// Add Family members to Kartu Keluarga
+app.post("/api/warga/:id/members", async (req, res) => {
+  const { name, role, age, tglLahir } = req.body;
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+
+  const user = await UserModel.findOne({ id: req.params.id, rtId });
+  if (user) {
+    const beforeObj = JSON.parse(JSON.stringify(user.members || []));
     if (!user.members) user.members = [];
-    const newMember = { id: Date.now().toString(), name, role, age };
+    const newMember = { id: Date.now().toString(), name, role, age: Number(age) || 0, tglLahir };
     user.members.push(newMember);
-    await saveUsers(req.headers['x-rt-id'] as string, users);
-    await addNotification(req.headers['x-rt-id'] as string, "Anggota Keluarga Bertambah", `Anggota baru ${name} ditambahkan ke KK ${user.nama}.`, req.body.updaterName || user.nama, "warga", user.id);
+    await user.save();
+
+    await logAudit(rtId, user.nama, "ADD_FAMILY_MEMBER", `Menambahkan anggota keluarga baru ${name} ke KK`, beforeObj, user.members);
+    await addNotification(rtId, "Anggota Keluarga Bertambah", `Anggota baru ${name} ditambahkan ke KK ${user.nama}.`, user.nama, "warga", user.id);
+    
     res.json({ message: "Family member added", member: newMember, user });
   } else {
     res.status(404).json({ error: "User not found" });
@@ -413,16 +828,20 @@ app.post("/api/warga/:id/members", async (req, res) => {
 });
 
 app.put("/api/warga/:id/members/:memberId", async (req, res) => {
-  const { name, role, age } = req.body;
-  const users = await getUsers(req.headers['x-rt-id'] as string);
-  const user = users.find((u: any) => u.id === req.params.id);
+  const { name, role, age, tglLahir } = req.body;
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+
+  const user = await UserModel.findOne({ id: req.params.id, rtId });
   if (user && user.members) {
+    const beforeObj = JSON.parse(JSON.stringify(user.members));
     const memberIndex = user.members.findIndex((m: any) => m.id === req.params.memberId);
     if (memberIndex !== -1) {
-      user.members[memberIndex] = { ...user.members[memberIndex], name, role, age };
-      await saveUsers(req.headers['x-rt-id'] as string, users);
-      const updater = req.body.updaterName || user.nama || 'Sistem';
-      await addNotification(req.headers['x-rt-id'] as string, "Anggota Keluarga Diperbarui", `Data anggota ${name} di KK ${user.nama} diperbarui.`, updater, "warga", user.id);
+      user.members[memberIndex] = { ...user.members[memberIndex], name, role, age: Number(age) || 0, tglLahir };
+      await user.save();
+      
+      await logAudit(rtId, user.nama, "UPDATE_FAMILY_MEMBER", `Memperbarui rincian keluarga ${name}`, beforeObj, user.members);
+      await addNotification(rtId, "Anggota Keluarga Diperbarui", `Data anggota ${name} di KK ${user.nama} diperbarui.`, user.nama || 'Sistem', "warga", user.id);
+      
       res.json({ message: "Family member updated", user });
     } else {
       res.status(404).json({ error: "Member not found" });
@@ -433,144 +852,207 @@ app.put("/api/warga/:id/members/:memberId", async (req, res) => {
 });
 
 app.delete("/api/warga/:id/members/:memberId", async (req, res) => {
-  const users = await getUsers(req.headers['x-rt-id'] as string);
-  const user = users.find((u: any) => u.id === req.params.id);
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  const user = await UserModel.findOne({ id: req.params.id, rtId });
   if (user && user.members) {
+    const beforeObj = JSON.parse(JSON.stringify(user.members));
     const member = user.members.find((m: any) => m.id === req.params.memberId);
     user.members = user.members.filter((m: any) => m.id !== req.params.memberId);
-    await saveUsers(req.headers['x-rt-id'] as string, users);
-    const updater = req.body.updaterName || user.nama || 'Sistem';
-    if (member) await addNotification(req.headers['x-rt-id'] as string, "Anggota Keluarga Dihapus", `Anggota ${member.name} dihapus dari KK ${user.nama}.`, updater, "warga", user.id);
+    await user.save();
+
+    if (member) {
+      await logAudit(rtId, user.nama, "DELETE_FAMILY_MEMBER", `Menghapus anggota keluarga ${member.name}`, beforeObj, user.members);
+      await addNotification(rtId, "Anggota Keluarga Dihapus", `Anggota ${member.name} dihapus dari KK ${user.nama}.`, user.nama, "warga", user.id);
+    }
     res.json({ message: "Family member deleted", user });
   } else {
-    res.status(404).json({ error: "User or member not found" });
+    res.status(404).json({ error: "User not found" });
   }
 });
 
-app.put("/api/warga/:id/role", async (req, res) => {
+app.put("/api/warga/:id/role", enforceRoles(['admin']), async (req, res) => {
   const { role } = req.body;
-  const users = await getUsers(req.headers['x-rt-id'] as string);
-  const userIndex = users.findIndex((u: any) => u.id === req.params.id);
-  if (userIndex !== -1 && users[userIndex].id !== "admin") {
-    users[userIndex].role = role;
-    await saveUsers(req.headers['x-rt-id'] as string, users);
-    const updater = req.body.updaterName || 'Admin';
-    await addNotification(req.headers['x-rt-id'] as string, "Peran Warga Diperbarui", `Peran warga ${users[userIndex].nama} diubah menjadi ${role}.`, updater, "warga", users[userIndex].id);
-    res.json({ message: "Role updated successfully", user: users[userIndex] });
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+
+  const user = await UserModel.findOne({ id: req.params.id, rtId });
+  if (user && user.id !== "admin") {
+    const beforeRole = user.role;
+    user.role = role;
+    await user.save();
+
+    await logAudit(rtId, "Admin", "PROMOTED_ROLE", `Mengubah peran warga ${user.nama} dari ${beforeRole} ke ${role}`, { role: beforeRole }, { role });
+    await addNotification(rtId, "Peran Warga Diperbarui", `Peran warga ${user.nama} diubah menjadi ${role}.`, 'Admin', "warga", user.id);
+    res.json({ message: "Role updated successfully", user });
   } else {
     res.status(400).json({ error: "Gagal update role" });
   }
 });
 
-app.put("/api/warga/:id/approval", async (req, res) => {
+app.put("/api/warga/:id/approval", enforceRoles(['admin']), async (req, res) => {
   const { isApproved } = req.body;
-  const users = await getUsers(req.headers['x-rt-id'] as string);
-  const userIndex = users.findIndex((u: any) => u.id === req.params.id);
-  if (userIndex !== -1 && users[userIndex].id !== "admin") {
-    users[userIndex].isApproved = isApproved;
-    await saveUsers(req.headers['x-rt-id'] as string, users);
-    const updater = req.body.updaterName || 'Admin';
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+
+  const user = await UserModel.findOne({ id: req.params.id, rtId });
+  if (user && user.id !== "admin") {
+    const beforeState = user.isApproved;
+    user.isApproved = isApproved;
+    await user.save();
+
+    await logAudit(rtId, "Admin", "WARGA_APPROVAL", `Verifikasi pendaftaran warga ${user.nama}: ${isApproved ? 'SETUJU' : 'BATAL'}`, { isApproved: beforeState }, { isApproved });
+    
     const statusText = isApproved ? 'disetujui' : 'dibatalkan';
-    await addNotification(req.headers['x-rt-id'] as string, "Status Warga Diperbarui", `Status warga ${users[userIndex].nama} ${statusText}.`, updater, "warga", users[userIndex].id);
-    res.json({ message: "Status approval updated successfully", user: users[userIndex] });
+    await addNotification(rtId, "Status Warga Diperbarui", `Status warga ${user.nama} ${statusText}.`, 'Admin', "warga", user.id);
+    res.json({ message: "Status approval updated successfully", user });
   } else {
     res.status(400).json({ error: "Gagal update status approval" });
   }
 });
 
-app.get("/api/notifications", async (req, res) => {
-  res.json({ notifications: await getNotifications(req.headers['x-rt-id'] as string) });
-});
-
-app.post("/api/notifications/read", async (req, res) => {
-  const notifs = await getNotifications(req.headers['x-rt-id'] as string);
-  const updated = notifs.map((n: any) => ({ ...n, read: true }));
-  await saveNotifications(req.headers['x-rt-id'] as string, updated);
-  res.json({ success: true });
-});
-
+// --- AUDIO/TRANSACTION PING ---
 app.post("/api/transactions", async (req, res) => {
   const { type, amount, name, message } = req.body;
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
   const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' });
   const formattedAmount = formatter.format(amount || 0);
 
   let notifTitle = `Transaksi ${type || 'Baru'}`;
   let notifMessage = message || `Terdapat transaksi ${type ? type.toLowerCase() : 'baru'} masuk sebesar ${formattedAmount} dari ${name || 'Warga'}.`;
 
-  await addNotification(req.headers['x-rt-id'] as string, notifTitle, notifMessage);
+  await addNotification(rtId, notifTitle, notifMessage);
   res.json({ success: true, message: "Transaksi berhasil dan notifikasi dikirim" });
 });
 
-app.post("/api/broadcast", async (req, res) => {
+// --- BROADCAST MESSAGES ---
+app.post("/api/broadcast", enforceRoles(['admin', 'pengurus', 'sekretaris']), async (req, res) => {
   const { title, message, updaterName } = req.body;
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
   if (!message) return res.status(400).json({ error: "Pesan tidak boleh kosong" });
-  await addNotification(req.headers['x-rt-id'] as string, title || "📢 Pengumuman RT", message, updaterName || 'Admin', "broadcast");
+
+  await logAudit(rtId, updaterName || 'Admin', "BROADCAST", `Mengirimkan pengumuman broadcast: ${title || 'No Title'}`, null, { title, message });
+  await addNotification(rtId, title || "📢 Pengumuman RT", message, updaterName || 'Admin', "broadcast");
   res.json({ success: true, message: "Pesan broadcast berhasil dikirim ke semua warga" });
 });
 
+// --- COMPATIBLE APP_DATA / MULTI-MODULE ENDPOINTS ---
 app.get("/api/data/:resource", async (req, res) => {
-  const data = await getAppData(req.headers['x-rt-id'] as string);
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
   const resource = req.params.resource;
-  if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
-  res.json({ data: data[resource] });
+  const data = await getAppData(rtId);
+  if (!data[resource as keyof typeof data]) return res.status(404).json({ error: "Resource not found" });
+  res.json({ data: data[resource as keyof typeof data] });
 });
 
+// POINT 6: VALIDATE CREATION VIA ZOD AND AUDIT TRAIL LOGGING
 app.post("/api/data/:resource", async (req, res) => {
-  const data = await getAppData(req.headers['x-rt-id'] as string);
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
   const resource = req.params.resource;
-  if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
-
-  const newItem = { id: Date.now().toString(), createdAt: new Date().toISOString(), ...req.body };
-  data[resource].push(newItem);
   
-  if (resource === 'iuran' && newItem.status === 'verifikasi') {
-    const nominal = parseInt(newItem.nominal || '0', 10);
-    if (newItem.jenis === 'Wifi') {
+  const map: { [key: string]: mongoose.Model<any> } = {
+    surat: SuratModel,
+    laporan: LaporanModel,
+    acara: AcaraModel,
+    umkm: UmkmModel,
+    kas: KasModel,
+    iuran: IuranModel,
+    darurat: DaruratModel,
+    tamu: TamuModel,
+    media: MediaModel,
+    dokumen: DokumenModel
+  };
+
+  const model = map[resource];
+  if (!model) return res.status(404).json({ error: "Resource not found" });
+
+  // Input Validation (Point 6 Constraints)
+  if (resource === 'iuran') {
+    try {
+      IuranValidator.parse(req.body);
+    } catch(e: any) {
+      return res.status(400).json({ error: e.errors?.[0]?.message || "Validasi nominal iuran gagal." });
+    }
+  }
+  if (resource === 'kas') {
+    try {
+      KasTransactionValidator.parse(req.body);
+    } catch(e: any) {
+      return res.status(400).json({ error: e.errors?.[0]?.message || "Validasi transaksi kas gagal." });
+    }
+  }
+
+  const itemId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+  const newItemData = {
+    id: itemId,
+    rtId,
+    createdAt: new Date().toISOString(),
+    ...req.body
+  };
+
+  // Enforce values to numbers if needed
+  if (resource === 'iuran' && typeof newItemData.nominal === 'string') {
+    newItemData.nominal = Number(newItemData.nominal);
+  }
+  if (resource === 'kas' && typeof newItemData.amount === 'string') {
+    newItemData.amount = Number(newItemData.amount);
+  }
+
+  const createdItem = await model.create(newItemData);
+
+  // audit logging
+  const creator = req.body.nama || req.body.name || req.body.uploaderName || req.body.pembuat || req.body.updaterName || 'Sistem';
+  await logAudit(rtId, creator, `CREATE_${resource.toUpperCase()}`, `Memasukkan record baru ke modul ${resource}`, null, createdItem);
+
+  // Dynamic automatic fund split allocations on verified warga payments
+  if (resource === 'iuran' && createdItem.status === 'verifikasi') {
+    const nominal = parseInt(createdItem.nominal || '0', 10);
+    if (createdItem.jenis === 'Wifi') {
       const kasRTAmount = 10000;
-        data['kas'].push({
+      await KasModel.create({
         id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
         createdAt: new Date().toISOString(),
         type: 'Masuk',
         amount: kasRTAmount,
-        name: newItem.nama,
+        name: createdItem.nama,
         message: 'Pembayaran Wifi (Kas RT)',
         category: 'Kas RT',
-        iuranId: newItem.id
+        iuranId: createdItem.id,
+        rtId,
+        status: 'selesai'
       });
     } else {
       const isSplit = nominal >= 5000;
       const danaKematianAmount = isSplit ? 5000 : 0;
       const kasRTAmount = nominal - danaKematianAmount;
       if (kasRTAmount > 0) {
-        data['kas'].push({
+        await KasModel.create({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
           createdAt: new Date().toISOString(),
           type: 'Masuk',
           amount: kasRTAmount,
-          name: newItem.nama,
+          name: createdItem.nama,
           message: 'Iuran Warga (Kas RT)',
           category: 'Kas RT',
-          iuranId: newItem.id
+          iuranId: createdItem.id,
+          rtId,
+          status: 'selesai'
         });
       }
       if (danaKematianAmount > 0) {
-        data['kas'].push({
+        await KasModel.create({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
           createdAt: new Date().toISOString(),
           type: 'Masuk',
           amount: danaKematianAmount,
-          name: newItem.nama,
+          name: createdItem.nama,
           message: 'Iuran Warga (Dana Kematian)',
           category: 'Dana Kematian',
-          iuranId: newItem.id
+          iuranId: createdItem.id,
+          rtId,
+          status: 'selesai'
         });
       }
     }
   }
 
-  await saveAppData(req.headers['x-rt-id'] as string, data);
-
-  const creator = req.body.nama || req.body.name || req.body.uploaderName || req.body.pembuat || req.body.updaterName || 'Sistem';
   let title = `Input Baru: ${resource}`;
   if (resource === 'laporan') title = 'Laporan Baru';
   if (resource === 'iuran') title = 'Iuran Baru';
@@ -579,165 +1061,382 @@ app.post("/api/data/:resource", async (req, res) => {
   if (resource === 'acara') title = 'Acara Baru';
   if (resource === 'surat') title = 'Surat Keluar Baru';
 
-  await addNotification(req.headers['x-rt-id'] as string, title, `Terdapat data baru pada modul ${resource} oleh ${creator}.`, creator, resource, newItem.id);
-
-  res.json({ message: "Created successfully", item: newItem });
+  await addNotification(rtId, title, `Terdapat data baru pada modul ${resource} oleh ${creator}.`, creator, resource, createdItem.id);
+  res.json({ message: "Created successfully", item: createdItem });
 });
 
 app.put("/api/data/:resource/:id", async (req, res) => {
-  const data = await getAppData(req.headers['x-rt-id'] as string);
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
   const resource = req.params.resource;
-  if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
 
-  const index = data[resource].findIndex((item: any) => item.id === req.params.id);
-  if (index !== -1) {
-    const oldItem = data[resource][index];
-    const newItem = { ...oldItem, ...req.body };
-    data[resource][index] = newItem;
-    await saveAppData(req.headers['x-rt-id'] as string, data);
+  const map: { [key: string]: mongoose.Model<any> } = {
+    surat: SuratModel,
+    laporan: LaporanModel,
+    acara: AcaraModel,
+    umkm: UmkmModel,
+    kas: KasModel,
+    iuran: IuranModel,
+    darurat: DaruratModel,
+    tamu: TamuModel,
+    media: MediaModel,
+    dokumen: DokumenModel
+  };
 
-    if (resource === 'surat' && oldItem.status !== newItem.status && newItem.status === 'selesai') {
-      await addNotification(req.headers['x-rt-id'] as string, 'Surat Selesai', `Surat pengajuan untuk ${newItem.keperluan || 'anda'} sudah bisa diambil.`, req.body.updaterName || 'Admin', resource, newItem.id);
-    } else if (resource === 'laporan' && oldItem.status !== newItem.status) {
-      await addNotification(req.headers['x-rt-id'] as string, 'Update Laporan', `Laporan ${newItem.judul || 'warga'} kini berstatus: ${newItem.status}.`, req.body.updaterName || 'Admin', resource, newItem.id);
-    } else if (resource === 'iuran' && oldItem.status !== newItem.status && newItem.status === 'verifikasi') {
-      await addNotification(req.headers['x-rt-id'] as string, 'Iuran Diverifikasi', `Iuran dari ${newItem.nama || 'warga'} sebesar Rp ${newItem.nominal} telah diverifikasi dan masuk kas.`, req.body.updaterName || 'Admin', resource, newItem.id);
-      const nominal = parseInt(newItem.nominal || '0', 10);
-      
-      if (newItem.jenis === 'Wifi') {
-        const kasRTAmount = 10000;
-        data['kas'].push({
+  const model = map[resource];
+  if (!model) return res.status(404).json({ error: "Resource not found" });
+
+  const oldItem = await model.findOne({ id: req.params.id, rtId });
+  if (!oldItem) return res.status(404).json({ error: "Item not found" });
+
+  const beforeDataObj = oldItem.toObject();
+  const updatePayload = { ...req.body };
+  if (updatePayload.nominal !== undefined) updatePayload.nominal = Number(updatePayload.nominal);
+  if (updatePayload.amount !== undefined) updatePayload.amount = Number(updatePayload.amount);
+
+  const updatedItem = await model.findOneAndUpdate({ id: req.params.id, rtId }, updatePayload, { new: true });
+
+  const updater = req.body.updaterName || 'Sistem';
+  await logAudit(rtId, updater, `UPDATE_${resource.toUpperCase()}`, `Mengupdate record modul ${resource}`, beforeDataObj, updatedItem);
+
+  // Verification handling to autoallocate on verifying citizens iuran payments
+  if (resource === 'surat' && oldItem.status !== updatedItem.status && updatedItem.status === 'selesai') {
+    await addNotification(rtId, 'Surat Selesai', `Surat pengajuan untuk ${updatedItem.keperluan || 'anda'} sudah bisa diambil.`, updater, resource, updatedItem.id);
+  } else if (resource === 'laporan' && oldItem.status !== updatedItem.status) {
+    await addNotification(rtId, 'Update Laporan', `Laporan ${updatedItem.judul || 'warga'} kini berstatus mohon diproses: ${updatedItem.status}.`, updater, resource, updatedItem.id);
+  } else if (resource === 'iuran' && oldItem.status !== updatedItem.status && updatedItem.status === 'verifikasi') {
+    await addNotification(rtId, 'Iuran Diverifikasi', `Iuran dari ${updatedItem.nama || 'warga'} sebesar Rp ${updatedItem.nominal} telah diverifikasi dan masuk kas.`, updater, resource, updatedItem.id);
+    const nominal = parseInt(updatedItem.nominal || '0', 10);
+    
+    if (updatedItem.jenis === 'Wifi') {
+      const kasRTAmount = 10000;
+      await KasModel.create({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+        createdAt: new Date().toISOString(),
+        type: 'Masuk',
+        amount: kasRTAmount,
+        name: updatedItem.nama,
+        message: 'Pembayaran Wifi (Kas RT)',
+        category: 'Kas RT',
+        iuranId: updatedItem.id,
+        rtId,
+        status: 'selesai'
+      });
+    } else {
+      const isSplit = nominal >= 5000;
+      const danaKematianAmount = isSplit ? 5000 : 0;
+      const kasRTAmount = nominal - danaKematianAmount;
+
+      if (kasRTAmount > 0) {
+        await KasModel.create({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
           createdAt: new Date().toISOString(),
           type: 'Masuk',
           amount: kasRTAmount,
-          name: newItem.nama,
-          message: 'Pembayaran Wifi (Kas RT)',
+          name: updatedItem.nama,
+          message: 'Iuran Warga (Kas RT)',
           category: 'Kas RT',
-          iuranId: newItem.id
+          iuranId: updatedItem.id,
+          rtId,
+          status: 'selesai'
         });
-      } else {
-        const isSplit = nominal >= 5000;
-        const danaKematianAmount = isSplit ? 5000 : 0;
-        const kasRTAmount = nominal - danaKematianAmount;
-
-        if (kasRTAmount > 0) {
-          data['kas'].push({
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-            createdAt: new Date().toISOString(),
-            type: 'Masuk',
-            amount: kasRTAmount,
-            name: newItem.nama,
-            message: 'Iuran Warga (Kas RT)',
-            category: 'Kas RT',
-            iuranId: newItem.id
-          });
-        }
-        if (danaKematianAmount > 0) {
-          data['kas'].push({
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-            createdAt: new Date().toISOString(),
-            type: 'Masuk',
-            amount: danaKematianAmount,
-            name: newItem.nama,
-            message: 'Iuran Warga (Dana Kematian)',
-            category: 'Dana Kematian',
-            iuranId: newItem.id
-          });
-        }
       }
-      await saveAppData(req.headers['x-rt-id'] as string, data);
-    } else {
-      const updater = req.body.updaterName || 'Sistem';
-      await addNotification(req.headers['x-rt-id'] as string, `Data Diupdate: ${resource}`, `Terdapat perubahan data pada modul ${resource} oleh ${updater}.`, updater, resource, newItem.id);
+      if (danaKematianAmount > 0) {
+        await KasModel.create({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+          createdAt: new Date().toISOString(),
+          type: 'Masuk',
+          amount: danaKematianAmount,
+          name: updatedItem.nama,
+          message: 'Iuran Warga (Dana Kematian)',
+          category: 'Dana Kematian',
+          iuranId: updatedItem.id,
+          rtId,
+          status: 'selesai'
+        });
+      }
     }
-
-    res.json({ message: "Updated successfully", item: newItem });
   } else {
-    res.status(404).json({ error: "Item not found" });
+    await addNotification(rtId, `Data Diupdate: ${resource}`, `Terdapat perubahan data pada modul ${resource} oleh ${updater}.`, updater, resource, updatedItem.id);
   }
+
+  res.json({ message: "Updated successfully", item: updatedItem });
 });
 
 app.delete("/api/data/:resource/:id", async (req, res) => {
-  const data = await getAppData(req.headers['x-rt-id'] as string);
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
   const resource = req.params.resource;
-  if (!data[resource]) return res.status(404).json({ error: "Resource not found" });
 
-  const itemToDelete = data[resource].find((item: any) => item.id === req.params.id);
+  const map: { [key: string]: mongoose.Model<any> } = {
+    surat: SuratModel,
+    laporan: LaporanModel,
+    acara: AcaraModel,
+    umkm: UmkmModel,
+    kas: KasModel,
+    iuran: IuranModel,
+    darurat: DaruratModel,
+    tamu: TamuModel,
+    media: MediaModel,
+    dokumen: DokumenModel
+  };
 
-  if (resource === 'kas' && itemToDelete && itemToDelete.iuranId) {
-    if (data['iuran']) {
-      data['iuran'] = data['iuran'].filter((i: any) => i.id !== itemToDelete.iuranId);
-    }
-    data['kas'] = data['kas'].filter((k: any) => k.iuranId !== itemToDelete.iuranId);
+  const model = map[resource];
+  if (!model) return res.status(404).json({ error: "Resource not found" });
+
+  const oldItem = await model.findOne({ id: req.params.id, rtId });
+  if (!oldItem) return res.status(404).json({ error: "Item not found" });
+
+  const beforeDataObj = oldItem.toObject();
+  await model.deleteOne({ id: req.params.id, rtId });
+
+  const updater = req.body?.updaterName || 'Sistem';
+  await logAudit(rtId, updater, `DELETE_${resource.toUpperCase()}`, `Menghapus record dari modul ${resource}`, beforeDataObj, null);
+
+  // Cascase delete iuran connections to kas logs and vice versa
+  if (resource === 'kas' && oldItem.iuranId) {
+    await IuranModel.deleteOne({ id: oldItem.iuranId, rtId });
+    await KasModel.deleteMany({ iuranId: oldItem.iuranId, rtId });
   } else if (resource === 'iuran') {
-    if (data['kas']) {
-      data['kas'] = data['kas'].filter((k: any) => k.iuranId !== req.params.id);
-    }
+    await KasModel.deleteMany({ iuranId: req.params.id, rtId });
   }
 
-  data[resource] = data[resource].filter((item: any) => item.id !== req.params.id);
-  await saveAppData(req.headers['x-rt-id'] as string, data);
-  const updater = req.body?.updaterName || 'Sistem';
-  await addNotification(req.headers['x-rt-id'] as string, `Data Dihapus: ${resource}`, `Terdapat penghapusan data pada modul ${resource} oleh ${updater}.`, updater);
+  await addNotification(rtId, `Data Dihapus: ${resource}`, `Terdapat penghapusan data pada modul ${resource} oleh ${updater}.`, updater);
   res.json({ message: "Deleted successfully" });
 });
 
-// Voting Routes
+
+// ==========================================
+// POINT 9: SECURE CONSTANTE VOTING MECHANICS
+// ==========================================
 app.get("/api/voting", async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
-  const data = await getAppData(rtId);
-  res.json({ data: data.voting || [] });
+  const data = await VotingModel.find({ rtId }).sort({ createdAt: -1 });
+  res.json({ data });
 });
 
-app.post("/api/voting", async (req, res) => {
+app.post("/api/voting", enforceRoles(['admin', 'pengurus']), async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
-  const data = await getAppData(rtId);
-  const newVote = { id: Date.now().toString(), date: new Date().toISOString(), status: 'aktif', votes: [], ...req.body };
-  data.voting = [newVote, ...(data.voting || [])];
-  await saveAppData(rtId, data);
-  await addNotification(rtId, `Voting Baru: ${req.body.title}`, `Mari berpartisipasi pada voting baru: ${req.body.title}`, req.body.createdBy || 'Pengurus');
+  const { title, description, options, status, createdBy } = req.body;
+
+  const newVote = await VotingModel.create({
+    id: Date.now().toString(),
+    title,
+    description,
+    options: options.map((opt: any) => ({ ...opt, count: 0 })),
+    votes: [],
+    status: status || 'aktif',
+    createdBy: createdBy || 'Pengurus',
+    rtId,
+    createdAt: new Date().toISOString()
+  });
+
+  await logAudit(rtId, createdBy || 'Admin', "CREATE_VOTING", `Membuat polling voting baru: ${title}`, null, newVote);
+  await addNotification(rtId, `Voting Baru: ${title}`, `Mari berpartisipasi pada voting baru: ${title}`, createdBy || 'Pengurus');
   res.json({ message: "Voting created", data: newVote });
 });
 
-app.put("/api/voting/:id", async (req, res) => {
+app.put("/api/voting/:id", enforceRoles(['admin', 'pengurus']), async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
-  const data = await getAppData(rtId);
-  data.voting = (data.voting || []).map((v: any) => v.id === req.params.id ? { ...v, ...req.body } : v);
-  await saveAppData(rtId, data);
-  res.json({ message: "Voting updated" });
+  const voteDoc = await VotingModel.findOne({ id: req.params.id, rtId });
+  if (voteDoc) {
+    const beforeObj = voteDoc.toObject();
+    await VotingModel.updateOne({ id: req.params.id, rtId }, { $set: req.body });
+    const afterObj = await VotingModel.findOne({ id: req.params.id, rtId });
+    await logAudit(rtId, "Admin", "UPDATE_VOTING", `Mengupdate satus/parameter voting: ${afterObj?.title}`, beforeObj, afterObj);
+    res.json({ message: "Voting updated" });
+  } else {
+    res.status(404).json({ error: "Voting tidak ditemukan" });
+  }
 });
 
+// SUBMIT VOTE WITH UNIQUE 1-PERSON-1-VOTE CONSTRAINT CHECK
 app.post("/api/voting/:id/vote", async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
-  const data = await getAppData(rtId);
   const { optionId, userId } = req.body;
-  data.voting = (data.voting || []).map((v: any) => {
-    if (v.id === req.params.id) {
-      if (!v.votes.find((vt: any) => vt.userId === userId)) {
-        v.votes.push({ userId, optionId, date: new Date().toISOString() });
-      } else {
-        v.votes = v.votes.map((vt: any) => vt.userId === userId ? { ...vt, optionId, date: new Date().toISOString() } : vt);
-      }
-    }
-    return v;
+
+  if (!userId || !optionId) {
+    return res.status(400).json({ error: "Missing required voter specifications." });
+  }
+
+  const voteDoc = await VotingModel.findOne({ id: req.params.id, rtId });
+  if (!voteDoc) {
+    return res.status(404).json({ error: "Sesi voting tidak ditemukan!" });
+  }
+
+  if (voteDoc.status === 'selesai') {
+    return res.status(400).json({ error: "Sesi voting ini sudah berakhir dan ditutup." });
+  }
+
+  // CONSTRAINT CHECK: Ensure voter only registers ONE unique voice
+  const existingVoteIndex = voteDoc.votes.findIndex((vt: any) => vt.userId === userId);
+  
+  const beforeObj = voteDoc.toObject();
+
+  if (existingVoteIndex !== -1) {
+    // If they already voted: edit their existing vote cleanly (or block if desired, here we allow them to update their choice)
+    voteDoc.votes[existingVoteIndex].optionId = optionId;
+    voteDoc.votes[existingVoteIndex].date = new Date().toISOString();
+  } else {
+    // Registered new vote
+    voteDoc.votes.push({ userId, optionId, date: new Date().toISOString() });
+  }
+
+  // Recalculate options counters to reflect truth
+  voteDoc.options = voteDoc.options.map((opt: any) => {
+    const totalCount = voteDoc.votes.filter((v: any) => v.optionId === opt.id).length;
+    return { ...opt, count: totalCount };
   });
-  await saveAppData(rtId, data);
-  res.json({ message: "Vote submitted" });
+
+  const updatedVote = await voteDoc.save();
+  await logAudit(rtId, userId, "CAST_VOTE", `Warga menempatkan suara pada voting ${voteDoc.title}`, beforeObj, updatedVote);
+
+  res.json({ message: "Suara berhasil dikirimkan", data: updatedVote });
 });
 
+
+// ==========================================
+// POINT 7: AUDIT LOGS RETRIEVAL ENDPOINT
+// ==========================================
+app.get("/api/audit-logs", async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  try {
+    const logs = await AuditLogModel.find({ rtId }).sort({ timestamp: -1 }).limit(150);
+    res.json({ data: logs });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to read logs" });
+  }
+});
+
+
+// ==========================================
+// POINT 10: AUTOMATIC DATABASE BACKUP EXPORTER
+// ==========================================
+app.get("/api/backup/export", enforceRoles(['admin']), async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  try {
+    // Extract full snapshots of all collections
+    const [users, kas, iuran, voting, acara, laporan, surat, umkm, tamu, media, darurat, logs] = await Promise.all([
+      UserModel.find({ rtId }).lean(),
+      KasModel.find({ rtId }).lean(),
+      IuranModel.find({ rtId }).lean(),
+      VotingModel.find({ rtId }).lean(),
+      AcaraModel.find({ rtId }).lean(),
+      LaporanModel.find({ rtId }).lean(),
+      SuratModel.find({ rtId }).lean(),
+      UmkmModel.find({ rtId }).lean(),
+      TamuModel.find({ rtId }).lean(),
+      MediaModel.find({ rtId }).lean(),
+      DaruratModel.find({ rtId }).lean(),
+      AuditLogModel.find({ rtId }).lean()
+    ]);
+
+    const snapshot = {
+      rtId,
+      exportedAt: new Date().toISOString(),
+      formatVersion: "1.0",
+      stats: {
+        users: users.length,
+        kas: kas.length,
+        iuran: iuran.length,
+        voting: voting.length,
+        laporan: laporan.length,
+        auditLogs: logs.length
+      },
+      collections: {
+        users,
+        kas,
+        iuran,
+        voting,
+        acara,
+        laporan,
+        surat,
+        umkm,
+        tamu,
+        media,
+        darurat,
+        auditLogs: logs
+      }
+    };
+
+    await logAudit(rtId, "Admin", "EXPORT_DATABASE", "Melakukan ekspor penuh database cadangan RT", null, null);
+
+    // Prompt user download attachment flow
+    res.setHeader("Content-disposition", `attachment; filename=CADANGAN_DATABASE_RT_${rtId.toUpperCase()}_${new Date().toISOString().split('T')[0]}.json`);
+    res.setHeader("Content-Type", "application/json");
+    res.send(JSON.stringify(snapshot, null, 2));
+
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to export database cadangan." });
+  }
+});
+
+
+// --- SMART RT AI API (USING @GOOGLE/GENAI) ---
+app.post("/api/gemini/action", async (req, res) => {
+  const { action, payload } = req.body;
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(400).json({ error: "Kunci API Gemini (GEMINI_API_KEY) belum dikonfigurasi di Settings > Secrets." });
+  }
+
+  try {
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
+
+    let prompt = "";
+    let systemInstruction = "Anda adalah Smart RT AI, asisten pemerintahan RT pintar di Indonesia yang membantu Ketua RT mengelola warga, kas, dokumen, rapat, dan laporan secara profesional.";
+
+    if (action === "ringkasan_rapat") {
+      prompt = `Buatlah ringkasan rapat formal, terstruktur, dan rapi berdasarkan transkrip atau catatan kasar berikut dalam Bahasa Indonesia:\n\nCatatan:\n${payload.notes}\n\nFormat keluaran:\n- **Judul Rapat** (buat menarik & formal)\n- **Tanggal & Waktu**\n- **Poin-Poin Pembahasan Penting**\n- **Keputusan Utama**\n- **Daftar Tindak Lanjut (Action Items) & Penanggung Jawab**\n\nBerikan format Markdown yang sangat elegan.`;
+    } else if (action === "analisa_kas") {
+      // Fetch latest kas records
+      await connectDB();
+      const kasRecords = await KasModel.find({ rtId }).sort({ createdAt: -1 }).limit(100).lean();
+      const recordsStr = kasRecords.map((k: any) => `- [${k.type}] ${k.name || 'Warga'}: Rp ${(k.amount || 0).toLocaleString('id-ID')} (${k.category || 'Kas RT'}) - ${k.message || 'Tanpa keterangan'}`).join("\n");
+      prompt = `Analisalah transaksi keuangan/kas berikut dari RT kami dan berikan wawasan finansial, peringatan, potensi masalah, serta saran penghematan atau alokasi anggaran berikutnya:\n\nTransaksi Terbaru:\n${recordsStr || "Tidak ada transaksi terbaru untuk dianalisis."}\n\nBerikan keluaran dalam format Markdown yang rapi dengan ringkasan status kas (Pemasukan, Pengeluaran, Saldo), tren kategori keuangan, serta rekomendasi aksi konkret.`;
+    } else if (action === "draft_surat") {
+      prompt = `Buatlah draf surat formal tingkat Rukun Tetangga (RT) berdasarkan informasi berikut dalam Bahasa Indonesia:\n\nKategori Surat: ${payload.jenis}\nNama Warga: ${payload.nama || "................"}\nKeperluan: ${payload.keperluan || "................"}\nKeterangan Tambahan: ${payload.keterangan || "Tidak ada"}\n\nSurat harus mengikuti format resmi surat pengantar/keterangan RT di Indonesia (termasuk KOP Surat RT, nomor surat placeholder, isi surat yang santun, paragraf penutup, serta bagian tanda tangan Ketua RT). Gunakan format Markdown yang presisi dan profesional.`;
+    } else if (action === "klasifikasi_laporan") {
+      prompt = `Klasifikasikan laporan keluhan warga berikut ke dalam kategori yang sesuai (Keamananan / Kebersihan / Infrastruktur / Sosial / Lainnya) serta tingkat prioritas (Tinggi / Sedang / Rendah) dengan penjelasan singkat dan usulan langkah penanganan konkret pertama dari pengurus RT:\n\nJudul: ${payload.judul}\nDeskripsi: ${payload.deskripsi}\n\nBerikan keluaran dalam format teks Markdown terstruktur dengan bagian Kategori, Prioritas, Alasan Klasifikasi, dan Rekomendasi Penanganan.`;
+    } else {
+      return res.status(400).json({ error: "Aksi tidak dikenal" });
+    }
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: prompt,
+      config: {
+        systemInstruction,
+        temperature: 0.2,
+      }
+    });
+
+    res.json({ result: response.text });
+  } catch (err: any) {
+    console.error("Gemini API Error:", err);
+    res.status(500).json({ error: err.message || "Gagal memproses permintaan AI" });
+  }
+});
+
+
+// Status checking API
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
+  res.json({ status: "ok", mode: "modular-tables", isDbConnected });
 });
 
 export async function startServer(listen = true) {
-  // Hanya inisiasi full database jika tidak berjalan di environment serverless (Vercel)
+  await connectDB();
+  
   if (!process.env.VERCEL) {
     await initDb('rt01');
     await initDb('rt02');
     await initDb('rt03');
-  } else {
-    await connectDB();
   }
 
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
@@ -758,7 +1457,7 @@ export async function startServer(listen = true) {
 
   if (listen) {
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Server launched successfully on port ${PORT}`);
     });
   }
 }

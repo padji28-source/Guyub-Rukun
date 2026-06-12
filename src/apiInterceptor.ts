@@ -51,12 +51,24 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
     modifiedInit.headers.set('x-rt-id', selectedRt);
   }
 
+  const authUser = localStorage.getItem('auth_user');
+  if (authUser) {
+    try {
+      const userObj = JSON.parse(authUser);
+      if (userObj.id) {
+        modifiedInit.headers.set('x-user-id', userObj.id);
+      }
+      if (userObj.role) {
+        modifiedInit.headers.set('x-user-role', userObj.role);
+      }
+    } catch(e) {}
+  }
+
   // Append updaterName to POST/PUT payloads automatically
   if (!isGet && modifiedInit.body && typeof modifiedInit.body === 'string') {
     try {
       const parsed = JSON.parse(modifiedInit.body);
       if (typeof parsed === 'object' && !parsed.updaterName) {
-        const authUser = localStorage.getItem('auth_user');
         if (authUser) {
           const userObj = JSON.parse(authUser);
           parsed.updaterName = userObj.nama || userObj.username || 'Admin';
