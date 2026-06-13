@@ -37,6 +37,20 @@ export default defineConfig(({mode}) => {
               type: "image/png",
               purpose: "any maskable"
             }
+          ],
+          screenshots: [
+            {
+              src: "/guyub_rukun_icon.jpg",
+              sizes: "512x512",
+              type: "image/jpeg",
+              form_factor: "wide"
+            },
+            {
+              src: "/guyub_rukun_icon.jpg",
+              sizes: "512x512",
+              type: "image/jpeg",
+              form_factor: "narrow"
+            }
           ]
         }
       })

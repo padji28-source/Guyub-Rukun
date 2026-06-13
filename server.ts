@@ -1527,6 +1527,27 @@ export async function startServer(listen = true) {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
+    
+    // Explicit endpoints for PWA files to ensure correct MIME types and headers for PWABuilder
+    app.get('/sw.js', (req, res) => {
+      res.sendFile(path.join(distPath, 'sw.js'), {
+        headers: {
+          'Content-Type': 'application/javascript; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          'Service-Worker-Allowed': '/'
+        }
+      });
+    });
+
+    app.get('/manifest.webmanifest', (req, res) => {
+      res.sendFile(path.join(distPath, 'manifest.webmanifest'), {
+        headers: {
+          'Content-Type': 'application/manifest+json; charset=utf-8',
+          'Cache-Control': 'no-cache'
+        }
+      });
+    });
+
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
