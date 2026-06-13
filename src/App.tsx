@@ -2908,8 +2908,32 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [selectedSuratId, setSelectedSuratId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
   const prevNotifIds = React.useRef<Set<string>>(new Set());
   const isInitialLoad = React.useRef(true);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      if (localStorage.getItem('pwa-install-dismissed') !== 'true') {
+        setShowInstallBanner(true);
+      }
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBanner(false);
+    }
+    setDeferredPrompt(null);
+  };
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -3072,6 +3096,37 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
       ) : (
       <div className="flex md:hidden relative z-20 w-full h-full bg-white flex-col overflow-hidden">
         {/* --- MOBILE USER VIEW --- */}
+        {showInstallBanner && (
+          <div className="bg-teal-600 px-4 py-3 flex items-center justify-between shadow-md relative z-50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center p-1 shadow-sm shrink-0">
+                <img src="/guyub_rukun_icon.jpg" alt="Guyub Rukun Icon" className="w-full h-full object-contain rounded" />
+              </div>
+              <div className="flex flex-col">
+                <p className="text-white text-xs font-bold leading-tight flex items-center gap-1">Install Guyub Rukun</p>
+                <p className="text-teal-100 text-[10px] leading-tight">Pasang sebagai aplikasi di layar utama</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleInstallClick} 
+                className="bg-white text-teal-700 hover:bg-teal-50 px-3 py-1.5 text-xs font-bold rounded-full shadow-sm transition pointer-events-auto cursor-pointer"
+              >
+                Install
+              </button>
+              <button 
+                onClick={() => {
+                  setShowInstallBanner(false);
+                  localStorage.setItem('pwa-install-dismissed', 'true');
+                }}
+                className="text-teal-100 hover:text-white p-1 pointer-events-auto cursor-pointer"
+                aria-label="Tutup"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
         <MobileHeader notifications={notifications} onShowNotifications={handleShowNotifications} />
         <MobileProfile user={user} />
         <div className="flex-grow overflow-hidden bg-white relative">
