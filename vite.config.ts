@@ -12,6 +12,12 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        filename: 'sw.js',
+        manifestFilename: 'manifest.json',
+        devOptions: {
+          enabled: true,
+          type: 'module'
+        },
         manifest: {
           name: "Guyub Rukun RT 01",
           short_name: "Guyub Rukun",

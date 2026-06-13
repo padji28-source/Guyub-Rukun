@@ -1539,8 +1539,8 @@ export async function startServer(listen = true) {
       });
     });
 
-    app.get('/manifest.webmanifest', (req, res) => {
-      res.sendFile(path.join(distPath, 'manifest.webmanifest'), {
+    app.get('/manifest.json', (req, res) => {
+      res.sendFile(path.join(distPath, 'manifest.json'), {
         headers: {
           'Content-Type': 'application/manifest+json; charset=utf-8',
           'Cache-Control': 'no-cache'
