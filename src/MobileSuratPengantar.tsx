@@ -1,5 +1,5 @@
-import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { apiFetch } from './apiInterceptor';
 import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App';
 
@@ -176,6 +176,8 @@ export const MobileSuratPengantar = ({
   hittedSuratId?: string | null,
   clearHighlight?: () => void
 }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [data, setData] = useState<any[]>(cachedSuratData || []);
   const [loading, setLoading] = useState(!cachedSuratData);
   const [showForm, setShowForm] = useState(false);
@@ -199,6 +201,10 @@ export const MobileSuratPengantar = ({
   // RT Signature Drawer State
   const [activeRtSignatureItem, setActiveRtSignatureItem] = useState<any | null>(null);
   const [formSignatureRt, setFormSignatureRt] = useState('');
+
+  // Applicant Edit Signature State (SEBELUM DIKONFIRMASI)
+  const [activeEditSignatureItem, setActiveEditSignatureItem] = useState<any | null>(null);
+  const [formSignaturePemohonEdit, setFormSignaturePemohonEdit] = useState('');
 
   const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
 
@@ -355,19 +361,69 @@ export const MobileSuratPengantar = ({
     setFormError('');
   };
 
+  // Fungsi mengubah TTD Pemohon jika salah sebelum dikonfirmasi RT
+  const handleUpdatePemohonSignature = async () => {
+    if (!activeEditSignatureItem || isSubmitting) return;
+    
+    if (!formSignaturePemohonEdit) {
+      alert('Anda belum membuat coretan tanda tangan yang baru.');
+      return;
+    }
+
+    const targetId = activeEditSignatureItem.id;
+    const previousData = [...data];
+
+    // Optimistic Update
+    setData(prev => prev.map(item => 
+      item.id === targetId ? { ...item, signaturePemohon: formSignaturePemohonEdit } : item
+    ));
+    setActiveEditSignatureItem(null);
+    setIsSubmitting(true);
+
+    try {
+      const res = await apiFetch(`/api/data/surat/${targetId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          signaturePemohon: formSignaturePemohonEdit,
+          updaterName: currentUser?.nama 
+        })
+      });
+      
+      if (res.ok) {
+        setFormSignaturePemohonEdit('');
+        await fetchData();
+      } else {
+        setData(previousData);
+        alert('Gagal memperbarui tanda tangan. Silakan coba lagi.');
+      }
+    } catch (err) {
+      setData(previousData);
+      console.error('Update signature failed:', err);
+      alert('Terjadi kesalahan koneksi ke server.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // RT confirms with signature
   const handleRtConfirmApproval = async () => {
-    if (!activeRtSignatureItem) return;
+    if (!activeRtSignatureItem || isSubmitting) return; // Mencegah klik ganda
+    
     if (!formSignatureRt) {
       alert('Tanda tangan Ketua RT wajib dibubuhkan.');
       return;
     }
 
     const targetId = activeRtSignatureItem.id;
-    
-    // Update locally
-    setData(prev => prev.map(item => item.id === targetId ? { ...item, status: 'selesai', signatureKetuaRt: formSignatureRt } : item));
+    const previousData = [...data]; // Simpan cadangan data sebelum diubah (untuk rollback)
+
+    // 1. Optimistic Update
+    setData(prev => prev.map(item => 
+      item.id === targetId ? { ...item, status: 'selesai', signatureKetuaRt: formSignatureRt } : item
+    ));
     setActiveRtSignatureItem(null);
+    setIsSubmitting(true); // Aktifkan loading
 
     try {
       const res = await apiFetch(`/api/data/surat/${targetId}`, {
@@ -382,79 +438,57 @@ export const MobileSuratPengantar = ({
       
       if (res.ok) {
         setFormSignatureRt('');
-        fetchData();
+        await fetchData(); // Tunggu data terbaru agar sinkron
       } else {
-        alert('Gagal menyetujui surat');
-        fetchData();
+        // 2. Rollback jika server error
+        setData(previousData);
+        alert('Gagal menyetujui surat. Silakan coba lagi.');
       }
     } catch (err) {
+      // 3. Rollback jika network error
+      setData(previousData);
       console.error('Approval failed:', err);
-      fetchData();
+      alert('Terjadi kesalahan koneksi ke server.');
+    } finally {
+      setIsSubmitting(false); // Matikan loading apapun hasilnya
     }
   };
 
   const handleDownloadPDF = (surat: any) => {
     import('jspdf').then(async ({ jsPDF }) => {
-      // 1-page A4 PDF layout
-      const doc = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      // Set elegant text style
+      // ... (Kode Download PDF tidak diubah agar tetap persis) ...
+      const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
       doc.setFont("helvetica", "normal");
-
-      // Draw Tangerang Logo
       try {
         const logoBase64 = await loadImageAsBase64("/api/tangerang-logo-proxy");
-        if (logoBase64) {
-          doc.addImage(logoBase64, 'PNG', 16, 12, 19, 21.5);
-        }
-      } catch (err) {
-        console.error("Error drawing logo on pdf:", err);
-      }
+        if (logoBase64) doc.addImage(logoBase64, 'PNG', 16, 12, 19, 21.5);
+      } catch (err) { console.error("Error drawing logo on pdf:", err); }
 
-      // Header Garuda/Kop Surat
       doc.setFontSize(13);
       doc.setFont("helvetica", "bold");
       doc.text("RUKUN TETANGGA 001/021", 112, 18, { align: "center" });
-      
       doc.setFontSize(10.5);
       doc.text("KELURAHAN KUTAJAYA KECAMATAN PASARKEMIS", 112, 23, { align: "center" });
       doc.text("KABUPATEN TANGERANG", 112, 28, { align: "center" });
-      
       doc.setFontSize(8.5);
       doc.setFont("helvetica", "normal");
       doc.text("PERUM. WISMA GARDEN KEL. KUTAJAYA KEC. PASARKEMIS, KAB. TANGERANG", 112, 33, { align: "center" });
       
-      // Separator Line
       doc.setDrawColor(0, 0, 0);
-      doc.setLineWidth(1.0);
-      doc.line(15, 36, 195, 36);
-      doc.setLineWidth(0.4);
-      doc.line(15, 37.2, 195, 37.2);
+      doc.setLineWidth(1.0); doc.line(15, 36, 195, 36);
+      doc.setLineWidth(0.4); doc.line(15, 37.2, 195, 37.2);
       
-      // Document Title
-      doc.setFontSize(13);
-      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13); doc.setFont("helvetica", "bold");
       doc.text("SURAT PENGANTAR", 105, 48, { align: "center" });
-      
-      doc.setFontSize(10.5);
-      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10.5); doc.setFont("helvetica", "normal");
       doc.text(`Nomor : ${surat.nomorSurat || '.../RT-001/RW-021/...'}`, 105, 53, { align: "center" });
 
-      // Introductory sentence with exact wrapping
       doc.setFontSize(10);
       const introText = "Yang bertandatangan di bawah ini, Ketua RT 001 / RW 021 Perumahan Wisma Garden Kelurahan Kutajaya Kecamatan Pasarkemis Kabupaten Tangerang, dengan ini menerangkan bahwa:";
       const splitIntro = doc.splitTextToSize(introText, 180);
       doc.text(splitIntro, 15, 65);
 
-      // Table formatting coordinates
-      let tabY = 78;
-      const stepY = 7.5;
-      const valX = 70;
-
+      let tabY = 78; const stepY = 7.5; const valX = 70;
       const fields = [
         { label: "1. Nama", val: surat.nama },
         { label: "2. Tempat / Tanggal Lahir", val: `${surat.tempatLahir || '-'}, ${surat.tanggalLahir || '-'}` },
@@ -468,24 +502,13 @@ export const MobileSuratPengantar = ({
       ];
 
       fields.forEach((f) => {
-        doc.setFont("helvetica", "bold");
-        doc.text(f.label, 20, tabY);
-        doc.setFont("helvetica", "normal");
-        doc.text(":", valX - 4, tabY);
-        
-        // Handle wrapping address
+        doc.setFont("helvetica", "bold"); doc.text(f.label, 20, tabY);
+        doc.setFont("helvetica", "normal"); doc.text(":", valX - 4, tabY);
         const wrapText = doc.splitTextToSize(f.val || '-', 120);
         doc.text(wrapText, valX, tabY);
-        
-        // Dynamic increments if multi-line Address
-        if (wrapText.length > 1) {
-          tabY += stepY + (wrapText.length - 1) * 4;
-        } else {
-          tabY += stepY;
-        }
+        if (wrapText.length > 1) { tabY += stepY + (wrapText.length - 1) * 4; } else { tabY += stepY; }
       });
 
-      // Statement block
       tabY += 4;
       const stmt1 = "Benar bahwa nama tersebut diatas Warga/Penduduk di lingkungan RT001/RW021 Perumahan Wisma Garden Kelurahan Kutajaya Kecamatan Pasarkemis Kabupaten Tangerang, mohon kepada yang bersangkutan untuk dibuatkan:";
       const splitStmt1 = doc.splitTextToSize(stmt1, 180);
@@ -495,45 +518,28 @@ export const MobileSuratPengantar = ({
       doc.setFont("helvetica", "bold");
       doc.text(`1. ${surat.mohonDibuatkan || surat.keperluan || '-'}`, 20, tabY);
 
-      // Closing
       tabY += 10;
       doc.setFont("helvetica", "normal");
       const stmt2 = "Demikian Surat Pengantar ini dibuat untuk bahan pertimbangan serta realisasinya sebagaimana mestinya.";
       doc.text(stmt2, 15, tabY);
 
-      // Signature Section Placement
       const sigBlockY = Math.max(tabY + 22, 222);
 
-      // Left column: Pemohon
-      doc.setFont("helvetica", "bold");
-      doc.text("Pemohon", 45, sigBlockY, { align: "center" });
-      if (surat.signaturePemohon) {
-        doc.addImage(surat.signaturePemohon, 'PNG', 25, sigBlockY + 4, 40, 20);
-      }
-      doc.setFont("helvetica", "normal");
-      doc.text(`( ${surat.nama || '................................'} )`, 45, sigBlockY + 28, { align: "center" });
+      doc.setFont("helvetica", "bold"); doc.text("Pemohon", 45, sigBlockY, { align: "center" });
+      if (surat.signaturePemohon) { doc.addImage(surat.signaturePemohon, 'PNG', 25, sigBlockY + 4, 40, 20); }
+      doc.setFont("helvetica", "normal"); doc.text(`( ${surat.nama || '................................'} )`, 45, sigBlockY + 28, { align: "center" });
 
-      // Right column: Ketua RT (Mengetahui)
-      doc.setFont("helvetica", "bold");
-      doc.text("Mengetahui", 155, sigBlockY, { align: "center" });
+      doc.setFont("helvetica", "bold"); doc.text("Mengetahui", 155, sigBlockY, { align: "center" });
       doc.text("Ketua RT 001", 155, sigBlockY + 5, { align: "center" });
-      if (surat.signatureKetuaRt) {
-        doc.addImage(surat.signatureKetuaRt, 'PNG', 135, sigBlockY + 9, 40, 20);
-      }
-      doc.setFont("helvetica", "normal");
-      doc.text("( Ketua RT 001 )", 155, sigBlockY + 33, { align: "center" });
+      if (surat.signatureKetuaRt) { doc.addImage(surat.signatureKetuaRt, 'PNG', 135, sigBlockY + 9, 40, 20); }
+      doc.setFont("helvetica", "normal"); doc.text("( Ketua RT 001 )", 155, sigBlockY + 33, { align: "center" });
 
       const fileName = `Surat_Pengantar_${surat.nama.replace(/\s+/g, '_')}_${surat.id.substring(0, 5)}.pdf`;
       try {
         const blob = doc.output('blob');
         const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = fileName;
-        link.target = "_blank";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const link = document.createElement('a'); link.href = blobUrl; link.download = fileName; link.target = "_blank";
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(blobUrl), 300);
       } catch (err) {
         console.warn("Mobile blob download fallback to standard save:", err);
@@ -634,96 +640,47 @@ export const MobileSuratPengantar = ({
                       <span className={formStep === 3 ? 'text-teal-600' : ''}>3. KEPERLUAN & TTD</span>
                     </div>
 
-                    {/* STEP 1: Personal Data */}
+                    {/* STEP 1 & 2 OMITTED FOR BREVITY BUT KEPT IN CODE */}
                     {formStep === 1 && (
                       <div className="space-y-4">
                         <div>
                           <label className="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap</label>
-                          <input 
-                            type="text" 
-                            required
-                            placeholder="Contoh: Muhammad Adji Prasetyo"
-                            value={formNama} 
-                            onChange={e => setFormNama(e.target.value)} 
-                            className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition"
-                          />
+                          <input type="text" required placeholder="Contoh: Muhammad Adji Prasetyo" value={formNama} onChange={e => setFormNama(e.target.value)} className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition" />
                         </div>
-
                         <div>
                           <label className="block text-xs font-bold text-slate-700 mb-1">No NIK KTP / KK</label>
-                          <input 
-                            type="text" 
-                            required
-                            placeholder="Masukkan 16 digit No KTP atau No KK"
-                            value={formNoKtpKk} 
-                            onChange={e => setFormNoKtpKk(e.target.value)} 
-                            className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition"
-                          />
+                          <input type="text" required placeholder="Masukkan 16 digit No KTP atau No KK" value={formNoKtpKk} onChange={e => setFormNoKtpKk(e.target.value)} className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition" />
                         </div>
-
                         <div className="grid grid-cols-2 gap-3.5">
                           <div>
                             <label className="block text-xs font-bold text-slate-700 mb-1">Tempat Lahir</label>
-                            <input 
-                              type="text" 
-                              required
-                              placeholder="Kota tempat lahir"
-                              value={formTempatLahir} 
-                              onChange={e => setFormTempatLahir(e.target.value)} 
-                              className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition"
-                            />
+                            <input type="text" required placeholder="Kota tempat lahir" value={formTempatLahir} onChange={e => setFormTempatLahir(e.target.value)} className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition" />
                           </div>
                           <div>
                             <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Lahir</label>
-                            <input 
-                              type="date" 
-                              required
-                              value={formTanggalLahir} 
-                              onChange={e => setFormTanggalLahir(e.target.value)} 
-                              className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition"
-                            />
+                            <input type="date" required value={formTanggalLahir} onChange={e => setFormTanggalLahir(e.target.value)} className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition" />
                           </div>
                         </div>
-
                         <div>
                           <label className="block text-xs font-bold text-slate-700 mb-1">Jenis Kelamin</label>
                           <div className="grid grid-cols-2 gap-3">
                             {['Laki-laki', 'Perempuan'].map((g) => (
-                              <button
-                                key={g}
-                                type="button"
-                                onClick={() => setFormJenisKelamin(g)}
-                                className={`py-3 text-xs font-bold rounded-xl border transition pointer-events-auto cursor-pointer ${formJenisKelamin === g ? 'bg-teal-50 text-teal-700 border-teal-500' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}
-                              >
-                                {g}
-                              </button>
+                              <button key={g} type="button" onClick={() => setFormJenisKelamin(g)} className={`py-3 text-xs font-bold rounded-xl border transition pointer-events-auto cursor-pointer ${formJenisKelamin === g ? 'bg-teal-50 text-teal-700 border-teal-500' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}>{g}</button>
                             ))}
                           </div>
                         </div>
-
                         <div className="pt-2 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={handleNextStep}
-                            className="px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl shadow-md transition pointer-events-auto cursor-pointer flex items-center gap-1"
-                          >
-                            Lanjut Langkah 2 ➔
-                          </button>
+                          <button type="button" onClick={handleNextStep} className="px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl shadow-md transition pointer-events-auto cursor-pointer flex items-center gap-1">Lanjut Langkah 2 ➔</button>
                         </div>
                       </div>
                     )}
 
-                    {/* STEP 2: Status & Addresses */}
                     {formStep === 2 && (
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs font-bold text-slate-700 mb-1">Status Perkawinan</label>
-                            <select
-                              value={formStatusPerkawinan}
-                              onChange={e => setFormStatusPerkawinan(e.target.value)}
-                              className="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none bg-white font-semibold"
-                            >
+                            <select value={formStatusPerkawinan} onChange={e => setFormStatusPerkawinan(e.target.value)} className="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none bg-white font-semibold">
                               <option value="Belum Kawin">Belum Kawin</option>
                               <option value="Kawin">Kawin</option>
                               <option value="Cerai Hidup">Cerai Hidup</option>
@@ -732,11 +689,7 @@ export const MobileSuratPengantar = ({
                           </div>
                           <div>
                             <label className="block text-xs font-bold text-slate-700 mb-1">Agama</label>
-                            <select
-                              value={formAgama}
-                              onChange={e => setFormAgama(e.target.value)}
-                              className="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none bg-white font-semibold"
-                            >
+                            <select value={formAgama} onChange={e => setFormAgama(e.target.value)} className="w-full text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none bg-white font-semibold">
                               <option value="Islam">Islam</option>
                               <option value="Kristen">Kristen</option>
                               <option value="Katolik">Katolik</option>
@@ -747,72 +700,29 @@ export const MobileSuratPengantar = ({
                             </select>
                           </div>
                         </div>
-
                         <div>
                           <label className="block text-xs font-bold text-slate-700 mb-1">Pekerjaan</label>
-                          <input 
-                            type="text" 
-                            required
-                            placeholder="Contoh: Karyawan Swasta, Wiraswasta"
-                            value={formPekerjaan} 
-                            onChange={e => setFormPekerjaan(e.target.value)} 
-                            className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition"
-                          />
+                          <input type="text" required placeholder="Contoh: Karyawan Swasta, Wiraswasta" value={formPekerjaan} onChange={e => setFormPekerjaan(e.target.value)} className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition" />
                         </div>
-
                         <div>
                           <label className="block text-xs font-bold text-slate-700 mb-1">Alamat Sekarang</label>
-                          <textarea 
-                            rows={2}
-                            required
-                            placeholder="Alamat domisili saat ini"
-                            value={formAlamatSekarang} 
-                            onChange={e => setFormAlamatSekarang(e.target.value)} 
-                            className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition resize-none"
-                          />
+                          <textarea rows={2} required placeholder="Alamat domisili saat ini" value={formAlamatSekarang} onChange={e => setFormAlamatSekarang(e.target.value)} className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition resize-none" />
                         </div>
-
                         <div>
                           <div className="flex justify-between items-center mb-1">
                             <label className="block text-xs font-bold text-slate-700">Alamat Asal (Sesuai KTP)</label>
-                            <button
-                              type="button"
-                              onClick={handleCopyAlamat}
-                              className="text-[9px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded transition pointer-events-auto cursor-pointer"
-                            >
-                              Sama dengan Alamat Sekarang
-                            </button>
+                            <button type="button" onClick={handleCopyAlamat} className="text-[9px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded transition pointer-events-auto cursor-pointer">Sama dengan Alamat Sekarang</button>
                           </div>
-                          <textarea 
-                            rows={2}
-                            required
-                            placeholder="Alamat asal tertulis di KTP"
-                            value={formAlamatAsal} 
-                            onChange={e => setFormAlamatAsal(e.target.value)} 
-                            className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition resize-none"
-                          />
+                          <textarea rows={2} required placeholder="Alamat asal tertulis di KTP" value={formAlamatAsal} onChange={e => setFormAlamatAsal(e.target.value)} className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition resize-none" />
                         </div>
-
                         <div className="pt-2 flex justify-between items-center">
-                          <button
-                            type="button"
-                            onClick={handlePrevStep}
-                            className="px-4 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-extrabold rounded-xl transition pointer-events-auto cursor-pointer"
-                          >
-                            Back
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleNextStep}
-                            className="px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl shadow-md transition pointer-events-auto cursor-pointer"
-                          >
-                            Lanjut Langkah 3 ➔
-                          </button>
+                          <button type="button" onClick={handlePrevStep} className="px-4 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-extrabold rounded-xl transition pointer-events-auto cursor-pointer">Back</button>
+                          <button type="button" onClick={handleNextStep} className="px-5 py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl shadow-md transition pointer-events-auto cursor-pointer">Lanjut Langkah 3 ➔</button>
                         </div>
                       </div>
                     )}
 
-                    {/* STEP 3: Requirements and Resident Signatures */}
+                    {/* STEP 3 */}
                     {formStep === 3 && (
                       <div className="space-y-4">
                         <div>
@@ -925,9 +835,27 @@ export const MobileSuratPengantar = ({
 
                       {/* Tanda Tangan Digital pada Tampilan Mobile */}
                       <div className="mt-3 pt-3 border-t border-slate-100/60 grid grid-cols-2 gap-3.5 text-center">
-                        <div className="flex flex-col items-center p-2.5 bg-slate-50/50 rounded-xl border border-slate-100/40">
-                          <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">TTD Pemohon</p>
-                          <div className="h-14 w-full flex items-center justify-center my-1 bg-white/75 rounded-lg p-1 border border-slate-100 overflow-hidden">
+                        
+                        {/* BOX TTD PEMOHON */}
+                        <div className="flex flex-col items-center p-2.5 bg-slate-50/50 rounded-xl border border-slate-100/40 relative group">
+                          <div className="flex justify-between w-full items-center mb-1">
+                            <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">TTD Pemohon</p>
+                            
+                            {/* TOMBOL EDIT TTD: Muncul jika status belum selesai (Proses) */}
+                            {item.status !== 'selesai' && (item.userId === currentUser?.id || isAdminOrPengurus) && (
+                              <button
+                                onClick={() => {
+                                  setActiveEditSignatureItem(item);
+                                  setFormSignaturePemohonEdit('');
+                                }}
+                                className="text-[9px] text-teal-600 hover:text-teal-700 font-bold pointer-events-auto cursor-pointer bg-teal-50 px-1.5 py-0.5 rounded shadow-xs"
+                              >
+                                ✏️ Ubah
+                              </button>
+                            )}
+                          </div>
+                          
+                          <div className="h-14 w-full flex items-center justify-center bg-white/75 rounded-lg p-1 border border-slate-100 overflow-hidden">
                             {item.signaturePemohon ? (
                               <img 
                                 src={item.signaturePemohon} 
@@ -942,6 +870,7 @@ export const MobileSuratPengantar = ({
                           <p className="text-[9px] font-bold text-slate-600 truncate w-full mt-0.5">{item.nama || item.userName}</p>
                         </div>
 
+                        {/* BOX TTD RT */}
                         <div className="flex flex-col items-center p-2.5 bg-slate-50/50 rounded-xl border border-slate-100/40">
                           <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">TTD Ketua RT</p>
                           <div className="h-14 w-full flex items-center justify-center my-1 bg-white/75 rounded-lg p-1 border border-slate-100 overflow-hidden">
@@ -958,6 +887,7 @@ export const MobileSuratPengantar = ({
                           </div>
                           <p className="text-[9px] font-bold text-slate-600 truncate w-full mt-0.5">Ketua RT 001</p>
                         </div>
+
                       </div>
                     </div>
 
@@ -1059,9 +989,71 @@ export const MobileSuratPengantar = ({
                 </button>
                 <button
                   onClick={handleRtConfirmApproval}
+                  disabled={isSubmitting}
                   className="flex-1 py-3 bg-emerald-650 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-md transition pointer-events-auto cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  Confirm & Menyembunyikan
+                  Konfirmasi & Setujui
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL / DRAWER FOR UBAH TTD PEMOHON */}
+      <AnimatePresence>
+        {activeEditSignatureItem && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveEditSignatureItem(null)}
+              className="absolute inset-0 bg-slate-900/45 backdrop-blur-xs"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 50, scale: 0.95 }}
+              className="bg-white rounded-2xl border border-slate-100 shadow-xl max-w-md w-full z-10 relative p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">Ubah Tanda Tangan Anda</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Memperbarui TTD untuk permohonan: <br/><span className="font-bold text-slate-600">{activeEditSignatureItem.keperluan || activeEditSignatureItem.mohonDibuatkan}</span>
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setActiveEditSignatureItem(null)}
+                  className="p-1 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg text-xs pointer-events-auto cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Pad component */}
+              <div className="bg-slate-50 p-2 rounded-xl border border-slate-150">
+                <SignaturePad 
+                  label="Tanda Tangan Pemohon Baru" 
+                  onSave={(dataUrl) => setFormSignaturePemohonEdit(dataUrl)} 
+                />
+              </div>
+
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  onClick={() => setActiveEditSignatureItem(null)}
+                  className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-extrabold rounded-xl transition pointer-events-auto cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleUpdatePemohonSignature}
+                  disabled={isSubmitting}
+                  className="flex-1 py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl shadow-md transition pointer-events-auto cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {isSubmitting ? 'Menyimpan...' : 'Simpan TTD Baru'}
                 </button>
               </div>
             </motion.div>
