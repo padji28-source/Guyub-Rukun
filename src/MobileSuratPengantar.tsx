@@ -177,6 +177,9 @@ export const MobileSuratPengantar = ({
   clearHighlight?: () => void
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfFileName, setPdfFileName] = useState('');
   
   const [data, setData] = useState<any[]>(cachedSuratData || []);
   const [loading, setLoading] = useState(!cachedSuratData);
@@ -455,6 +458,10 @@ export const MobileSuratPengantar = ({
   };
 
   const handleDownloadPDF = (surat: any) => {
+    if (isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
+    let fileName = `Surat_Pengantar_${surat.nama.replace(/\s+/g, '_')}_${surat.id.substring(0, 5)}.pdf`;
+
     import('jspdf').then(async ({ jsPDF }) => {
       // ... (Kode Download PDF tidak diubah agar tetap persis) ...
       const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
@@ -534,16 +541,23 @@ export const MobileSuratPengantar = ({
       if (surat.signatureKetuaRt) { doc.addImage(surat.signatureKetuaRt, 'PNG', 135, sigBlockY + 9, 40, 20); }
       doc.setFont("helvetica", "normal"); doc.text("( Ketua RT 001 )", 155, sigBlockY + 33, { align: "center" });
 
-      const fileName = `Surat_Pengantar_${surat.nama.replace(/\s+/g, '_')}_${surat.id.substring(0, 5)}.pdf`;
       try {
         const blob = doc.output('blob');
         const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement('a'); link.href = blobUrl; link.download = fileName; link.target = "_blank";
-        document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 300);
+        setPdfFileName(fileName);
+        setPdfPreviewUrl(blobUrl);
+
+        const link = document.createElement('a'); 
+        link.href = blobUrl; 
+        link.download = fileName; 
+        link.target = "_blank";
+        document.body.appendChild(link); 
+        link.click(); 
+        document.body.removeChild(link);
       } catch (err) {
-        console.warn("Mobile blob download fallback to standard save:", err);
-        doc.save(fileName);
+        console.warn("Mobile blob download fallback:", err);
+      } finally {
+        setIsGeneratingPdf(false);
       }
     });
   };
@@ -1055,6 +1069,61 @@ export const MobileSuratPengantar = ({
                 >
                   {isSubmitting ? 'Menyimpan...' : 'Simpan TTD Baru'}
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* PDF Ready Download Modal for Mobile */}
+      <AnimatePresence>
+        {pdfPreviewUrl && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                URL.revokeObjectURL(pdfPreviewUrl);
+                setPdfPreviewUrl(null);
+              }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 50, scale: 0.95 }}
+              className="bg-white rounded-2xl border border-slate-100 shadow-xl max-w-md w-full z-10 relative p-6 space-y-4 max-h-[90vh] flex flex-col"
+            >
+              <div className="flex justify-between items-start shrink-0">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">Dokumen PDF Siap</h3>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Silakan unduh atau pratinjau dokumen Anda di bawah ini.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    URL.revokeObjectURL(pdfPreviewUrl);
+                    setPdfPreviewUrl(null);
+                  }}
+                  className="p-1 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg text-xs pointer-events-auto cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="flex-1 min-h-[300px] border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                <iframe src={`${pdfPreviewUrl}#toolbar=0`} className="w-full h-full" title="PDF Preview" />
+              </div>
+
+              <div className="flex justify-end pt-2 shrink-0">
+                <a 
+                  href={pdfPreviewUrl} 
+                  download={pdfFileName}
+                  className="w-full px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl shadow-md transition pointer-events-auto cursor-pointer text-center"
+                >
+                  Simpan & Unduh Dokumen
+                </a>
               </div>
             </motion.div>
           </div>
