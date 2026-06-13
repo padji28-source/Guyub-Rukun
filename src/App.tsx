@@ -223,17 +223,9 @@ export const icons = {
 };
 
 // --- Logo Komunitas Modern ---
-// Menggunakan desain gradien yang elegan dan bentuk rumah/orang abstrak bersatu
+// Menggunakan desain elegan dan bentuk rumah/orang abstrak bersatu (Tanpa Background)
 const LogoCommunityIcon = ({ size = '32', colorAccent = themeColors.accent, colorPrimary = themeColors.primary }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="logo-bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#14B8A6" />
-        <stop offset="100%" stopColor="#0F766E" />
-      </linearGradient>
-    </defs>
-    <rect width="100" height="100" rx="20" fill="url(#logo-bg-gradient)" />
-    
     <g id="people">
       {/* Left person */}
       <circle cx="30" cy="35" r="8" fill="#A5F3FC" />
@@ -469,8 +461,14 @@ const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNot
 const WebStatsCards = () => {
   const [stats, setStats] = useState({ warga: 0, totalWarga: 0, laporan: 0, saldo: 0, iuranRef: 0, iuranTotal: 0, kasRT: 0, danaKematian: 0, danaSosial: 0, docUploaded: 0, docNotUploaded: 0 });
   const [showKasDetail, setShowKasDetail] = useState(false);
+  
+  // Tambahkan state ini untuk kontrol menyembunyikan saldo di Web
+  const [isMasked, setIsMasked] = useState(false);
 
   useEffect(() => {
+    // ... (Biarkan kode useEffect kamu sebelumnya apa adanya) ...
+// [TIDAK ADA PERUBAHAN DI AREA INI]
+
     const fetchStats = async () => {
       try {
         const [wargaRes, laporanRes, kasRes, iuranRes] = await Promise.all([
@@ -579,11 +577,26 @@ const WebStatsCards = () => {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs text-gray-500 font-medium truncate flex items-center justify-between">
-              {card.title}
+              <span className="flex items-center gap-1.5">
+                {card.title}
+                {/* Tombol Emoticon khusus untuk Saldo Kas */}
+                {card.isKas && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setIsMasked(!isMasked); }} 
+                    className="text-sm focus:outline-none hover:scale-110 active:scale-95 transition-transform"
+                    title={isMasked ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
+                  >
+                    {isMasked ? '🙈' : '👁️'}
+                  </button>
+                )}
+              </span>
               {card.isKas && <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-400">Detail</span>}
             </p>
             <div className="flex items-baseline gap-1 mt-1 truncate">
-              <span className="text-2xl font-bold text-gray-900 truncate" style={{ fontFamily: fontStyle }}>{card.value}</span>
+              {/* Logika menutupi nilai saldo pada kartu */}
+              <span className="text-2xl font-bold text-gray-900 truncate" style={{ fontFamily: fontStyle }}>
+                {card.isKas && isMasked ? 'Rp •••••••••' : card.value}
+              </span>
               {card.unit && <span className="text-xs font-medium text-gray-500 flex-shrink-0">{card.unit}</span>}
             </div>
           </div>
@@ -598,17 +611,18 @@ const WebStatsCards = () => {
             <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-gray-100 p-4 z-20" onClick={e => e.stopPropagation()}>
                <h4 className="text-xs font-bold text-gray-800 mb-3 border-b border-gray-50 pb-2">Rincian Saldo Kas</h4>
                <div className="space-y-2">
+                 {/* Logika menutupi nilai saldo pada rincian detail */}
                  <div className="flex justify-between items-center text-xs">
                    <span className="text-gray-500">Kas RT</span>
-                   <span className="font-semibold text-gray-800">{saldoFormatter.format(stats.kasRT)}</span>
+                   <span className="font-semibold text-gray-800">{isMasked ? 'Rp •••••' : saldoFormatter.format(stats.kasRT)}</span>
                  </div>
                  <div className="flex justify-between items-center text-xs">
                    <span className="text-gray-500">Dana Sosial</span>
-                   <span className="font-semibold text-gray-800">{saldoFormatter.format(stats.danaSosial)}</span>
+                   <span className="font-semibold text-gray-800">{isMasked ? 'Rp •••••' : saldoFormatter.format(stats.danaSosial)}</span>
                  </div>
                  <div className="flex justify-between items-center text-xs">
                    <span className="text-gray-500">Dana Kematian</span>
-                   <span className="font-semibold text-gray-800">{saldoFormatter.format(stats.danaKematian)}</span>
+                   <span className="font-semibold text-gray-800">{isMasked ? 'Rp •••••' : saldoFormatter.format(stats.danaKematian)}</span>
                  </div>
                </div>
             </div>
@@ -2224,6 +2238,9 @@ const MobileSaldoCard = () => {
   const [danaKematian, setDanaKematian] = useState(cachedSaldoResult?.danaKematian || 0);
   const [danaSosial, setDanaSosial] = useState(cachedSaldoResult?.danaSosial || 0);
   const [loading, setLoading] = useState(!cachedSaldoResult);
+  
+  // State untuk menyembunyikan saldo
+  const [isMasked, setIsMasked] = useState(false);
 
   useEffect(() => {
     setLoading(!cachedSaldoResult);
@@ -2255,24 +2272,39 @@ const MobileSaldoCard = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' });
+  const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
 
   return (
     <section className="px-5 mb-6 mt-0">
       <div className="bg-[#0eb18a] bg-gradient-to-br from-[#10b981] to-[#0eb18a] rounded-[1.5rem] p-5 text-white shadow-xl shadow-teal-500/20 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-36 h-36 bg-white opacity-10 rounded-full translate-x-12 -translate-y-8"></div>
           <div className="absolute bottom-0 right-0 w-24 h-24 bg-white opacity-[0.05] rounded-full translate-x-8 translate-y-8 blur-md"></div>
+          
           <div className="flex justify-between items-center mb-1 relative z-10">
             <p className="text-xs font-semibold opacity-90 uppercase tracking-widest">Saldo Kas RT 01</p>
-            <icons.kas className="w-5 h-5 opacity-80"/>
+            <div className="flex items-center gap-2">
+              {/* Tombol Sembunyikan/Tampilkan Saldo */}
+              <button 
+                onClick={() => setIsMasked(!isMasked)} 
+                className="text-lg focus:outline-none hover:scale-110 active:scale-95 transition-transform drop-shadow-md"
+                title={isMasked ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
+              >
+                {isMasked ? '🙈' : '👁️'}
+              </button>
+              <icons.kas className="w-5 h-5 opacity-80"/>
+            </div>
           </div>
+
           <div className="relative z-10">
             {loading ? (
                <div className="h-8 w-40 bg-white/20 animate-pulse rounded mt-1 mb-1"></div>
             ) : (
-               <h3 className="text-3xl font-bold tracking-tight mt-1 mb-2 text-white" style={{ fontFamily: fontStyle }}>{formatter.format(saldo)}</h3>
+               <h3 className="text-3xl font-bold tracking-tight mt-1 mb-2 text-white" style={{ fontFamily: fontStyle }}>
+                 {isMasked ? 'Rp •••••••••' : formatter.format(saldo)}
+               </h3>
             )}
           </div>
+
           <div className="flex items-center gap-2 mt-3 truncate relative z-10">
             {loading ? (
               <>
@@ -2281,8 +2313,12 @@ const MobileSaldoCard = () => {
               </>
             ) : (
               <>
-                <span className="text-[10px] bg-white/20 px-2.5 py-1 rounded-full backdrop-blur-sm font-semibold tracking-wide">Sosial: {formatter.format(danaSosial)}</span>
-                <span className="text-[10px] bg-white/20 px-2.5 py-1 rounded-full backdrop-blur-sm font-semibold tracking-wide">Kematian: {formatter.format(danaKematian)}</span>
+                <span className="text-[10px] bg-white/20 px-2.5 py-1 rounded-full backdrop-blur-sm font-semibold tracking-wide">
+                  Sosial: {isMasked ? 'Rp •••••' : formatter.format(danaSosial)}
+                </span>
+                <span className="text-[10px] bg-white/20 px-2.5 py-1 rounded-full backdrop-blur-sm font-semibold tracking-wide">
+                  Kematian: {isMasked ? 'Rp •••••' : formatter.format(danaKematian)}
+                </span>
               </>
             )}
           </div>
