@@ -523,7 +523,22 @@ export const MobileSuratPengantar = ({
       doc.setFont("helvetica", "normal");
       doc.text("( Ketua RT 001 )", 155, sigBlockY + 33, { align: "center" });
 
-      doc.save(`Surat_Pengantar_${surat.nama.replace(/\s+/g, '_')}_${surat.id.substring(0, 5)}.pdf`);
+      const fileName = `Surat_Pengantar_${surat.nama.replace(/\s+/g, '_')}_${surat.id.substring(0, 5)}.pdf`;
+      try {
+        const blob = doc.output('blob');
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = fileName;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 300);
+      } catch (err) {
+        console.warn("Mobile blob download fallback to standard save:", err);
+        doc.save(fileName);
+      }
     });
   };
 
@@ -906,6 +921,43 @@ export const MobileSuratPengantar = ({
                             <span>{new Date(item.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                         )}
+                      </div>
+
+                      {/* Tanda Tangan Digital pada Tampilan Mobile */}
+                      <div className="mt-3 pt-3 border-t border-slate-100/60 grid grid-cols-2 gap-3.5 text-center">
+                        <div className="flex flex-col items-center p-2.5 bg-slate-50/50 rounded-xl border border-slate-100/40">
+                          <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">TTD Pemohon</p>
+                          <div className="h-14 w-full flex items-center justify-center my-1 bg-white/75 rounded-lg p-1 border border-slate-100 overflow-hidden">
+                            {item.signaturePemohon ? (
+                              <img 
+                                src={item.signaturePemohon} 
+                                alt="TTD Pemohon" 
+                                referrerPolicy="no-referrer"
+                                className="max-h-full max-w-full object-contain mix-blend-multiply" 
+                              />
+                            ) : (
+                              <span className="text-[9px] italic text-slate-400 font-semibold">Belum ada</span>
+                            )}
+                          </div>
+                          <p className="text-[9px] font-bold text-slate-600 truncate w-full mt-0.5">{item.nama || item.userName}</p>
+                        </div>
+
+                        <div className="flex flex-col items-center p-2.5 bg-slate-50/50 rounded-xl border border-slate-100/40">
+                          <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">TTD Ketua RT</p>
+                          <div className="h-14 w-full flex items-center justify-center my-1 bg-white/75 rounded-lg p-1 border border-slate-100 overflow-hidden">
+                            {item.signatureKetuaRt ? (
+                              <img 
+                                src={item.signatureKetuaRt} 
+                                alt="TTD Ketua RT" 
+                                referrerPolicy="no-referrer"
+                                className="max-h-full max-w-full object-contain mix-blend-multiply" 
+                              />
+                            ) : (
+                              <span className="text-[9px] italic text-amber-500 font-extrabold animate-pulse">Menunggu...</span>
+                            )}
+                          </div>
+                          <p className="text-[9px] font-bold text-slate-600 truncate w-full mt-0.5">Ketua RT 001</p>
+                        </div>
                       </div>
                     </div>
 
