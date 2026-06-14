@@ -55,6 +55,7 @@ import { MobileUMKM } from './MobileUMKM';
 import { WebSmartRtAiPage } from './components/WebSmartRtAiPage';
 import { WebDashboardRtView } from './components/WebDashboardRtView';
 import { WebInventarisPage } from './components/WebInventarisPage';
+import { WebNotulenPage } from './components/WebNotulenPage';
 
 // --- Modern Icons Set ---
 export const icons = {
@@ -287,6 +288,7 @@ const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange
         { name: 'Kas', icon: icons.kas },
         { name: 'Dokumen', icon: icons.dokumen },
         { name: 'Laporan', icon: icons.laporan },
+        { name: 'Notulen Rapat', icon: icons.laporan },
         { name: 'Pengumuman', icon: icons.pengumuman },
         { name: 'Media', icon: icons.media },
         { name: 'UMKM', icon: icons.umkm },
@@ -2222,6 +2224,7 @@ const quickActions = [
   { name: 'Surat', icon: icons.surat, color: 'from-blue-400 to-indigo-500', shadow: 'shadow-blue-200' },
   { name: 'Lapor RT', icon: icons.laporanrt, color: 'from-rose-400 to-red-500', shadow: 'shadow-rose-200' },
   { name: 'Dokumen', icon: icons.dokumen, color: 'from-amber-400 to-orange-500', shadow: 'shadow-amber-200' },
+  { name: 'Notulen Rapat', icon: icons.laporan, color: 'from-sky-500 to-blue-600', shadow: 'shadow-sky-200' },
   { name: 'Media', icon: icons.media, color: 'from-purple-400 to-fuchsia-500', shadow: 'shadow-purple-200' },
   { name: 'Iuran', icon: icons.iuran, color: 'from-emerald-400 to-teal-500', shadow: 'shadow-emerald-200' },
   { name: 'Kas', icon: icons.kas, color: 'from-cyan-400 to-blue-500', shadow: 'shadow-cyan-200' },
@@ -3070,6 +3073,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                     )}
                     {user.isApproved && activeWebTab === 'Dokumen' && <WebDokumenPage user={user} onUpdateUser={onUpdateUser} />}
                     {user.isApproved && activeWebTab === 'Laporan' && <WebLaporanPage user={user} />}
+                    {user.isApproved && activeWebTab === 'Notulen Rapat' && <WebNotulenPage user={user} />}
                     {user.isApproved && activeWebTab === 'Pengumuman' && <WebPengumumanPage user={user} />}
                     {user.isApproved && activeWebTab === 'Media' && <WebMediaPage user={user} />}
                     {user.isApproved && activeWebTab === 'UMKM' && <WebUMKMPage user={user} />}
@@ -3155,6 +3159,14 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                        <WebInventarisPage user={user} />
                      </div>
                    )}
+                   {activeMobileTab === 'Notulen Rapat' && (
+                     <div className="p-4 overflow-y-auto max-h-[calc(100vh-140px)]">
+                       <button className="flex items-center gap-2 mb-4 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-full outline-none pointer-events-auto cursor-pointer" onClick={() => setActiveMobileTab('Beranda')}>
+                         <icons.arrowLeft className="w-4 h-4" /> Kembali ke Beranda
+                       </button>
+                       <WebNotulenPage user={user} />
+                     </div>
+                   )}
                   {activeMobileTab === 'Smart RT AI' && (
                     <div className="p-4 overflow-y-auto max-h-[calc(100vh-140px)]">
                       <button className="flex items-center gap-2 mb-4 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-full outline-none pointer-events-auto cursor-pointer" onClick={() => setActiveMobileTab('Beranda')}>
@@ -3165,7 +3177,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                   )}
 
                   {/* Fallback for unrecognized tabs */}
-                  {!['Beranda', 'Acara', 'Laporan', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu', 'Inventaris', 'Smart RT AI'].includes(activeMobileTab) && (
+                  {!['Beranda', 'Acara', 'Laporan', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu', 'Inventaris', 'Smart RT AI', 'Notulen Rapat'].includes(activeMobileTab) && (
                     <div className="flex flex-col items-center justify-center h-full opacity-50 py-20">
                       <icons.dashboard className="w-12 h-12 text-gray-300 mb-3" />
                       <h2 className="text-lg font-semibold text-gray-500">Halaman {activeMobileTab}</h2>

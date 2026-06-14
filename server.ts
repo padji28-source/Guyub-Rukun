@@ -255,6 +255,21 @@ const InventarisSchema = new mongoose.Schema({
 }, { timestamps: true });
 const InventarisModel: mongoose.Model<any> = mongoose.models.Inventaris || mongoose.model("Inventaris", InventarisSchema);
 
+// 16. Notulen Schema (Meeting Minutes)
+const NotulenSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  date: { type: String, required: true },
+  category: { type: String },
+  content: { type: String, required: true },
+  leader: { type: String },
+  attendees: { type: String },
+  location: { type: String },
+  rtId: { type: String, required: true },
+  createdBy: { type: String }
+}, { timestamps: true });
+const NotulenModel: mongoose.Model<any> = mongoose.models.Notulen || mongoose.model("Notulen", NotulenSchema);
+
 
 // ==========================================
 // DATABASE INDEX OPTIMIZATION (HIGH PERFORMANCE)
@@ -301,6 +316,9 @@ DokumenSchema.index({ rtId: 1, createdAt: -1 });
 
 InventarisSchema.index({ id: 1 }, { unique: true });
 InventarisSchema.index({ rtId: 1, createdAt: -1 });
+
+NotulenSchema.index({ id: 1 }, { unique: true });
+NotulenSchema.index({ rtId: 1, date: -1 });
 
 
 
@@ -448,7 +466,7 @@ async function saveNotifications(rtId: string = '', notifs: any[]) {
 
 async function getAppData(rtId: string = '') {
   await connectDB();
-  const [surat, laporan, acara, umkm, kas, iuran, darurat, tamu, media, voting, dokumen, inventaris] = await Promise.all([
+  const [surat, laporan, acara, umkm, kas, iuran, darurat, tamu, media, voting, dokumen, inventaris, notulen] = await Promise.all([
     SuratModel.find({ rtId }).lean(),
     LaporanModel.find({ rtId }).lean(),
     AcaraModel.find({ rtId }).lean(),
@@ -460,7 +478,8 @@ async function getAppData(rtId: string = '') {
     MediaModel.find({ rtId }).lean(),
     VotingModel.find({ rtId }).lean(),
     DokumenModel.find({ rtId }).lean(),
-    InventarisModel.find({ rtId }).lean()
+    InventarisModel.find({ rtId }).lean(),
+    NotulenModel.find({ rtId }).sort({ date: -1 }).lean()
   ]);
 
   return {
@@ -475,7 +494,8 @@ async function getAppData(rtId: string = '') {
     media: media || [],
     voting: voting || [],
     dokumen: dokumen || [],
-    inventaris: inventaris || []
+    inventaris: inventaris || [],
+    notulen: notulen || []
   };
 }
 
@@ -493,7 +513,8 @@ async function saveAppData(rtId: string = '', data: any) {
     media: MediaModel,
     voting: VotingModel,
     dokumen: DokumenModel,
-    inventaris: InventarisModel
+    inventaris: InventarisModel,
+    notulen: NotulenModel
   };
 
   for (const [key, model] of Object.entries(map)) {
@@ -1060,11 +1081,20 @@ app.post("/api/data/:resource", async (req, res) => {
     tamu: TamuModel,
     media: MediaModel,
     dokumen: DokumenModel,
-    inventaris: InventarisModel
+    inventaris: InventarisModel,
+    notulen: NotulenModel
   };
 
   const model = map[resource];
   if (!model) return res.status(404).json({ error: "Resource not found" });
+
+  // Role validation for notulen
+  if (resource === 'notulen') {
+    const role = (req.headers['x-user-role'] as string) || 'warga';
+    if (role !== 'admin' && role !== 'sekretaris') {
+      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Sekretaris yang dapat membuat notulen rapat." });
+    }
+  }
 
   // Input Validation (Point 6 Constraints)
   if (resource === 'iuran') {
@@ -1203,11 +1233,20 @@ app.put("/api/data/:resource/:id", async (req, res) => {
     tamu: TamuModel,
     media: MediaModel,
     dokumen: DokumenModel,
-    inventaris: InventarisModel
+    inventaris: InventarisModel,
+    notulen: NotulenModel
   };
 
   const model = map[resource];
   if (!model) return res.status(404).json({ error: "Resource not found" });
+
+  // Role validation for notulen
+  if (resource === 'notulen') {
+    const role = (req.headers['x-user-role'] as string) || 'warga';
+    if (role !== 'admin' && role !== 'sekretaris') {
+      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Sekretaris yang dapat mengedit notulen rapat." });
+    }
+  }
 
   const oldItem = await model.findOne({ id: req.params.id, rtId });
   if (!oldItem) return res.status(404).json({ error: "Item not found" });
@@ -1301,11 +1340,20 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
     tamu: TamuModel,
     media: MediaModel,
     dokumen: DokumenModel,
-    inventaris: InventarisModel
+    inventaris: InventarisModel,
+    notulen: NotulenModel
   };
 
   const model = map[resource];
   if (!model) return res.status(404).json({ error: "Resource not found" });
+
+  // Role validation for notulen
+  if (resource === 'notulen') {
+    const role = (req.headers['x-user-role'] as string) || 'warga';
+    if (role !== 'admin' && role !== 'sekretaris') {
+      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Sekretaris yang dapat menghapus notulen rapat." });
+    }
+  }
 
   const oldItem = await model.findOne({ id: req.params.id, rtId });
   if (!oldItem) return res.status(404).json({ error: "Item not found" });
