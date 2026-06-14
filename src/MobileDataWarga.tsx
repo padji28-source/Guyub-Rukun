@@ -404,8 +404,26 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                       <span className="text-[9px] bg-sky-50 text-sky-600 border border-sky-100 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-widest">
                         {warga.rt || 'RT 01'}
                       </span>
-                      <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-widest border ${warga.role === 'admin' ? 'bg-amber-50 text-amber-600 border-amber-100' : (warga.role === 'pengurus' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-slate-50 text-slate-500 border-slate-100')}`}>
-                        {warga.role === 'admin' ? 'Admin' : (warga.role === 'pengurus' ? 'Pengurus' : (warga.status || 'Warga').split(' ')[0])}
+                      <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-widest border ${
+                        warga.role === 'admin' 
+                          ? 'bg-amber-50 text-amber-600 border-amber-100' 
+                          : warga.role === 'pengurus' 
+                          ? 'bg-blue-50 text-blue-600 border-blue-100' 
+                          : warga.role === 'bendahara' 
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                          : warga.role === 'sekretaris' 
+                          ? 'bg-violet-50 text-violet-600 border-violet-100' 
+                          : 'bg-slate-50 text-slate-500 border-slate-100'
+                      }`}>
+                        {warga.role === 'admin' 
+                          ? 'Admin' 
+                          : warga.role === 'pengurus' 
+                          ? 'Pengurus' 
+                          : warga.role === 'bendahara' 
+                          ? 'Bendahara' 
+                          : warga.role === 'sekretaris' 
+                          ? 'Sekretaris' 
+                          : (warga.status || 'Warga').split(' ')[0]}
                       </span>
                     </div>
                     <div className={`p-1 rounded-full transition-colors flex items-center justify-center ${isExpanded ? 'bg-teal-50 text-teal-600' : 'text-slate-400'}`}>
@@ -440,6 +458,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                                 <option value="warga">Warga</option>
                                 <option value="pengurus">Pengurus</option>
                                 <option value="bendahara">Bendahara</option>
+                                <option value="sekretaris">Sekretaris</option>
                               </select>
                             </div>
                             <div className="flex-1 min-w-[120px]">

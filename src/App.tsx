@@ -425,7 +425,12 @@ const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNot
               )}
               <div className="hidden md:flex flex-col text-left">
                 <span className="font-extrabold text-sm text-gray-800 leading-none">{user?.nama ? user.nama.split(' ')[0] : 'Admin'}</span>
-                <span className="text-[10px] text-teal-600 font-bold uppercase tracking-wider mt-0.5">{user?.role === 'admin' ? 'Ketua RT' : 'Pengurus'}</span>
+                <span className="text-[10px] text-teal-600 font-bold uppercase tracking-wider mt-0.5">
+                  {user?.role === 'admin' ? 'Ketua RT' : 
+                   user?.role === 'bendahara' ? 'Bendahara' : 
+                   user?.role === 'sekretaris' ? 'Sekretaris' : 
+                   user?.role === 'pengurus' ? 'Pengurus' : 'Warga'}
+                </span>
               </div>
               <svg className="hidden md:block w-4 h-4 text-gray-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
             </motion.div>
@@ -2625,7 +2630,17 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
           <h2 className="text-[22px] font-bold tracking-tight drop-shadow-sm">{profile.name}</h2>
           <div className="inline-flex items-center gap-1.5 mt-2 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 shadow-sm">
              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-             <span className="text-xs font-bold uppercase tracking-wider">{profile.role}</span>
+             <span className="text-xs font-bold uppercase tracking-wider">
+               {user?.role === 'admin' 
+                 ? 'Ketua RT' 
+                 : user?.role === 'bendahara' 
+                 ? 'Bendahara' 
+                 : user?.role === 'sekretaris' 
+                 ? 'Sekretaris' 
+                 : user?.role === 'pengurus' 
+                 ? 'Pengurus' 
+                 : profile.role || 'Warga'}
+             </span>
           </div>
         </div>
       </div>
@@ -2908,32 +2923,8 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [selectedSuratId, setSelectedSuratId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
   const prevNotifIds = React.useRef<Set<string>>(new Set());
   const isInitialLoad = React.useRef(true);
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      if (localStorage.getItem('pwa-install-dismissed') !== 'true') {
-        setShowInstallBanner(true);
-      }
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setShowInstallBanner(false);
-    }
-    setDeferredPrompt(null);
-  };
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -3096,37 +3087,6 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
       ) : (
       <div className="flex md:hidden relative z-20 w-full h-full bg-white flex-col overflow-hidden">
         {/* --- MOBILE USER VIEW --- */}
-        {showInstallBanner && (
-          <div className="bg-teal-600 px-4 py-3 flex items-center justify-between shadow-md relative z-50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center p-1 shadow-sm shrink-0">
-                <img src="/guyub_rukun_icon.jpg" alt="Guyub Rukun Icon" className="w-full h-full object-contain rounded" />
-              </div>
-              <div className="flex flex-col">
-                <p className="text-white text-xs font-bold leading-tight flex items-center gap-1">Install Guyub Rukun</p>
-                <p className="text-teal-100 text-[10px] leading-tight">Pasang sebagai aplikasi di layar utama</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={handleInstallClick} 
-                className="bg-white text-teal-700 hover:bg-teal-50 px-3 py-1.5 text-xs font-bold rounded-full shadow-sm transition pointer-events-auto cursor-pointer"
-              >
-                Install
-              </button>
-              <button 
-                onClick={() => {
-                  setShowInstallBanner(false);
-                  localStorage.setItem('pwa-install-dismissed', 'true');
-                }}
-                className="text-teal-100 hover:text-white p-1 pointer-events-auto cursor-pointer"
-                aria-label="Tutup"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        )}
         <MobileHeader notifications={notifications} onShowNotifications={handleShowNotifications} />
         <MobileProfile user={user} />
         <div className="flex-grow overflow-hidden bg-white relative">

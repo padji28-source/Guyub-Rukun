@@ -12,12 +12,6 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        filename: 'sw.js',
-        manifestFilename: 'manifest.json',
-        devOptions: {
-          enabled: true,
-          type: 'module'
-        },
         manifest: {
           name: "Guyub Rukun RT 01",
           short_name: "Guyub Rukun",
@@ -42,20 +36,6 @@ export default defineConfig(({mode}) => {
               sizes: "512x512",
               type: "image/png",
               purpose: "any maskable"
-            }
-          ],
-          screenshots: [
-            {
-              src: "/guyub_rukun_icon.jpg",
-              sizes: "512x512",
-              type: "image/jpeg",
-              form_factor: "wide"
-            },
-            {
-              src: "/guyub_rukun_icon.jpg",
-              sizes: "512x512",
-              type: "image/jpeg",
-              form_factor: "narrow"
             }
           ]
         }

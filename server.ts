@@ -256,6 +256,53 @@ const InventarisSchema = new mongoose.Schema({
 const InventarisModel: mongoose.Model<any> = mongoose.models.Inventaris || mongoose.model("Inventaris", InventarisSchema);
 
 
+// ==========================================
+// DATABASE INDEX OPTIMIZATION (HIGH PERFORMANCE)
+// ==========================================
+UserSchema.index({ username: 1 });
+UserSchema.index({ id: 1 }, { unique: true });
+UserSchema.index({ rtId: 1, role: 1 });
+
+IuranSchema.index({ id: 1 }, { unique: true });
+IuranSchema.index({ rtId: 1, createdAt: -1 });
+
+KasSchema.index({ id: 1 }, { unique: true });
+KasSchema.index({ rtId: 1, createdAt: -1 });
+
+VotingSchema.index({ id: 1 }, { unique: true });
+VotingSchema.index({ rtId: 1, createdAt: -1 });
+
+AcaraSchema.index({ id: 1 }, { unique: true });
+AcaraSchema.index({ rtId: 1, date: -1 });
+
+LaporanSchema.index({ id: 1 }, { unique: true });
+LaporanSchema.index({ rtId: 1, createdAt: -1 });
+
+SuratSchema.index({ id: 1 }, { unique: true });
+SuratSchema.index({ rtId: 1, createdAt: -1 });
+
+UmkmSchema.index({ id: 1 }, { unique: true });
+UmkmSchema.index({ rtId: 1, createdAt: -1 });
+
+TamuSchema.index({ id: 1 }, { unique: true });
+TamuSchema.index({ rtId: 1, createdAt: -1 });
+
+MediaSchema.index({ id: 1 }, { unique: true });
+MediaSchema.index({ rtId: 1, createdAt: -1 });
+
+AuditLogSchema.index({ id: 1 }, { unique: true });
+AuditLogSchema.index({ rtId: 1, timestamp: -1 });
+
+NotificationSchema.index({ id: 1 }, { unique: true });
+NotificationSchema.index({ rtId: 1, time: -1 });
+
+DokumenSchema.index({ id: 1 }, { unique: true });
+DokumenSchema.index({ rtId: 1, createdAt: -1 });
+
+InventarisSchema.index({ id: 1 }, { unique: true });
+InventarisSchema.index({ rtId: 1, createdAt: -1 });
+
+
 
 // ==========================================
 // MIGRATOR: BACKWARD COMPATIBLE SYSTEM
@@ -978,7 +1025,7 @@ app.post("/api/transactions", async (req, res) => {
 });
 
 // --- BROADCAST MESSAGES ---
-app.post("/api/broadcast", enforceRoles(['admin', 'pengurus', 'sekretaris']), async (req, res) => {
+app.post("/api/broadcast", enforceRoles(['admin', 'pengurus', 'sekretaris', 'bendahara']), async (req, res) => {
   const { title, message, updaterName } = req.body;
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
   if (!message) return res.status(400).json({ error: "Pesan tidak boleh kosong" });
@@ -1287,11 +1334,11 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
 // ==========================================
 app.get("/api/voting", async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
-  const data = await VotingModel.find({ rtId }).sort({ createdAt: -1 });
+  const data = await VotingModel.find({ rtId }).sort({ createdAt: -1 }).lean();
   res.json({ data });
 });
 
-app.post("/api/voting", enforceRoles(['admin', 'pengurus']), async (req, res) => {
+app.post("/api/voting", enforceRoles(['admin', 'pengurus', 'sekretaris', 'bendahara']), async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
   const { title, description, options, status, createdBy } = req.body;
 
@@ -1312,7 +1359,7 @@ app.post("/api/voting", enforceRoles(['admin', 'pengurus']), async (req, res) =>
   res.json({ message: "Voting created", data: newVote });
 });
 
-app.put("/api/voting/:id", enforceRoles(['admin', 'pengurus']), async (req, res) => {
+app.put("/api/voting/:id", enforceRoles(['admin', 'pengurus', 'sekretaris', 'bendahara']), async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
   const voteDoc = await VotingModel.findOne({ id: req.params.id, rtId });
   if (voteDoc) {
@@ -1377,7 +1424,7 @@ app.post("/api/voting/:id/vote", async (req, res) => {
 app.get("/api/audit-logs", async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
   try {
-    const logs = await AuditLogModel.find({ rtId }).sort({ timestamp: -1 }).limit(150);
+    const logs = await AuditLogModel.find({ rtId }).sort({ timestamp: -1 }).limit(150).lean();
     res.json({ data: logs });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to read logs" });
@@ -1517,8 +1564,6 @@ export async function startServer(listen = true) {
     await initDb('rt03');
   }
 
-  const distPath = path.join(process.cwd(), 'dist');
-
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const viteDynamic = "vite";
     const viteModule = await import(viteDynamic);
@@ -1528,35 +1573,7 @@ export async function startServer(listen = true) {
     });
     app.use(vite.middlewares);
   } else {
-    // Explicit endpoints for PWA files to ensure correct MIME types and headers for PWABuilder
-    app.get('/sw.js', (req, res) => {
-      res.sendFile(path.join(distPath, 'sw.js'), {
-        headers: {
-          'Content-Type': 'application/javascript; charset=utf-8',
-          'Cache-Control': 'no-cache',
-          'Service-Worker-Allowed': '/'
-        }
-      });
-    });
-
-    app.get('/manifest.json', (req, res) => {
-      res.sendFile(path.join(distPath, 'manifest.json'), {
-        headers: {
-          'Content-Type': 'application/manifest+json; charset=utf-8',
-          'Cache-Control': 'no-cache'
-        }
-      });
-    });
-
-    app.get('/workbox-*.js', (req, res) => {
-      res.sendFile(path.join(distPath, req.url.split('?')[0]), {
-        headers: {
-          'Content-Type': 'application/javascript; charset=utf-8',
-          'Cache-Control': 'public, max-age=31536000'
-        }
-      });
-    });
-
+    const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
