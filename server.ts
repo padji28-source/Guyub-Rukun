@@ -1517,6 +1517,8 @@ export async function startServer(listen = true) {
     await initDb('rt03');
   }
 
+  const distPath = path.join(process.cwd(), 'dist');
+
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const viteDynamic = "vite";
     const viteModule = await import(viteDynamic);
@@ -1526,8 +1528,6 @@ export async function startServer(listen = true) {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    
     // Explicit endpoints for PWA files to ensure correct MIME types and headers for PWABuilder
     app.get('/sw.js', (req, res) => {
       res.sendFile(path.join(distPath, 'sw.js'), {
@@ -1544,6 +1544,15 @@ export async function startServer(listen = true) {
         headers: {
           'Content-Type': 'application/manifest+json; charset=utf-8',
           'Cache-Control': 'no-cache'
+        }
+      });
+    });
+
+    app.get('/workbox-*.js', (req, res) => {
+      res.sendFile(path.join(distPath, req.url.split('?')[0]), {
+        headers: {
+          'Content-Type': 'application/javascript; charset=utf-8',
+          'Cache-Control': 'public, max-age=31536000'
         }
       });
     });
