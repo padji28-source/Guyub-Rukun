@@ -37,7 +37,7 @@ const UserSchema = new mongoose.Schema({
   alamat: { type: String },
   noHp: { type: String },
   status: { type: String },
-  role: { type: String, enum: ['admin', 'warga', 'bendahara', 'sekretaris', 'pengurus'], default: 'warga' },
+  role: { type: String, enum: ['admin', 'warga', 'bendahara', 'sekretaris', 'pengurus', 'developer'], default: 'warga' },
   isApproved: { type: Boolean, default: false },
   rtId: { type: String, required: true },
   umur: { type: Number },
@@ -270,6 +270,13 @@ const NotulenSchema = new mongoose.Schema({
 }, { timestamps: true });
 const NotulenModel: mongoose.Model<any> = mongoose.models.Notulen || mongoose.model("Notulen", NotulenSchema);
 
+// 17. Menu Access Schema (Menu and Subscription Permission Management)
+const MenuAccessSchema = new mongoose.Schema({
+  role: { type: String, required: true, unique: true },
+  allowedMenus: [{ type: String }]
+}, { timestamps: true });
+const MenuAccessModel: mongoose.Model<any> = mongoose.models.MenuAccess || mongoose.model("MenuAccess", MenuAccessSchema);
+
 
 // ==========================================
 // DATABASE INDEX OPTIMIZATION (HIGH PERFORMANCE)
@@ -319,6 +326,8 @@ InventarisSchema.index({ rtId: 1, createdAt: -1 });
 
 NotulenSchema.index({ id: 1 }, { unique: true });
 NotulenSchema.index({ rtId: 1, date: -1 });
+
+MenuAccessSchema.index({ role: 1 }, { unique: true });
 
 
 
@@ -581,6 +590,57 @@ async function initDb(rtId: string = '') {
       });
     }
 
+    const devUsername = "developer";
+    if (!list.find((u: any) => u.username === devUsername)) {
+      await UserModel.create({
+        id: "dev_system",
+        username: devUsername,
+        password: "developer123",
+        nama: "Sistem Developer",
+        role: "developer",
+        alamat: "Database Server Core",
+        noHp: "0899-9999-9999",
+        status: "System Developer & Subscription Configurator",
+        isApproved: true,
+        rtId: rtId || 'rt01'
+      });
+    }
+
+    // Seed default role-based menu access configurations
+    const defaultPermissions = [
+      {
+        role: 'developer',
+        allowedMenus: ['Dashboard', 'Warga', 'Surat Online', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 'Notulen Rapat', 'Pengumuman', 'Media', 'UMKM', 'Tamu', 'Inventaris', 'Smart RT AI', 'Pengaturan', 'Akses Menu']
+      },
+      {
+        role: 'admin',
+        allowedMenus: ['Dashboard', 'Warga', 'Surat Online', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 'Notulen Rapat', 'Pengumuman', 'Media', 'UMKM', 'Tamu', 'Inventaris', 'Smart RT AI', 'Pengaturan']
+      },
+      {
+        role: 'sekretaris',
+        allowedMenus: ['Dashboard', 'Warga', 'Surat Online', 'Dokumen', 'Notulen Rapat', 'Pengumuman', 'Media', 'Inventaris', 'Pengaturan']
+      },
+      {
+        role: 'bendahara',
+        allowedMenus: ['Dashboard', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 'Pengaturan']
+      },
+      {
+        role: 'pengurus',
+        allowedMenus: ['Dashboard', 'Warga', 'Dokumen', 'Laporan', 'Pengumuman', 'Media', 'Inventaris', 'Pengaturan']
+      },
+      {
+        role: 'warga',
+        allowedMenus: ['Dashboard', 'Surat Online', 'Iuran', 'Laporan', 'Pengumuman', 'Media', 'UMKM', 'Tamu', 'Smart RT AI', 'Pengaturan']
+      }
+    ];
+
+    for (const perm of defaultPermissions) {
+      const exists = await MenuAccessModel.findOne({ role: perm.role });
+      if (!exists) {
+        await MenuAccessModel.create(perm);
+      }
+    }
+
     // Seed Darurat contacts if none exist
     const daruratCount = await DaruratModel.countDocuments({ rtId });
     if (daruratCount === 0) {
@@ -699,7 +759,7 @@ function validateRequest(schema: z.ZodObject<any>) {
 function enforceRoles(allowed: string[]) {
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const role = (req.headers['x-user-role'] as string) || 'warga';
-    if (allowed.includes(role)) {
+    if (role === 'developer' || allowed.includes(role)) {
       next();
     } else {
       res.status(403).json({ error: `Akses ditolak: role '${role}' tidak memiliki authorize di resource ini.` });
@@ -764,7 +824,11 @@ app.post("/api/login", validateRequest(LoginValidator), async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
 
   await connectDB();
-  const user = await UserModel.findOne({ rtId, username, password });
+  const query: any = { username, password };
+  if (username !== 'developer') {
+    query.rtId = rtId;
+  }
+  const user = await UserModel.findOne(query);
 
   if (user) {
     if (activeSessions.has(user.id) && Date.now() - activeSessions.get(user.id)! < 10000) {
@@ -1476,6 +1540,49 @@ app.get("/api/audit-logs", async (req, res) => {
     res.json({ data: logs });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to read logs" });
+  }
+});
+
+
+// ==========================================
+// ROLE BASED MENU ACCESS FOR SUBSCRIPTIONS
+// ==========================================
+app.get("/api/developer/stats", enforceRoles(['developer']), async (req, res) => {
+  try {
+    const registeredCount = await UserModel.countDocuments({});
+    const onlineCount = activeSessions.size;
+    res.json({ registeredCount, onlineCount });
+  } catch (e: any) {
+    res.status(500).json({ error: "Gagal mengambil statistik developer" });
+  }
+});
+
+app.get("/api/menu-permissions", async (req, res) => {
+  try {
+    const list = await MenuAccessModel.find({}).lean();
+    res.json({ data: list });
+  } catch (e: any) {
+    res.status(500).json({ error: "Gagal mengambil konfigurasi menu" });
+  }
+});
+
+app.post("/api/menu-permissions", enforceRoles(['developer']), async (req, res) => {
+  const { role, allowedMenus } = req.body;
+  if (!role || !Array.isArray(allowedMenus)) {
+    return res.status(400).json({ error: "Format request salah. Parameter role dan list allowedMenus dibutuhkan." });
+  }
+
+  try {
+    const updated = await MenuAccessModel.findOneAndUpdate(
+      { role },
+      { allowedMenus },
+      { upsert: true, new: true }
+    );
+    // Broadcast updates to clients
+    broadcastEvent('update', { type: 'menu_permissions', role });
+    res.json({ message: `Hak akses menu untuk role ${role} berhasil diperbarui`, data: updated });
+  } catch (e: any) {
+    res.status(500).json({ error: "Gagal memperbarui konfigurasi menu" });
   }
 });
 

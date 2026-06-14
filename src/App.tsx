@@ -56,6 +56,7 @@ import { WebSmartRtAiPage } from './components/WebSmartRtAiPage';
 import { WebDashboardRtView } from './components/WebDashboardRtView';
 import { WebInventarisPage } from './components/WebInventarisPage';
 import { WebNotulenPage } from './components/WebNotulenPage';
+import { WebMenuAccessPage } from './components/WebMenuAccessPage';
 
 // --- Modern Icons Set ---
 export const icons = {
@@ -273,7 +274,7 @@ const themeColors = {
 const fontStyle = '"Plus Jakarta Sans", sans-serif';
 
 // --- Web UI Components (Dashboard Admin) ---
-const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (tab: string) => void }) => (
+const WebSidebar = ({ activeTab, onTabChange, allowedMenus = [] }: { activeTab: string, onTabChange: (tab: string) => void, allowedMenus?: string[] }) => (
   <aside className="w-20 lg:w-[16rem] h-screen bg-white border-r border-gray-100 flex flex-col p-4 lg:p-6 fixed left-0 top-0 transition-all duration-300 z-50">
     <div className="flex items-center mb-10 gap-2 justify-center lg:justify-start">
       <LogoCommunityIcon size="24"/>
@@ -296,7 +297,9 @@ const WebSidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange
         { name: 'Inventaris', icon: icons.inventaris },
         { name: 'Smart RT AI', icon: icons.gemini },
         { name: 'Pengaturan', icon: icons.pengaturan },
-      ].map((item) => (
+        { name: 'Akses Menu', icon: icons.pengaturan },
+      ].filter(item => allowedMenus.includes(item.name))
+       .map((item) => (
         <button 
           key={item.name} 
           onClick={() => onTabChange(item.name)}
@@ -1724,7 +1727,7 @@ const MobileProfile = ({ user }: { user: any }) => {
   );
 };
 
-const MobileQuickActions = ({ onActionClick }: { onActionClick: (action: string) => void }) => {
+const MobileQuickActions = ({ onActionClick, allowedMenus = [] }: { onActionClick: (action: string) => void, allowedMenus?: string[] }) => {
   const [showAll, setShowAll] = useState(false);
 
   // Setup variasi animasi framer-motion
@@ -1741,13 +1744,34 @@ const MobileQuickActions = ({ onActionClick }: { onActionClick: (action: string)
     show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 250, damping: 20 } }
   };
 
-  const displayedActions = showAll ? quickActions : quickActions.slice(0, 8);
+  const mobileToWebMap: { [key: string]: string } = {
+    'Surat': 'Surat Online',
+    'Lapor RT': 'Laporan',
+    'Dokumen': 'Dokumen',
+    'Notulen Rapat': 'Notulen Rapat',
+    'Media': 'Media',
+    'Iuran': 'Iuran',
+    'Kas': 'Kas',
+    'Data Warga': 'Warga',
+    'UMKM': 'UMKM',
+    'Tamu': 'Tamu',
+    'Inventaris': 'Inventaris',
+    'Smart RT AI': 'Smart RT AI'
+  };
+
+  const filteredActions = quickActions.filter(action => {
+    const webMenu = mobileToWebMap[action.name];
+    if (!webMenu) return true;
+    return allowedMenus.includes(webMenu);
+  });
+
+  const displayedActions = showAll ? filteredActions : filteredActions.slice(0, 8);
 
   return (
     <section className="px-5 mb-8">
       <div className="flex justify-between items-center mb-3">
         <h3 className="font-extrabold text-gray-800 text-sm">Layanan Warga</h3>
-        {quickActions.length > 8 && (
+        {filteredActions.length > 8 && (
           <span 
             onClick={() => setShowAll(!showAll)}
             className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full cursor-pointer active:scale-95 transition-transform"
@@ -2929,6 +2953,56 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
   const prevNotifIds = React.useRef<Set<string>>(new Set());
   const isInitialLoad = React.useRef(true);
 
+  const [menuPermissions, setMenuPermissions] = useState<any[]>([]);
+  const [developerStats, setDeveloperStats] = useState<{ onlineCount: number; registeredCount: number }>({ onlineCount: 0, registeredCount: 0 });
+
+  const fetchDeveloperStats = async () => {
+    if (user?.role !== 'developer') return;
+    try {
+      const res = await apiFetch('/api/developer/stats');
+      if (res.ok) {
+        const json = await res.json();
+        setDeveloperStats({
+          onlineCount: json.onlineCount || 0,
+          registeredCount: json.registeredCount || 0
+        });
+      }
+    } catch (e) {
+      console.error("Gagal mengambil stats developer", e);
+    }
+  };
+
+  const fetchMenuPermissions = async () => {
+    try {
+      const res = await apiFetch('/api/menu-permissions');
+      if (res.ok) {
+        const json = await res.json();
+        setMenuPermissions(json.data || []);
+      }
+    } catch (e) {
+      console.error("Gagal mengambil menu permissions", e);
+    }
+  };
+
+  const fallbackPermissions: { [key: string]: string[] } = {
+    developer: ['Dashboard', 'Warga', 'Surat Online', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 'Notulen Rapat', 'Pengumuman', 'Media', 'UMKM', 'Tamu', 'Inventaris', 'Smart RT AI', 'Pengaturan', 'Akses Menu'],
+    admin: ['Dashboard', 'Warga', 'Surat Online', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 'Notulen Rapat', 'Pengumuman', 'Media', 'UMKM', 'Tamu', 'Inventaris', 'Smart RT AI', 'Pengaturan'],
+    sekretaris: ['Dashboard', 'Warga', 'Surat Online', 'Dokumen', 'Notulen Rapat', 'Pengumuman', 'Media', 'Inventaris', 'Pengaturan'],
+    bendahara: ['Dashboard', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 'Pengaturan'],
+    pengurus: ['Dashboard', 'Warga', 'Dokumen', 'Laporan', 'Pengumuman', 'Media', 'Inventaris', 'Pengaturan'],
+    warga: ['Dashboard', 'Surat Online', 'Iuran', 'Laporan', 'Pengumuman', 'Media', 'UMKM', 'Tamu', 'Smart RT AI', 'Pengaturan']
+  };
+
+  const userRole = user?.role || 'warga';
+  const rolePermission = menuPermissions.find(p => p.role === userRole);
+  const allowedMenus = rolePermission ? rolePermission.allowedMenus : (fallbackPermissions[userRole] || fallbackPermissions.warga);
+
+  useEffect(() => {
+    if (allowedMenus && allowedMenus.length > 0 && !allowedMenus.includes(activeWebTab)) {
+      setActiveWebTab(allowedMenus[0]);
+    }
+  }, [allowedMenus, activeWebTab]);
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
@@ -2981,12 +3055,20 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
       Notification.requestPermission();
     }
     fetchNotifications();
+    fetchMenuPermissions();
+    fetchDeveloperStats();
     
     const source = new EventSource('/api/stream');
     source.addEventListener('update', (e) => {
       const data = JSON.parse(e.data);
       if (data.type === 'notifications') {
         fetchNotifications();
+      }
+      if (data.type === 'menu_permissions') {
+        fetchMenuPermissions();
+      }
+      if (data.type === 'online_status') {
+        fetchDeveloperStats();
       }
       window.dispatchEvent(new CustomEvent('app_data_update', { detail: data.type }));
     });
@@ -3014,7 +3096,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
       {/* --- DESKTOP ADMIN VIEW --- */}
       {!isMobile ? (
       <div className="hidden md:flex relative z-10 w-full h-full">
-        <WebSidebar activeTab={activeWebTab} onTabChange={setActiveWebTab} />
+        <WebSidebar activeTab={activeWebTab} onTabChange={setActiveWebTab} allowedMenus={allowedMenus} />
         <div className="flex flex-col flex-grow w-full h-full overflow-hidden">
           <WebHeader 
             user={user} 
@@ -3080,6 +3162,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                     {user.isApproved && activeWebTab === 'Tamu' && <WebTamuPage user={user} />}
                     {user.isApproved && activeWebTab === 'Inventaris' && <WebInventarisPage user={user} />}
                     {user.isApproved && activeWebTab === 'Smart RT AI' && <WebSmartRtAiPage user={user} />}
+                    {user.isApproved && activeWebTab === 'Akses Menu' && <WebMenuAccessPage user={user} />}
                     {user.isApproved && activeWebTab === 'Pengaturan' && <WebPengaturanPage user={user} onLogout={onLogout} />}
                   </>
                 )}
@@ -3125,7 +3208,48 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                       </section>
                       <MobileVotingNotification onActionClick={setActiveMobileTab} notifications={notifications} />
                       <MobileSaldoCard/>
-                      <MobileQuickActions onActionClick={setActiveMobileTab}/>
+                      {user?.role === 'developer' && (
+                        <div className="mx-4 mb-5 bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-5 rounded-2xl shadow-lg border border-indigo-950/30 text-left relative overflow-hidden">
+                          {/* Ambient radial overlay */}
+                          <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-4 translate-y-4">
+                            <svg className="w-32 h-32 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                          </div>
+                          
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="space-y-0.5">
+                              <span className="bg-indigo-500/25 border border-indigo-500/35 text-indigo-300 text-[9px] font-black tracking-wider uppercase px-2.5 py-0.5 rounded-full">
+                                Developer Dashboard
+                              </span>
+                              <h4 className="text-xs font-bold text-indigo-200">System Monitoring</h4>
+                            </div>
+                            <span className="flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 px-2 py-0.5 rounded-full text-[9px] font-semibold">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live Server
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            {/* Counter 1: Users Registered */}
+                            <div className="bg-white/5 border border-white/5 p-3 rounded-xl">
+                              <span className="text-[10px] text-indigo-300 font-medium block mb-1">User Terdaftar</span>
+                              <div className="text-xl font-black text-white tracking-tight flex items-baseline gap-1">
+                                {developerStats.registeredCount}
+                                <span className="text-[9px] font-normal text-indigo-200/60">warga</span>
+                              </div>
+                            </div>
+                            {/* Counter 2: Users Logged In */}
+                            <div className="bg-white/5 border border-white/5 p-3 rounded-xl">
+                              <span className="text-[10px] text-indigo-300 font-medium block mb-1">User Sedang Login</span>
+                              <div className="text-xl font-black text-indigo-400 tracking-tight flex items-baseline gap-1">
+                                {developerStats.onlineCount}
+                                <span className="text-[9px] font-normal text-indigo-300/60">aktif</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <MobileQuickActions onActionClick={setActiveMobileTab} allowedMenus={allowedMenus}/>
                       <MobileEvents onActionClick={setActiveMobileTab} />
                     </>
                   )}
