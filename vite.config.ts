@@ -44,12 +44,12 @@ export default defineConfig(({mode}) => {
           description: "Aplikasi Guyub Rukun untuk warga RT 01",
           icons: [
             {
-              src: "/icon-192.png",
+              src: "/guyubrukun.png",
               sizes: "192x192",
               type: "image/png"
             },
             {
-              src: "/icon-512.png",
+              src: "/guyubrukun.png",
               sizes: "512x512",
               type: "image/png",
               purpose: "any maskable"
