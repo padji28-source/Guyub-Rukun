@@ -19,6 +19,12 @@ let cachedWargaIuranData: any[] | null = null;
 export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
   const [data, setData] = useState<any[]>(cachedIuranData || []);
   const [loading, setLoading] = useState(!cachedIuranData);
+  
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+
   const [nominal, setNominal] = useState(currentUser?.role === 'admin' ? '65000' : '85000');
   const [bulan, setBulan] = useState('Januari');
   const [tahun, setTahun] = useState(new Date().getFullYear().toString());
@@ -47,7 +53,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
   const isAdminOrBendahara = currentUser?.role === 'admin' || currentUser?.role === 'bendahara';
   
-  const tagihanList = data.filter(d => d.userId === currentUser?.id && d.status === 'belum dibayar');
+  const [tagihanList, setTagihanList] = useState<any[]>([]);
   const totalTagihan = tagihanList.reduce((sum, item) => sum + Number(item.nominal || 0), 0);
   const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
 
@@ -55,10 +61,22 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
   const fetchData = async () => {
     try {
-      const res = await apiFetch('/api/data/iuran');
+      const userParam = !isAdminOrBendahara ? `&userId=${currentUser?.id}` : '';
+      const statusParam = filterStatus !== 'Semua' ? `&status=${filterStatus === 'Belum Bayar' ? 'belum%20dibayar' : filterStatus === 'Verifikasi' ? 'menunggu' : 'verifikasi'}` : '';
+      const res = await apiFetch(`/api/data/iuran?page=${page}&limit=10&search=${encodeURIComponent(searchQuery)}${userParam}${statusParam}`);
       const json = await res.json();
-      cachedIuranData = json.data || [];
-      setData(cachedIuranData!);
+      
+      if (json.pagination) {
+        cachedIuranData = json.data || [];
+        setData(cachedIuranData!);
+        setTotalPages(json.pagination.pages || 1);
+        setTotalElements(json.pagination.total || 0);
+      } else {
+        cachedIuranData = json.data || [];
+        setData(cachedIuranData!);
+        setTotalPages(1);
+        setTotalElements(cachedIuranData!.length);
+      }
       
       if (isAdminOrBendahara) {
         const resWarga = await apiFetch('/api/warga');
@@ -69,13 +87,23 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
           setAdminSelectedUserId(jsonWarga.users[0].id);
         }
       }
+
+      if (currentUser?.id) {
+        const unpaidRes = await apiFetch(`/api/data/iuran?userId=${currentUser?.id}&status=belum%20dibayar`);
+        const unpaidJson = await unpaidRes.json();
+        setTagihanList(unpaidJson.data || []);
+      }
     } catch(e) { console.error(e); }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [page, searchQuery, filterStatus]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filterStatus]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -492,7 +520,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
               return d.nama?.toLowerCase().includes(query) || d.bulan?.toLowerCase().includes(query);
             }
             return true;
-          }).reverse().map((item) => {
+          }).map((item) => {
             
             // Determine Status UI
             let statusConfig = { color: 'bg-slate-100 text-slate-600', icon: <div/>, label: item.status };
@@ -565,6 +593,31 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
              </div>
              <p className="text-sm font-bold text-slate-600">Belum Ada Riwayat Iuran</p>
              <p className="text-xs text-slate-400 mt-1">Data tagihan atau pembayaran akan tampil di sini.</p>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 pb-2 mt-4">
+            <button
+              type="button"
+              disabled={page === 1}
+              onClick={() => setPage(p => Math.max(p - 1, 1))}
+              className="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white rounded-xl transition-colors cursor-pointer select-none shadow-sm"
+            >
+              Sebelumnya
+            </button>
+            <span className="text-xs font-semibold text-slate-500">
+              Halaman {page} dari {totalPages} ({totalElements} data)
+            </span>
+            <button
+              type="button"
+              disabled={page === totalPages}
+              onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+              className="px-4 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-950 disabled:opacity-50 disabled:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer select-none shadow-sm"
+            >
+              Selanjutnya
+            </button>
           </div>
         )}
       </div>

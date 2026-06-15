@@ -25,21 +25,50 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
   const [transferAmount, setTransferAmount] = useState('');
   const [showTransfer, setShowTransfer] = useState(false);
 
+  // Pagination and search states
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const [balances, setBalances] = useState<{ [key: string]: number }>({
+    "Kas RT": 0,
+    "Dana Kematian": 0,
+    "Dana Sosial": 0
+  });
+
   const isAdminOrBendahara = currentUser?.role === 'admin' || currentUser?.role === 'bendahara';
 
   const fetchData = async () => {
     try {
-      const res = await apiFetch('/api/data/kas');
+      const res = await apiFetch(`/api/data/kas?page=${page}&limit=10&search=${encodeURIComponent(searchQuery)}`);
       const json = await res.json();
-      cachedKasData = json.data || [];
-      setData(cachedKasData!);
+      if (json.pagination) {
+        cachedKasData = json.data || [];
+        setData(cachedKasData!);
+        setTotalPages(json.pagination.pages || 1);
+        setTotalElements(json.pagination.total || 0);
+      } else {
+        cachedKasData = json.data || [];
+        setData(cachedKasData!);
+        setTotalPages(1);
+        setTotalElements(cachedKasData!.length);
+      }
+      
+      if (json.balances) {
+        setBalances(json.balances);
+      }
     } catch(e) { console.error(e); }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [page, searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
 
   const handleTambah = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,10 +136,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
   };
 
   const getSaldo = (cat: string) => {
-    const catData = data.filter(d => (d.category || 'Kas RT') === cat);
-    const masuk = catData.filter(d => d.type === 'Masuk').reduce((a, b) => a + (b.amount || 0), 0);
-    const keluar = catData.filter(d => d.type === 'Keluar').reduce((a, b) => a + (b.amount || 0), 0);
-    return masuk - keluar;
+    return balances[cat] || 0;
   };
 
   const handleTransfer = async (e: React.FormEvent) => {
@@ -294,7 +320,20 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
       )}
 
       {/* RIWAYAT TRANSAKSI */}
-      <h4 className="font-extrabold text-slate-800 text-base mb-4 px-1">Riwayat Transaksi</h4>
+      <div className="flex flex-col gap-3 mb-4">
+        <h4 className="font-extrabold text-slate-800 text-base px-1">Riwayat Transaksi</h4>
+        <div className="relative">
+          <svg className="w-5 h-5 text-slate-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <input 
+            type="text" 
+            placeholder="Cari transaksi berdasarkan catatan..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 text-sm font-medium bg-white border border-slate-200 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm transition-all"
+          />
+        </div>
+      </div>
+
       <div className="space-y-3">
         {data.length === 0 ? (
           <div className="bg-white rounded-3xl p-8 text-center border border-dashed border-slate-200">
@@ -303,7 +342,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
           </div>
         ) : (
           <AnimatePresence>
-            {data.slice().reverse().map(item => (
+            {data.map(item => (
               <motion.div 
                 key={item.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
                 className="bg-white p-4 rounded-3xl shadow-[0_4px_15px_rgba(0,0,0,0.02)] border border-slate-100 flex gap-4 items-center group"
@@ -362,6 +401,31 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
               </motion.div>
             ))}
           </AnimatePresence>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 pb-2 mt-4">
+            <button
+              type="button"
+              disabled={page === 1}
+              onClick={() => setPage(p => Math.max(p - 1, 1))}
+              className="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white rounded-xl transition-colors cursor-pointer select-none shadow-sm"
+            >
+              Sebelumnya
+            </button>
+            <span className="text-xs font-semibold text-slate-500">
+              Halaman {page} dari {totalPages} ({totalElements} data)
+            </span>
+            <button
+              type="button"
+              disabled={page === totalPages}
+              onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+              className="px-4 py-2 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-950 disabled:opacity-50 disabled:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer select-none shadow-sm"
+            >
+              Selanjutnya
+            </button>
+          </div>
         )}
       </div>
 

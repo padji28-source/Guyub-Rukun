@@ -20,6 +20,12 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
   const [wargaData, setWargaData] = useState<any[]>(cachedDataWarga || []);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+
   // Forms states
   const [showAddWarga, setShowAddWarga] = useState(false);
   const [newWarga, setNewWarga] = useState({ username: '', nama: '', password: '', noHp: '', status: '', umur: '' });
@@ -50,15 +56,31 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
 
   const fetchWarga = async () => {
     try {
-      const res = await apiFetch('/api/warga');
+      const res = await apiFetch(`/api/warga?page=${page}&limit=${limit}&search=${encodeURIComponent(searchQuery)}`);
       const data = await res.json();
-      cachedDataWarga = data.users || [];
-      setWargaData(cachedDataWarga!);
+      if (data.pagination) {
+        cachedDataWarga = data.users || [];
+        setWargaData(cachedDataWarga!);
+        setTotalPages(data.pagination.pages || 1);
+        setTotalElements(data.pagination.total || 0);
+      } else {
+        cachedDataWarga = data.users || [];
+        setWargaData(cachedDataWarga!);
+        setTotalPages(1);
+        setTotalElements(cachedDataWarga!.length);
+      }
     } catch(e) { console.error(e); }
   };
 
   useEffect(() => {
     fetchWarga();
+  }, [page, limit, searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
+
+  useEffect(() => {
     const handleUpdate = (e: any) => {
       if (e.detail === 'users' || e.detail === 'online_status') {
         fetchWarga();
@@ -66,7 +88,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
     };
     window.addEventListener('app_data_update', handleUpdate);
     return () => window.removeEventListener('app_data_update', handleUpdate);
-  }, []);
+  }, [page, limit, searchQuery]);
 
   const handleAddWarga = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -577,6 +599,31 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                <div className="text-center py-10">
                  <p className="text-gray-400 text-sm">Belum ada data warga terdaftar.</p>
                </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-4 pb-2 border-t border-gray-100 mt-4">
+                <button
+                  type="button"
+                  disabled={page === 1}
+                  onClick={() => setPage(p => Math.max(p - 1, 1))}
+                  className="px-4 py-2 text-xs font-semibold text-gray-600 bg-gray-50 border border-gray-100 hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-gray-50 rounded-xl transition-colors cursor-pointer select-none"
+                >
+                  Sebelumnya
+                </button>
+                <span className="text-xs font-medium text-gray-500">
+                  Halaman {page} dari {totalPages} ({totalElements} warga)
+                </span>
+                <button
+                  type="button"
+                  disabled={page === totalPages}
+                  onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:hover:bg-teal-600 rounded-xl transition-colors cursor-pointer select-none"
+                >
+                  Selanjutnya
+                </button>
+              </div>
             )}
           </div>
         </>

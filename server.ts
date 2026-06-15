@@ -284,12 +284,18 @@ const MenuAccessModel: mongoose.Model<any> = mongoose.models.MenuAccess || mongo
 UserSchema.index({ username: 1 });
 UserSchema.index({ id: 1 }, { unique: true });
 UserSchema.index({ rtId: 1, role: 1 });
+UserSchema.index({ rtId: 1, nama: 1 });
+UserSchema.index({ rtId: 1, isApproved: 1 });
 
 IuranSchema.index({ id: 1 }, { unique: true });
 IuranSchema.index({ rtId: 1, createdAt: -1 });
+IuranSchema.index({ rtId: 1, name: 1, createdAt: -1 });
+IuranSchema.index({ rtId: 1, status: 1, createdAt: -1 });
 
 KasSchema.index({ id: 1 }, { unique: true });
 KasSchema.index({ rtId: 1, createdAt: -1 });
+KasSchema.index({ rtId: 1, name: 1, createdAt: -1 });
+KasSchema.index({ rtId: 1, type: 1, createdAt: -1 });
 
 VotingSchema.index({ id: 1 }, { unique: true });
 VotingSchema.index({ rtId: 1, createdAt: -1 });
@@ -969,12 +975,47 @@ app.put("/api/profile", async (req, res) => {
 // --- CITIZEN DATA & APPROVAL MANAGEMENT ---
 app.get("/api/warga", async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
-  const users = await UserModel.find({ rtId }).lean();
-  const sortedUsers = users.map((u: any) => ({
-    ...u,
-    isOnline: activeSessions.has(u.id) && Date.now() - activeSessions.get(u.id)! < 15000
-  }));
-  res.json({ users: sortedUsers });
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 0;
+  const search = req.query.search as string;
+
+  const query: any = { rtId };
+  if (search) {
+    query.$or = [
+      { nama: { $regex: search, $options: 'i' } },
+      { username: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  let dbQuery = UserModel.find(query);
+  let sortedUsers: any[] = [];
+  let total = 0;
+
+  if (limit > 0) {
+    total = await UserModel.countDocuments(query);
+    const skip = (page - 1) * limit;
+    const users = await dbQuery.skip(skip).limit(limit).lean();
+    sortedUsers = users.map((u: any) => ({
+      ...u,
+      isOnline: activeSessions.has(u.id) && Date.now() - activeSessions.get(u.id)! < 15000
+    }));
+    res.json({
+      users: sortedUsers,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } else {
+    const users = await dbQuery.lean();
+    sortedUsers = users.map((u: any) => ({
+      ...u,
+      isOnline: activeSessions.has(u.id) && Date.now() - activeSessions.get(u.id)! < 15000
+    }));
+    res.json({ users: sortedUsers });
+  }
 });
 
 app.delete("/api/warga/:id", enforceRoles(['admin']), async (req, res) => {
@@ -1124,9 +1165,125 @@ app.post("/api/broadcast", enforceRoles(['admin', 'pengurus', 'sekretaris', 'ben
 app.get("/api/data/:resource", async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
   const resource = req.params.resource;
-  const data = await getAppData(rtId);
-  if (!data[resource as keyof typeof data]) return res.status(404).json({ error: "Resource not found" });
-  res.json({ data: data[resource as keyof typeof data] });
+  
+  const map: { [key: string]: mongoose.Model<any> } = {
+    surat: SuratModel,
+    laporan: LaporanModel,
+    acara: AcaraModel,
+    umkm: UmkmModel,
+    kas: KasModel,
+    iuran: IuranModel,
+    darurat: DaruratModel,
+    tamu: TamuModel,
+    media: MediaModel,
+    dokumen: DokumenModel,
+    inventaris: InventarisModel,
+    notulen: NotulenModel,
+    voting: VotingModel
+  };
+
+  const model = map[resource];
+  if (!model) return res.status(404).json({ error: "Resource not found" });
+
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 0;
+  const search = req.query.search as string;
+
+  let sortField = "createdAt";
+  if (resource === 'notulen' || resource === 'acara') {
+    sortField = "date";
+  }
+
+  const query: any = { rtId };
+  if (req.query.userId) {
+    query.userId = req.query.userId;
+  }
+  if (req.query.status) {
+    query.status = req.query.status;
+  }
+  if (req.query.type) {
+    query.type = req.query.type;
+  }
+
+  if (search) {
+    const searchRegex = { $regex: search, $options: 'i' };
+    if (resource === 'kas' || resource === 'iuran') {
+      query.$or = [
+        { name: searchRegex },
+        { message: searchRegex }
+      ];
+    } else if (resource === 'laporan' || resource === 'surat' || resource === 'acara' || resource === 'umkm') {
+      query.$or = [
+        { title: searchRegex },
+        { description: searchRegex }
+      ];
+    }
+  }
+
+  let dbQuery = model.find(query);
+
+  let balances: any = undefined;
+  if (resource === 'kas') {
+    try {
+      const aggregateResult = await KasModel.aggregate([
+        { $match: { rtId } },
+        {
+          $group: {
+            _id: { category: "$category", type: "$type" },
+            totalAmount: { $sum: "$amount" }
+          }
+        }
+      ]);
+      
+      balances = {
+        "Kas RT": 0,
+        "Dana Kematian": 0,
+        "Dana Sosial": 0
+      };
+      
+      const catAmounts: { [key: string]: { Masuk: number, Keluar: number } } = {};
+      
+      aggregateResult.forEach((item: any) => {
+        const category = item._id.category || "Kas RT";
+        const type = item._id.type;
+        
+        if (!catAmounts[category]) {
+          catAmounts[category] = { Masuk: 0, Keluar: 0 };
+        }
+        
+        if (type === 'Masuk') {
+          catAmounts[category].Masuk += item.totalAmount;
+        } else if (type === 'Keluar') {
+          catAmounts[category].Keluar += item.totalAmount;
+        }
+      });
+      
+      Object.keys(catAmounts).forEach((cat) => {
+        balances[cat] = catAmounts[cat].Masuk - catAmounts[cat].Keluar;
+      });
+    } catch (e) {
+      console.error("Gagal menjumlahkan saldo Kas:", e);
+    }
+  }
+
+  if (limit > 0) {
+    const total = await model.countDocuments(query);
+    const skip = (page - 1) * limit;
+    const results = await dbQuery.sort({ [sortField]: -1 }).skip(skip).limit(limit).lean();
+    res.json({
+      data: results,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      },
+      balances
+    });
+  } else {
+    const results = await dbQuery.sort({ [sortField]: -1 }).lean();
+    res.json({ data: results, balances });
+  }
 });
 
 // POINT 6: VALIDATE CREATION VIA ZOD AND AUDIT TRAIL LOGGING
