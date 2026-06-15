@@ -51,7 +51,8 @@ export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, cur
         <div className="sticky top-0 z-20 backdrop-blur-lg bg-white/70 border-b border-slate-200/50 px-4 py-4 flex items-center gap-4">
           <button 
             onClick={onBack} 
-            className="p-2.5 bg-white rounded-full shadow-sm border border-slate-100 text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
+            className="w-11 h-11 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-100 text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
+            aria-label="Kembali ke menu"
           >
             <icons.arrowLeft className="w-5 h-5" />
           </button>
@@ -66,7 +67,7 @@ export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, cur
                   key={item.id} 
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }} // Efek muncul berurutan (stagger)
+                  transition={{ delay: index * 0.02, duration: 0.2 }} // Snappier presentation
                   className="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] flex items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-4">
@@ -80,15 +81,16 @@ export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, cur
                     {/* Informasi Teks */}
                     <div>
                       <h5 className="font-bold text-sm text-slate-800">{item.name}</h5>
-                      <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                        {item.type} • <span className="text-slate-600">{item.tel}</span>
+                      <p className="text-xs text-slate-600 mt-0.5 font-medium">
+                        {item.type} • <span className="text-slate-800 font-semibold">{item.tel}</span>
                       </p>
                       
                       {/* Tombol Edit Khusus Admin */}
                       {isAdmin && (
                         <button 
                           onClick={() => handleUpdate(item.id)} 
-                          className="text-[10px] font-bold text-sky-500 hover:text-sky-700 mt-1.5 flex items-center gap-1 bg-sky-50 px-2 py-0.5 rounded-md w-max"
+                          className="text-[10px] font-bold text-sky-600 hover:text-sky-800 mt-1.5 flex items-center gap-1 bg-sky-50 px-2 py-1 rounded-md w-max min-h-[32px]"
+                          aria-label={`Ubah nomor ${item.name}`}
                         >
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -103,7 +105,8 @@ export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, cur
                   <a 
                     href={`tel:${item.tel}`} 
                     className="flex flex-col items-center justify-center w-12 h-12 bg-rose-600 text-white rounded-2xl shadow-md shadow-rose-200 hover:bg-rose-700 hover:shadow-lg active:scale-95 transition-all shrink-0 group"
-                    title="Hubungi"
+                    title={`Hubungi ${item.name}`}
+                    aria-label={`Hubungi telepon darurat ${item.name}`}
                   >
                     <svg className="w-5 h-5 group-hover:animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />

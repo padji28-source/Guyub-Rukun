@@ -95,7 +95,11 @@ export const MobileVoting = ({ currentUser, onBack }: { currentUser: any, onBack
     <div className="flex flex-col w-full min-h-screen bg-[#f8fafc] relative pb-20">
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl px-5 py-4 border-b border-gray-100 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-600 hover:bg-teal-50 hover:text-teal-600 transition-colors border border-gray-100">
+          <button 
+            onClick={onBack} 
+            className="w-11 h-11 bg-gray-50 rounded-full flex items-center justify-center text-gray-600 hover:bg-teal-50 hover:text-teal-600 transition-colors border border-gray-100"
+            aria-label="Kembali ke menu"
+          >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
           </button>
           <div>
@@ -104,7 +108,11 @@ export const MobileVoting = ({ currentUser, onBack }: { currentUser: any, onBack
           </div>
         </div>
         {isAdmin && (
-          <button onClick={() => setShowAdd(!showAdd)} className={`w-10 h-10 rounded-full flex items-center justify-center border shadow-sm transition-all ${showAdd ? 'bg-red-50 text-red-500 border-red-100' : 'bg-teal-600 text-white border-teal-500 hover:bg-teal-700'}`}>
+          <button 
+            onClick={() => setShowAdd(!showAdd)} 
+            className={`w-11 h-11 rounded-full flex items-center justify-center border shadow-sm transition-all ${showAdd ? 'bg-red-50 text-red-500 border-red-100' : 'bg-teal-600 text-white border-teal-500 hover:bg-teal-700'}`}
+            aria-label={showAdd ? 'Batal buat voting' : 'Buat voting baru'}
+          >
             {showAdd ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>} 
           </button>
         )}
@@ -124,22 +132,22 @@ export const MobileVoting = ({ currentUser, onBack }: { currentUser: any, onBack
                 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Topik / Judul Voting</label>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide ml-1 mb-1.5">Topik / Judul Voting</label>
                     <input type="text" placeholder="Contoh: Pemilihan Ketua RT" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-bold text-slate-800 outline-none transition-all" />
                   </div>
                   
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Deskripsi Singkat</label>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide ml-1 mb-1.5">Deskripsi Singkat</label>
                     <textarea placeholder="Jelaskan detail dari musyawarah ini..." value={description} onChange={e => setDescription(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-medium text-slate-700 outline-none min-h-[80px] transition-all" />
                   </div>
                   
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Batas Waktu (Opsional)</label>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide ml-1 mb-1.5">Batas Waktu (Opsional)</label>
                     <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl text-sm font-bold text-slate-800 outline-none transition-all" />
                   </div>
                   
                   <div className="pt-2">
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-2">Pilihan/Opsi</label>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wide ml-1 mb-2">Pilihan/Opsi</label>
                     <div className="space-y-3 mb-4">
                       {options.map((opt, i) => (
                         <div key={opt.id} className="flex gap-2.5 items-center">

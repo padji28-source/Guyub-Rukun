@@ -81,17 +81,18 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
       <div className="flex flex-col mb-6 space-y-3">
         <button
           onClick={onBack}
-          className="w-fit text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+          className="w-fit text-teal-800 bg-teal-50 hover:bg-teal-100 transition-colors px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 min-h-[44px] shadow-sm border border-teal-100/30"
+          aria-label="Kembali ke menu"
         >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          <svg className="w-4 h-4 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
           Kembali
         </button>
         <h3 className="font-extrabold text-gray-900 text-xl tracking-tight">
           Direktori UMKM Warga
         </h3>
-        <p className="text-gray-500 text-xs">Dukung usaha lokal di lingkungan kita.</p>
+        <p className="text-gray-600 text-xs font-medium">Dukung usaha lokal di lingkungan kita.</p>
       </div>
 
       {/* Form Tambah UMKM */}
@@ -99,7 +100,8 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
         !showTambahUMKM ? (
           <button
             onClick={() => setShowTambahUMKM(true)}
-            className="w-full mb-6 bg-teal-600 text-white font-semibold text-sm py-3.5 rounded-2xl shadow-sm shadow-teal-200 hover:bg-teal-700 hover:shadow-md transition-all flex items-center justify-center gap-2"
+            className="w-full mb-6 bg-teal-600 text-white font-bold text-sm py-4 rounded-2xl shadow-sm shadow-teal-200 hover:bg-teal-700 hover:shadow-md transition-all flex items-center justify-center gap-2 min-h-[44px]"
+            aria-label="Tambah UMKM Baru"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
@@ -111,10 +113,11 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
             <button
               type="button"
               onClick={() => setShowTambahUMKM(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-1.5 rounded-full transition-colors"
+              className="absolute top-3 right-3 w-11 h-11 flex items-center justify-center text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors border border-gray-100"
+              aria-label="Tutup form"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
             <h4 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">

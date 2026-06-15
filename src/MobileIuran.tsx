@@ -287,7 +287,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
         <div className="bg-white p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 space-y-6">
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1">Jenis Pembayaran</label>
+            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1 mb-1">Jenis Pembayaran</label>
             <select value={jenisIuran} onChange={e => setJenisIuran(e.target.value)} disabled={loading} className="w-full p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none transition-all mb-4">
               <option value="Iuran Wajib">Iuran Wajib (Keamanan & Kebersihan)</option>
               <option value="Wifi">Pembayaran Wifi</option>
@@ -295,7 +295,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1">Tujuan Transfer</label>
+            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1 mb-1">Tujuan Transfer</label>
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-2xl text-white shadow-lg relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-white opacity-10 rounded-full translate-x-8 -translate-y-8"></div>
               <p className="text-sm font-medium opacity-90">Bank BCA</p>
@@ -305,12 +305,12 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1">Nominal Transfer (Rp)</label>
+            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1 mb-1">Nominal Transfer (Rp)</label>
             <input type="number" value={nominal} onChange={e => setNominal(e.target.value)} disabled={loading} className="w-full p-3 text-sm font-extrabold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none transition-all" />
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1">Periode Pembayaran</label>
+            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1 mb-1">Periode Pembayaran</label>
             <div className="flex gap-3">
               <select value={bulan} onChange={e => setBulan(e.target.value)} disabled={loading} className="w-1/2 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none transition-all">
                 {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(m => (
@@ -326,7 +326,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1">Upload Bukti Transfer</label>
+            <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1 mb-1">Upload Bukti Transfer</label>
             <div className={`border-2 border-dashed rounded-2xl p-4 text-center transition-colors ${buktiBase64 ? 'border-teal-500 bg-teal-50' : 'border-slate-300 bg-slate-50'}`}>
               <input type="file" id="fileUpload" accept="image/*" onChange={handleFileChange} disabled={loading} className="hidden" />
               <label htmlFor="fileUpload" className="cursor-pointer flex flex-col items-center justify-center">
@@ -336,7 +336,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
                       <Icons.upload className="w-6 h-6" />
                     </div>
                     <span className="text-xs font-bold text-teal-600">Pilih Foto Bukti Transaksi</span>
-                    <span className="text-[10px] text-slate-400 mt-1">Maksimal 5MB (JPG/PNG)</span>
+                    <span className="text-[10px] text-slate-650 mt-1 font-semibold">Maksimal 5MB (JPG/PNG)</span>
                   </>
                 ) : (
                   <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-sm">
@@ -362,7 +362,11 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
     <div className="min-h-screen bg-slate-50 p-5 pb-28">
       {/* HEADER NAV */}
       <div className="flex items-center mb-6">
-        <button onClick={onBack} className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+        <button 
+          onClick={onBack} 
+          className="w-11 h-11 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+          aria-label="Kembali ke menu"
+        >
           <Icons.back className="w-5 h-5" />
         </button>
         <h2 className="ml-4 text-lg font-extrabold text-slate-800 tracking-tight">Iuran Warga</h2>
@@ -423,14 +427,19 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
             >
               <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-3">
                 <h4 className="font-extrabold text-slate-800 text-sm">Form Tagihan Warga</h4>
-                <button type="button" onClick={() => setShowTambahIuran(false)} className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200 transition-colors">
+                <button 
+                  type="button" 
+                  onClick={() => setShowTambahIuran(false)} 
+                  className="w-11 h-11 flex items-center justify-center bg-slate-100 text-slate-700 border border-slate-200/40 rounded-full hover:bg-slate-200 transition-all"
+                  aria-label="Tutup form tagihan"
+                >
                   <Icons.back className="w-4 h-4 rotate-180" />
                 </button>
               </div>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Pilih Warga</label>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1">Pilih Warga</label>
                   <select value={adminSelectedUserId} onChange={e => setAdminSelectedUserId(e.target.value)} required className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none">
                     <option value="" disabled>-- Silakan Pilih --</option>
                     <option value="all">Semua Warga Terdaftar</option>
@@ -440,31 +449,31 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
                 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Status</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1">Status</label>
                     <select value={adminStatus} onChange={e => setAdminStatus(e.target.value)} required className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none">
                       <option value="belum dibayar">Tagihan Baru</option>
                       <option value="verifikasi">Lunas Langsung</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Jenis Iuran</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1">Jenis Iuran</label>
                     <select value={jenisIuran} onChange={e => setJenisIuran(e.target.value)} required className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none">
                       <option value="Iuran Wajib">Iuran Wajib</option>
                       <option value="Wifi">Wifi</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Nominal (Rp)</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1">Nominal (Rp)</label>
                     <input type="number" value={nominal} onChange={e => setNominal(e.target.value)} required className="w-full mt-1 p-3 text-sm font-bold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Bulan</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1">Bulan</label>
                     <select value={bulan} onChange={e => setBulan(e.target.value)} required className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none">
                       {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Tahun</label>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1">Tahun</label>
                     <select value={tahun} onChange={e => setTahun(e.target.value)} required className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none">
                       {[2024, 2025, 2026, 2027, 2028].map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
@@ -480,7 +489,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
       {/* FILTER & SEARCH */}
       <div className="mb-5 flex flex-col gap-3">
         <div className="relative">
-          <Icons.search className="w-5 h-5 text-slate-400 absolute left-3.5 top-3" />
+          <Icons.search className="w-5 h-5 text-slate-500 absolute left-3.5 top-3" />
           <input 
             type="text" 
             placeholder="Cari warga atau bulan..." 
@@ -592,7 +601,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
                 <Icons.receipt className="w-8 h-8 text-slate-300" />
              </div>
              <p className="text-sm font-bold text-slate-600">Belum Ada Riwayat Iuran</p>
-             <p className="text-xs text-slate-400 mt-1">Data tagihan atau pembayaran akan tampil di sini.</p>
+             <p className="text-xs text-slate-600 mt-1 font-semibold">Data tagihan atau pembayaran akan tampil di sini.</p>
           </div>
         )}
 

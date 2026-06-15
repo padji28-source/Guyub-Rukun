@@ -190,7 +190,11 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
     <div className="min-h-screen bg-slate-50 p-5 pb-28">
       {/* HEADER NAV */}
       <div className="flex items-center mb-6">
-        <button onClick={onBack} className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+        <button 
+          onClick={onBack} 
+          className="w-11 h-11 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+          aria-label="Kembali ke menu"
+        >
           <Icons.back className="w-5 h-5" />
         </button>
         <h2 className="ml-4 text-lg font-extrabold text-slate-800 tracking-tight">Buku Kas Warga</h2>
@@ -222,7 +226,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
           <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center mb-1">
              <span className="text-rose-500 font-bold text-xs">☠️</span>
           </div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Dana Kematian</p>
+          <p className="text-[10px] text-slate-600 font-bold uppercase tracking-wider">Dana Kematian</p>
           <h4 className="text-base font-extrabold text-slate-800">{formatter.format(getSaldo('Dana Kematian'))}</h4>
         </motion.div>
         
@@ -230,7 +234,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
           <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center mb-1">
              <span className="text-amber-500 font-bold text-xs">🤝</span>
           </div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Dana Sosial</p>
+          <p className="text-[10px] text-slate-600 font-bold uppercase tracking-wider">Dana Sosial</p>
           <h4 className="text-base font-extrabold text-slate-800">{formatter.format(getSaldo('Dana Sosial'))}</h4>
         </motion.div>
       </div>
@@ -261,7 +265,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
               >
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Kategori Pos</label>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1">Kategori Pos</label>
                     <select value={category} onChange={e => setCategory(e.target.value)} className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none transition-all">
                       <option value="Kas RT">Kas Utama RT</option>
                       <option value="Dana Kematian">Dana Kematian</option>
@@ -269,7 +273,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
                     </select>
                   </div>
                   <div className="flex-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Jenis</label>
+                    <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1">Jenis</label>
                     <select value={type} onChange={e => setType(e.target.value)} className="w-full mt-1 p-3 text-sm font-semibold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none appearance-none transition-all">
                       <option value="Masuk">Pemasukan (+)</option>
                       <option value="Keluar">Pengeluaran (-)</option>
@@ -277,11 +281,11 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Nominal (Rp)</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1">Nominal (Rp)</label>
                   <input type="number" placeholder="Contoh: 50000" value={amount} onChange={e => setAmount(e.target.value)} required className="w-full mt-1 p-3 text-sm font-bold bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none transition-all" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Keterangan / Catatan</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1">Keterangan / Catatan</label>
                   <input type="text" placeholder="Tuliskan keperluan transaksi..." value={message} onChange={e => setMessage(e.target.value)} required className="w-full mt-1 p-3 text-sm font-medium bg-slate-50 border-transparent focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none transition-all" />
                 </div>
                 <button type="submit" disabled={loading} className="w-full py-3.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-extrabold shadow-md hover:shadow-lg transition-all active:scale-[0.98]">
@@ -295,19 +299,19 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
               >
                 <div className="flex items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
                    <div className="flex-1 text-center">
-                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Dari</p>
+                     <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Dari</p>
                      <p className="font-extrabold text-slate-800 text-sm mt-1">Kas RT</p>
                    </div>
-                   <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-400 shrink-0">
+                   <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 shrink-0">
                      <Icons.transfer className="w-4 h-4"/>
                    </div>
                    <div className="flex-1 text-center">
-                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ke</p>
+                     <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Ke</p>
                      <p className="font-extrabold text-teal-600 text-sm mt-1">Dana Sosial</p>
                    </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1">Nominal Transfer (Rp)</label>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1">Nominal Transfer (Rp)</label>
                   <input type="number" placeholder="Maks. sesuai saldo Kas RT" value={transferAmount} onChange={e => setTransferAmount(e.target.value)} required className="w-full mt-1 p-3 text-sm font-bold bg-slate-50 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl outline-none transition-all" min="1" max={getSaldo('Kas RT')} />
                 </div>
                 <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-extrabold shadow-md hover:shadow-lg transition-all active:scale-[0.98]">
@@ -323,7 +327,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
       <div className="flex flex-col gap-3 mb-4">
         <h4 className="font-extrabold text-slate-800 text-base px-1">Riwayat Transaksi</h4>
         <div className="relative">
-          <svg className="w-5 h-5 text-slate-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <svg className="w-5 h-5 text-slate-500 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           <input 
             type="text" 
             placeholder="Cari transaksi berdasarkan catatan..." 
@@ -338,7 +342,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
         {data.length === 0 ? (
           <div className="bg-white rounded-3xl p-8 text-center border border-dashed border-slate-200">
             <Icons.wallet className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm text-slate-400 font-medium">Belum ada catatan transaksi.</p>
+            <p className="text-sm text-slate-600 font-bold">Belum ada catatan transaksi.</p>
           </div>
         ) : (
           <AnimatePresence>
@@ -396,7 +400,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
                   <span className={`text-sm font-extrabold block ${item.type === 'Masuk' ? 'text-emerald-600' : 'text-slate-800'}`}>
                     {item.type === 'Masuk' ? '+' : '-'} {formatter.format(item.amount)}
                   </span>
-                  <span className="text-[9px] text-slate-400 font-medium block mt-1">Oleh: {item.name?.split(' ')[0]}</span>
+                  <span className="text-[9px] text-slate-600 font-semibold block mt-1">Oleh: {item.name?.split(' ')[0]}</span>
                 </div>
               </motion.div>
             ))}
