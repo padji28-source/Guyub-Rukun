@@ -5,14 +5,76 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { z } from "zod";
 import { GoogleGenAI } from "@google/genai";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 dotenv.config();
+
+const JWT_SECRET = process.env.JWT_SECRET || "guyubrukunsecretkey_for_jwt2026";
+
+// Secure Authentication Helpers
+function verifyPassword(input: string, stored: string): boolean {
+  if (stored && stored.startsWith('$2') && stored.length >= 50) {
+    return bcrypt.compareSync(input, stored);
+  }
+  return input === stored;
+}
+
+function hashPassword(password: string): string {
+  return bcrypt.hashSync(password, 10);
+}
 
 export const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+// Auth Verification Middleware
+function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const publicRoutes = [
+    "/api/login",
+    "/api/register",
+    "/api/health",
+  ];
+  
+  const pathName = req.path;
+  if (!pathName.startsWith("/api/")) {
+    return next();
+  }
+  if (publicRoutes.includes(pathName) || pathName.startsWith("/api/tangerang-logo-proxy") || pathName.startsWith("/api/stream")) {
+    return next();
+  }
+  
+  const authHeader = req.headers['authorization'];
+  let token = "";
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.substring(7);
+  } else {
+    token = (req.query.token as string) || (req.headers['x-auth-token'] as string) || "";
+  }
+  
+  if (!token) {
+    return res.status(401).json({ error: "Sesi tidak valid atau telah berakhir. Silakan login kembali." });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    req.headers['x-user-id'] = decoded.id;
+    req.headers['x-user-role'] = decoded.role;
+    req.headers['x-user-username'] = decoded.username;
+    req.headers['x-user-nama'] = decoded.nama;
+    if (decoded.rtId) {
+      req.headers['x-rt-id'] = decoded.rtId;
+    }
+    (req as any).user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Verifikasi sesi gagal atau token kedaluwarsa. Silakan login kembali." });
+  }
+}
+
+app.use(authMiddleware);
 
 // Point 2: ROTATE & HIDE DATABASE CREDENTIALS (NO HARDCODING)
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/guyubrukun";
@@ -593,7 +655,7 @@ async function initDb(rtId: string = '') {
       await UserModel.create({
         id: adminId,
         username: adminUsername,
-        password: adminPassword,
+        password: hashPassword(adminPassword),
         nama: namaKetua,
         role: "admin",
         alamat: "Jl. Bahagia No. 12, Kompleks Rukun",
@@ -610,7 +672,7 @@ async function initDb(rtId: string = '') {
       await UserModel.create({
         id: "dev_system",
         username: devUsername,
-        password: "developer123",
+        password: hashPassword("developer123"),
         nama: "Sistem Developer",
         role: "developer",
         alamat: "Database Server Core",
@@ -792,6 +854,7 @@ app.post("/api/register", validateRequest(RegisterValidator), async (req, res) =
   const { username, nama, password, alamat, noHp, status, umur } = req.body;
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
 
+  await connectDB();
   const userExists = await UserModel.findOne({ rtId, username });
   if (userExists) {
     return res.status(400).json({ error: "Username sudah terdaftar" });
@@ -801,7 +864,7 @@ app.post("/api/register", validateRequest(RegisterValidator), async (req, res) =
     id: Date.now().toString(),
     username,
     nama,
-    password,
+    password: hashPassword(password),
     alamat,
     noHp,
     status,
@@ -815,6 +878,7 @@ app.post("/api/register", validateRequest(RegisterValidator), async (req, res) =
   await logAudit(rtId, nama, "REGISTER_WARGA", `Warga baru ${nama} mendaftarkan dengan role warga`, null, newUser);
   await addNotification(rtId, "Warga Baru Terdaftar", `Warga baru ${nama} telah didaftarkan. Menunggu verifikasi.`, nama, "warga", newUser.id);
 
+  // Return generated token upon successful auto-login/reg if needed, or just normal response
   res.json({ message: "Registrasi sukses", user: newUser });
 });
 
@@ -839,18 +903,41 @@ app.post("/api/login", validateRequest(LoginValidator), async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
 
   await connectDB();
-  const query: any = { username, password };
+  const query: any = { username };
   if (username !== 'developer') {
     query.rtId = rtId;
   }
   const user = await UserModel.findOne(query);
 
-  if (user) {
+  if (user && verifyPassword(password, user.password)) {
+    // Silently upgrade plain-text passwords to secure hashes on first login
+    if (!user.password.startsWith('$2') && user.password === password) {
+      user.password = hashPassword(password);
+      await user.save();
+    }
+
     if (activeSessions.has(user.id) && Date.now() - activeSessions.get(user.id)! < 10000) {
       return res.status(409).json({ error: "User sedang aktif digunakan pada perangkat lain" });
     }
     activeSessions.set(user.id, Date.now());
-    res.json({ message: "Login Berhasil", user });
+
+    // Generate JWT token containing secure identity claims
+    const token = jwt.sign(
+      {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        nama: user.nama,
+        rtId: user.rtId
+      },
+      JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    const userJson = user.toObject();
+    userJson.token = token; // Include token in nested user so client stores it
+
+    res.json({ message: "Login Berhasil", user: userJson });
   } else {
     res.status(401).json({ error: "Username atau password salah" });
   }
@@ -938,11 +1025,11 @@ app.put("/api/password", async (req, res) => {
 
   const user = await UserModel.findOne({ id, rtId });
   if (user) {
-    if (user.password !== oldPassword) {
+    if (!verifyPassword(oldPassword, user.password)) {
       return res.status(400).json({ error: "Password lama tidak sesuai" });
     }
-    const beforeObj = { password: user.password };
-    user.password = newPassword;
+    const beforeObj = { password: "*****" };
+    user.password = hashPassword(newPassword);
     await user.save();
     
     await logAudit(rtId, user.nama, "PASSWORD_UPDATE", `Mengubah password akun`, beforeObj, { password: "*****" });

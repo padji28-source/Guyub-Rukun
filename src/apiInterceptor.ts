@@ -66,6 +66,9 @@ export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Pr
       if (userObj.role) {
         modifiedInit.headers.set('x-user-role', userObj.role);
       }
+      if (userObj.token) {
+        modifiedInit.headers.set('Authorization', `Bearer ${userObj.token}`);
+      }
     } catch(e) {}
   }
 
