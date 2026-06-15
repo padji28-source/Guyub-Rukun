@@ -3558,7 +3558,7 @@ export default function App() {
   });
   const [selectedRt, setSelectedRt] = useState<string>(() => localStorage.getItem('selected_rt') || '');
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
 
   const handleUpdateUser = (updatedData: any) => {
     const newUser = { ...user, ...updatedData };

@@ -405,7 +405,13 @@ async function migrateLegacyDataIfAny(rtId: string) {
 let isDbConnected = false;
 
 async function connectDB() {
-  if (isDbConnected) return;
+  if (mongoose.connection && mongoose.connection.readyState === 1) {
+    isDbConnected = true;
+    return;
+  }
+  if (mongoose.connection && mongoose.connection.readyState === 2) {
+    return;
+  }
   try {
     await mongoose.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
@@ -581,9 +587,11 @@ async function initDb(rtId: string = '') {
       await saveUsers(rtId, list);
     }
 
-    if (!list.find((u: any) => u.username === adminUsername)) {
+    const adminId = "admin_" + adminUsername;
+    const existingAdmin = await UserModel.findOne({ $or: [{ id: adminId }, { username: adminUsername }] });
+    if (!existingAdmin) {
       await UserModel.create({
-        id: "admin_" + adminUsername,
+        id: adminId,
         username: adminUsername,
         password: adminPassword,
         nama: namaKetua,
