@@ -597,7 +597,8 @@ async function initDb(rtId: string = '') {
     }
 
     const devUsername = "developer";
-    if (!list.find((u: any) => u.username === devUsername)) {
+    const existingDev = await UserModel.findOne({ id: "dev_system" });
+    if (!existingDev) {
       await UserModel.create({
         id: "dev_system",
         username: devUsername,

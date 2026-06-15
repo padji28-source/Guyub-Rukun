@@ -12,10 +12,32 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        manifest: {
+        injectRegister: 'auto',
+        workbox: {
+          cleanupOutdatedCaches: true,
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts',
+              }
+            },
+            {
+              urlPattern: /^https:\/\/.*firebaseio\.com\/.*/i,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'firebase-api',
+              }
+            }
+          ]
+        },
+        manifest:{
+          orientation:"portrait",
           name: "Guyub Rukun RT 01",
           short_name: "Guyub Rukun",
           start_url: "/",
+          scope: "/",
           display: "standalone",
           background_color: "#ffffff",
           theme_color: "#0d9488",
@@ -24,11 +46,6 @@ export default defineConfig(({mode}) => {
             {
               src: "/icon-192.png",
               sizes: "192x192",
-              type: "image/png"
-            },
-            {
-              src: "/icon-512.png",
-              sizes: "512x512",
               type: "image/png"
             },
             {

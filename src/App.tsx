@@ -276,9 +276,17 @@ const fontStyle = '"Plus Jakarta Sans", sans-serif';
 // --- Web UI Components (Dashboard Admin) ---
 const WebSidebar = ({ activeTab, onTabChange, allowedMenus = [] }: { activeTab: string, onTabChange: (tab: string) => void, allowedMenus?: string[] }) => (
   <aside className="w-20 lg:w-[16rem] h-screen bg-white border-r border-gray-100 flex flex-col p-4 lg:p-6 fixed left-0 top-0 transition-all duration-300 z-50">
-    <div className="flex items-center mb-10 gap-2 justify-center lg:justify-start">
-      <LogoCommunityIcon size="24"/>
-      <span className="hidden lg:inline text-xl font-bold line-clamp-1" style={{ color: themeColors.primary, fontFamily: fontStyle }}>GUYUB RUKUN</span>
+    <div className="flex items-center mb-10 gap-2.5 justify-center lg:justify-start">
+      <div className="bg-gradient-to-br from-teal-500 to-emerald-600 p-1.5 rounded-xl shadow-sm border border-teal-400/30 shrink-0">
+        {/* Memastikan warna logo di dalam box menjadi putih agar kontras */}
+        <LogoCommunityIcon size="20" colorAccent="#ffffff" colorPrimary="#ffffff" />
+      </div>
+      <div className="hidden lg:flex flex-col">
+        <span className="text-base font-extrabold leading-none tracking-tight text-gray-800" style={{ fontFamily: fontStyle }}>
+          GUYUB <span className="text-teal-600">RUKUN</span>
+        </span>
+        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Aplikasi Warga</span>
+      </div>
     </div>
     <nav className="flex-grow space-y-2 overflow-y-auto w-full no-scrollbar">
       {[
