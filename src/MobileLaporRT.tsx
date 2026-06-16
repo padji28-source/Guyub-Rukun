@@ -168,7 +168,8 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
         <div className="sticky top-0 z-30 backdrop-blur-lg bg-white/70 border-b border-slate-200/50 px-4 py-4 flex items-center gap-4">
           <button 
             onClick={onBack} 
-            className="p-2.5 bg-white rounded-full shadow-sm border border-slate-100 text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
+            className="w-11 h-11 flex items-center justify-center bg-white rounded-full shadow-sm border border-slate-100 text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
+            aria-label="Kembali ke menu"
           >
             <icons.arrowLeft className="w-5 h-5" />
           </button>
@@ -240,7 +241,7 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">Judul Laporan</label>
                     <input 
                       type="text" placeholder="Contoh: Lampu Jalan Mati di Gg. Mawar" value={judul} onChange={e => setJudul(e.target.value)} required 
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-400" 
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-600" 
                     />
                   </div>
                   
@@ -262,7 +263,7 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">Keterangan & Lokasi Detail</label>
                     <textarea 
                       placeholder="Ceritakan detail masalahnya..." value={keterangan} onChange={e => setKeterangan(e.target.value)} required 
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm h-28 resize-none focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-400"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm h-28 resize-none focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-600"
                     ></textarea>
                   </div>
                   
@@ -291,7 +292,7 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
                     </div>
                   </div>
 
-                  <button type="submit" disabled={loading || !judul.trim() || !keterangan.trim()} className="w-full py-3.5 mt-2 bg-teal-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-teal-200 hover:bg-teal-700 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 transition-all flex items-center justify-center gap-2">
+                  <button type="submit" disabled={loading || !judul.trim() || !keterangan.trim()} className="w-full py-3.5 mt-2 bg-teal-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-teal-200 hover:bg-teal-700 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 transition-all flex items-center justify-center gap-2 min-h-[44px]">
                     {loading ? 'Mengirim...' : 'Kirim Laporan Keluhan'}
                   </button>
                 </motion.form>

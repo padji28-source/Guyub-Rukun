@@ -123,27 +123,27 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
               >
                 <div className="flex justify-between items-center border-b border-slate-50 pb-3 mb-2">
                   <h4 className="font-extrabold text-slate-800 text-sm">Form Detail Acara</h4>
-                  <button type="button" onClick={() => setShowForm(false)} className="w-8 h-8 flex justify-center items-center bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200 transition-colors">
-                    <EventIcons.close className="w-4 h-4" />
+                  <button type="button" onClick={() => setShowForm(false)} className="w-11 h-11 flex justify-center items-center bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200 transition-colors border border-slate-200/50" aria-label="Tutup form">
+                    <EventIcons.close className="w-5 h-5" />
                   </button>
                 </div>
                 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Judul Kegiatan</label>
-                  <input type="text" placeholder="Cth: Kerja Bakti Bulanan" value={title} onChange={e => setTitle(e.target.value)} required className="w-full p-3.5 text-sm font-bold bg-slate-50 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl outline-none transition-all text-slate-800" />
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1 mb-1.5">Judul Kegiatan</label>
+                  <input type="text" placeholder="Cth: Kerja Bakti Bulanan" value={title} onChange={e => setTitle(e.target.value)} required className="w-full p-3.5 text-sm font-bold bg-slate-50 border border-slate-100 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl outline-none transition-all text-slate-800" />
                 </div>
                 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Tanggal Acara</label>
-                  <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full p-3.5 text-sm font-bold bg-slate-50 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl outline-none transition-all text-slate-800 appearance-none" />
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1 mb-1.5">Tanggal Acara</label>
+                  <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full p-3.5 text-sm font-bold bg-slate-50 border border-slate-100 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl outline-none transition-all text-slate-800 appearance-none" />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide ml-1 mb-1.5">Deskripsi Lengkap</label>
-                  <textarea placeholder="Detail informasi acara..." value={desc} onChange={e => setDesc(e.target.value)} required rows={3} className="w-full p-3.5 text-sm font-medium bg-slate-50 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl outline-none transition-all text-slate-700 resize-none"></textarea>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wide ml-1 mb-1.5">Deskripsi Lengkap</label>
+                  <textarea placeholder="Detail informasi acara..." value={desc} onChange={e => setDesc(e.target.value)} required rows={3} className="w-full p-3.5 text-sm font-medium bg-slate-50 border border-slate-100 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-xl outline-none transition-all text-slate-700 resize-none"></textarea>
                 </div>
                 
-                <button type="submit" disabled={loading} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-extrabold shadow-md transition-all active:scale-[0.98]">
+                <button type="submit" disabled={loading} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-extrabold shadow-md transition-all active:scale-[0.98] min-h-[44px]">
                   {loading ? 'Menyimpan...' : 'Simpan dan Terbitkan'}
                 </button>
               </motion.form>
@@ -168,7 +168,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
                   <EventIcons.document className="w-8 h-8 text-slate-300" />
                </div>
                <p className="text-sm font-bold text-slate-600">Jadwal Kosong</p>
-               <p className="text-xs text-slate-400 mt-1 font-medium">Belum ada acara yang ditambahkan.</p>
+               <p className="text-xs text-slate-600 mt-1 font-semibold">Belum ada acara yang ditambahkan.</p>
             </motion.div>
           ) : (
             data.map((item, index) => {
@@ -197,7 +197,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
                     <h4 className={`text-sm font-extrabold mb-1.5 truncate pr-6 ${isPast ? 'text-slate-600' : 'text-slate-800'}`}>
                       {item.title}
                     </h4>
-                    <p className="text-[10px] font-bold text-slate-400 mb-2 flex items-center gap-1.5">
+                    <p className="text-[10px] font-bold text-slate-600 mb-2 flex items-center gap-1.5">
                       <EventIcons.calendar className="w-3.5 h-3.5 shrink-0" /> {fullDate}
                     </p>
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-2">

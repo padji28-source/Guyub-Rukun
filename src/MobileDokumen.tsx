@@ -104,7 +104,8 @@ export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: (
         <div className="sticky top-0 z-30 backdrop-blur-lg bg-white/70 border-b border-slate-200/50 px-4 py-4 flex items-center gap-4">
           <button 
             onClick={onBack} 
-            className="p-2.5 bg-white rounded-full shadow-sm border border-slate-100 text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
+            className="w-11 h-11 flex justify-center items-center bg-white rounded-full shadow-sm border border-slate-100 text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all"
+            aria-label="Kembali ke menu"
           >
             <icons.arrowLeft className="w-5 h-5" />
           </button>

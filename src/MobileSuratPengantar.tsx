@@ -155,7 +155,7 @@ export const SignaturePad = ({ onSave, onClear, label }: SignaturePadProps) => {
         />
         {isEmpty && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
-            <p className="text-[10px] text-slate-400 font-bold select-none text-center">Tulis Tanda Tangan Anda di Sini</p>
+            <p className="text-[10px] text-slate-500 font-bold select-none text-center">Tulis Tanda Tangan Anda di Sini</p>
           </div>
         )}
       </div>
@@ -583,7 +583,8 @@ export const MobileSuratPengantar = ({
           <div className="flex items-center gap-3">
             <button 
               onClick={onBack} 
-              className="p-2 bg-white rounded-full shadow-sm border border-slate-100 text-slate-750 hover:bg-slate-50 active:scale-95 transition pointer-events-auto cursor-pointer"
+              className="w-11 h-11 flex justify-center items-center bg-white rounded-full shadow-sm border border-slate-100 text-slate-700 hover:bg-slate-50 transition-all pointer-events-auto cursor-pointer"
+              aria-label="Kembali ke menu"
             >
               <icons.arrowLeft className="w-5 h-5 text-gray-700" />
             </button>
@@ -747,7 +748,7 @@ export const MobileSuratPengantar = ({
                             placeholder="Contoh: Surat Pengantar Pembuatan KTP Baru"
                             value={formMohonDibuatkan} 
                             onChange={e => setFormMohonDibuatkan(e.target.value)} 
-                            className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition placeholder:text-slate-400"
+                            className="w-full text-xs px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition placeholder:text-slate-600"
                           />
                         </div>
 
@@ -820,7 +821,7 @@ export const MobileSuratPengantar = ({
                           <h4 className="font-extrabold text-slate-800 text-sm tracking-tight pt-1 leading-snug">
                             {item.mohonDibuatkan || item.keperluan}
                           </h4>
-                          <p className="text-[10px] text-slate-400 font-semibold">
+                          <p className="text-[10px] text-slate-600 font-semibold">
                             Nomor: <span className="font-mono text-slate-500">{item.nomorSurat || 'Tunda (pending)'}</span>
                           </p>
                         </div>
@@ -840,7 +841,7 @@ export const MobileSuratPengantar = ({
                           <p className="font-semibold text-slate-700 leading-tight mt-0.5">{item.noKtpKk || '-'}</p>
                         </div>
                         {item.createdAt && (
-                          <div className="col-span-2 pt-1 border-t border-slate-50 mt-1 flex items-center gap-1 text-[9px] text-slate-400">
+                          <div className="col-span-2 pt-1 border-t border-slate-50 mt-1 flex items-center gap-1 text-[9px] text-slate-500 font-semibold">
                             <span>⌚ Diajukan pada:</span> 
                             <span>{new Date(item.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
@@ -853,7 +854,7 @@ export const MobileSuratPengantar = ({
                         {/* BOX TTD PEMOHON */}
                         <div className="flex flex-col items-center p-2.5 bg-slate-50/50 rounded-xl border border-slate-100/40 relative group">
                           <div className="flex justify-between w-full items-center mb-1">
-                            <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">TTD Pemohon</p>
+                            <p className="text-[9px] text-slate-600 font-extrabold uppercase tracking-wider">TTD Pemohon</p>
                             
                             {/* TOMBOL EDIT TTD: Muncul jika status belum selesai (Proses) */}
                             {item.status !== 'selesai' && (item.userId === currentUser?.id || isAdminOrPengurus) && (
@@ -878,7 +879,7 @@ export const MobileSuratPengantar = ({
                                 className="max-h-full max-w-full object-contain mix-blend-multiply" 
                               />
                             ) : (
-                              <span className="text-[9px] italic text-slate-400 font-semibold">Belum ada</span>
+                              <span className="text-[9px] italic text-slate-500 font-semibold">Belum ada</span>
                             )}
                           </div>
                           <p className="text-[9px] font-bold text-slate-600 truncate w-full mt-0.5">{item.nama || item.userName}</p>
@@ -886,7 +887,7 @@ export const MobileSuratPengantar = ({
 
                         {/* BOX TTD RT */}
                         <div className="flex flex-col items-center p-2.5 bg-slate-50/50 rounded-xl border border-slate-100/40">
-                          <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">TTD Ketua RT</p>
+                          <p className="text-[9px] text-slate-600 font-extrabold uppercase tracking-wider">TTD Ketua RT</p>
                           <div className="h-14 w-full flex items-center justify-center my-1 bg-white/75 rounded-lg p-1 border border-slate-100 overflow-hidden">
                             {item.signatureKetuaRt ? (
                               <img 
@@ -945,7 +946,7 @@ export const MobileSuratPengantar = ({
               <div className="flex flex-col items-center justify-center py-16 px-6 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-white mt-4">
                 <icons.surat className="w-10 h-10 text-slate-350 mb-3" />
                 <h4 className="text-xs font-bold text-slate-700">Belum ada pengajuan</h4>
-                <p className="text-[10px] text-slate-400 mt-1 max-w-xs">Pengajuan Surat Pengantar warga dengan TTD digital yang diterbitkan RT akan terdaftar di sini.</p>
+                <p className="text-[10px] text-slate-600 font-semibold mt-1 max-w-xs">Pengajuan Surat Pengantar warga dengan TTD digital yang diterbitkan RT akan terdaftar di sini.</p>
               </div>
             )}
           </div>
@@ -974,13 +975,14 @@ export const MobileSuratPengantar = ({
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900">Bubuhkan Tanda Tangan Digital RT</h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
+                  <p className="text-[10px] text-slate-500 mt-0.5">
                     Menyisipkan TTD Ketua RT untuk: <span className="font-bold text-slate-600">{activeRtSignatureItem.nama}</span>
                   </p>
                 </div>
                 <button 
                   onClick={() => setActiveRtSignatureItem(null)}
-                  className="p-1 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg text-xs pointer-events-auto cursor-pointer"
+                  className="w-11 h-11 flex items-center justify-center text-slate-500 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full text-xs pointer-events-auto cursor-pointer border border-slate-200/50"
+                  aria-label="Tutup form"
                 >
                   ✕
                 </button>
@@ -1035,13 +1037,14 @@ export const MobileSuratPengantar = ({
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900">Ubah Tanda Tangan Anda</h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
+                  <p className="text-[10px] text-slate-500 mt-0.5">
                     Memperbarui TTD untuk permohonan: <br/><span className="font-bold text-slate-600">{activeEditSignatureItem.keperluan || activeEditSignatureItem.mohonDibuatkan}</span>
                   </p>
                 </div>
                 <button 
                   onClick={() => setActiveEditSignatureItem(null)}
-                  className="p-1 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg text-xs pointer-events-auto cursor-pointer"
+                  className="w-11 h-11 flex justify-center items-center text-slate-500 hover:text-slate-700 bg-slate-50 border border-slate-200/50 hover:bg-slate-100 rounded-full text-xs pointer-events-auto cursor-pointer"
+                  aria-label="Tutup ubah ttd"
                 >
                   ✕
                 </button>
@@ -1106,7 +1109,8 @@ export const MobileSuratPengantar = ({
                     URL.revokeObjectURL(pdfPreviewUrl);
                     setPdfPreviewUrl(null);
                   }}
-                  className="p-1 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg text-xs pointer-events-auto cursor-pointer"
+                  className="w-11 h-11 flex justify-center items-center text-slate-500 hover:text-slate-700 bg-slate-50 border border-slate-200/50 hover:bg-slate-100 rounded-full text-xs pointer-events-auto cursor-pointer"
+                  aria-label="Tutup preview PDF"
                 >
                   ✕
                 </button>

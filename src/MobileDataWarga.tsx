@@ -448,7 +448,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                           : (warga.status || 'Warga').split(' ')[0]}
                       </span>
                     </div>
-                    <div className={`p-1 rounded-full transition-colors flex items-center justify-center ${isExpanded ? 'bg-teal-50 text-teal-600' : 'text-slate-400'}`}>
+                    <div className={`p-1 rounded-full transition-colors flex items-center justify-center ${isExpanded ? 'bg-teal-50 text-teal-600' : 'text-slate-500'}`}>
                       <icons.lainnya className={`w-3.5 h-3.5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
                   </div>
