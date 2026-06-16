@@ -209,7 +209,7 @@ export const MobileSuratPengantar = ({
   const [activeEditSignatureItem, setActiveEditSignatureItem] = useState<any | null>(null);
   const [formSignaturePemohonEdit, setFormSignaturePemohonEdit] = useState('');
 
-  const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
+  const isAdminOrPengurus = currentUser?.allowedMenus?.includes('Surat Online') || currentUser?.role === 'developer';
 
   // Watch for notification trigger selection on mobile
   useEffect(() => {

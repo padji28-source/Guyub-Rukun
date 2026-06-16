@@ -30,82 +30,11 @@ export const WebDashboardRtView = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [wargaRes, kasRes, iuranRes, laporanRes, acaraRes] = await Promise.all([
-        apiFetch('/api/warga'),
-        apiFetch('/api/data/kas'),
-        apiFetch('/api/data/iuran'),
-        apiFetch('/api/data/laporan'),
-        apiFetch('/api/data/acara')
-      ]);
-
-      const wData = await wargaRes.json();
-      const kData = await kasRes.json();
-      const iData = await iuranRes.json();
-      const lData = await laporanRes.json();
-      const aData = await acaraRes.json();
-
-      // 1. Warga & KK calculation
-      const users = wData.users || [];
-      const jumlahKK = users.length;
-      let totalWarga = jumlahKK;
-      users.forEach((u: any) => {
-        totalWarga += (u.members?.length || 0);
-      });
-
-      // 2. Saldo Kas calculation
-      const kRecords = kData.data || [];
-      const getSaldo = (cat: string) => {
-        const catItems = kRecords.filter((d: any) => (d.category || 'Kas RT') === cat);
-        const catM = catItems.filter((d: any) => d.type === 'Masuk').reduce((a: number, b: any) => a + (b.amount || 0), 0);
-        const catK = catItems.filter((d: any) => d.type === 'Keluar').reduce((a: number, b: any) => a + (b.amount || 0), 0);
-        return catM - catK;
-      };
-      const kasRT = getSaldo('Kas RT');
-      const danaKematian = getSaldo('Dana Kematian');
-      const danaSosial = getSaldo('Dana Sosial');
-      const saldoKas = kasRT + danaKematian + danaSosial;
-
-      // 3. Iuran Bulan Ini
-      const currentMonth = new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
-      const currentIuran = (iData.data || []).filter((i: any) => i.bulan === currentMonth);
-      let lunasCount = 0;
-      let totalIuranCount = currentIuran.length;
-      let totalAmount = 0;
-      
-      if (totalIuranCount > 0) {
-        lunasCount = currentIuran.filter((i: any) => i.status === 'verifikasi').length;
-        totalAmount = currentIuran.reduce((acc: number, curr: any) => acc + (Number(curr.nominal) || 0), 0);
-      } else {
-        // Fallback to overall historical if empty
-        const overallIuran = iData.data || [];
-        totalIuranCount = overallIuran.length;
-        lunasCount = overallIuran.filter((i: any) => i.status === 'verifikasi').length;
-        totalAmount = overallIuran.reduce((acc: number, curr: any) => acc + (Number(curr.nominal) || 0), 0);
+      const res = await apiFetch('/api/dashboard');
+      const data = await res.json();
+      if (data.metrics) {
+        setMetrics(data.metrics);
       }
-      const lunasPct = totalIuranCount > 0 ? Math.round((lunasCount / totalIuranCount) * 100) : 0;
-
-      // 4. Pengaduan Aktif (status: menunggu or diproses)
-      const lp = lData.data || [];
-      const pengaduanAktif = lp.filter((l: any) => l.status === 'menunggu' || l.status === 'diproses');
-
-      // 5. Upcoming agenda
-      const agenda = aData.data || [];
-      const now = new Date();
-      const agendaUpcoming = agenda.filter((ac: any) => {
-        const acDate = new Date(ac.time || ac.date);
-        return acDate >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      }).sort((a: any, b: any) => new Date(a.time || a.date).getTime() - new Date(b.time || b.date).getTime()).slice(0, 5);
-
-      setMetrics({
-        jumlahKK,
-        jumlahWarga: totalWarga,
-        saldoKas,
-        kasDetail: { kasRT, danaKematian, danaSosial },
-        iuranBulanIni: { lunasPct, totalIuranCount, lunasCount, totalAmount },
-        pengaduanAktif,
-        agendaUpcoming,
-        wargaList: users
-      });
     } catch (e) {
       console.error('Failed to load Dashboard RT metrics:', e);
     } finally {

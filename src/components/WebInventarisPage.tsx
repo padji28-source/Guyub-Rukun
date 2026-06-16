@@ -53,6 +53,8 @@ export const WebInventarisPage = ({ user }: { user: any }) => {
   const [formNotes, setFormNotes] = useState('');
   const [formError, setFormError] = useState('');
 
+  const isEditor = user?.allowedMenus?.includes('Inventaris') || user?.role === 'developer';
+  
   // Fetch all inventory items
   const fetchInventaris = async () => {
     try {
@@ -247,7 +249,7 @@ export const WebInventarisPage = ({ user }: { user: any }) => {
           </p>
         </div>
         
-        {user.role === 'admin' && (
+        {isEditor && (
           <button
             onClick={openAddModal}
             className="px-5 py-3 bg-white hover:bg-teal-50 text-teal-900 font-extrabold text-sm rounded-xl shadow-md transition flex items-center gap-2 shrink-0 pointer-events-auto cursor-pointer"
@@ -401,7 +403,7 @@ export const WebInventarisPage = ({ user }: { user: any }) => {
                   </div>
                 </div>
 
-                {user.role === 'admin' && (
+                {isEditor && (
                   <div className="flex items-center justify-end gap-2.5 mt-5 pt-3.5 border-t border-gray-50 shrink-0">
                     <button
                       onClick={() => openEditModal(item)}

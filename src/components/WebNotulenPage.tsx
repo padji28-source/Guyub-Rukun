@@ -52,7 +52,7 @@ export const WebNotulenPage = ({ user }: { user: any }) => {
   const [formContent, setFormContent] = useState('');
   const [formError, setFormError] = useState('');
 
-  const isEditor = user?.role === 'admin' || user?.role === 'sekretaris';
+  const isEditor = user?.allowedMenus?.includes('Notulen Rapat') || user?.role === 'developer';
 
   const fetchNotulen = async () => {
     try {

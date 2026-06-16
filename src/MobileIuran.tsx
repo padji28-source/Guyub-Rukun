@@ -51,7 +51,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   const [buktiBase64, setBuktiBase64] = useState('');
   const [viewBuktiUrl, setViewBuktiUrl] = useState<string | null>(null);
 
-  const isAdminOrBendahara = currentUser?.role === 'admin' || currentUser?.role === 'bendahara';
+  const isAdminOrBendahara = currentUser?.allowedMenus?.includes('Iuran') || currentUser?.role === 'developer';
   
   const [tagihanList, setTagihanList] = useState<any[]>([]);
   const totalTagihan = tagihanList.reduce((sum, item) => sum + Number(item.nominal || 0), 0);

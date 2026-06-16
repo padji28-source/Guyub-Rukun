@@ -2069,6 +2069,79 @@ app.post("/api/gemini/action", async (req, res) => {
 });
 
 
+app.get("/api/dashboard", async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  try {
+    const [users, kas, iuran, laporan, acara] = await Promise.all([
+      UserModel.find({ rtId, role: { $ne: 'developer' } }).select('members').lean(),
+      KasModel.find({ rtId }).select('type amount status category').lean(),
+      IuranModel.find({ rtId }).select('bulan status nominal').lean(),
+      LaporanModel.find({ rtId }).lean(),
+      AcaraModel.find({ rtId }).lean()
+    ]);
+
+    const jumlahKK = users.length;
+    let totalWarga = jumlahKK;
+    users.forEach((u: any) => {
+      totalWarga += (u.members?.length || 0);
+    });
+
+    const getSaldo = (cat: string) => {
+      const catItems = kas.filter((d: any) => (d.category || 'Kas RT') === cat);
+      const catM = catItems.filter((d: any) => d.type === 'Masuk').reduce((a: number, b: any) => a + (b.amount || 0), 0);
+      const catK = catItems.filter((d: any) => d.type === 'Keluar').reduce((a: number, b: any) => a + (b.amount || 0), 0);
+      return catM - catK;
+    };
+    const kasRT = getSaldo('Kas RT');
+    const danaKematian = getSaldo('Dana Kematian');
+    const danaSosial = getSaldo('Dana Sosial');
+    const saldoKas = kasRT + danaKematian + danaSosial;
+
+    const currentMonth = new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+    const currentIuran = iuran.filter((i: any) => i.bulan === currentMonth);
+    let lunasCount = 0;
+    let totalIuranCount = currentIuran.length;
+    let totalAmount = 0;
+    
+    if (totalIuranCount > 0) {
+      lunasCount = currentIuran.filter((i: any) => i.status === 'verifikasi').length;
+      totalAmount = currentIuran.reduce((acc: number, curr: any) => acc + (Number(curr.nominal) || 0), 0);
+    } else {
+      totalIuranCount = iuran.length;
+      lunasCount = iuran.filter((i: any) => i.status === 'verifikasi').length;
+      totalAmount = iuran.reduce((acc: number, curr: any) => acc + (Number(curr.nominal) || 0), 0);
+    }
+    const lunasPct = totalIuranCount > 0 ? Math.round((lunasCount / totalIuranCount) * 100) : 0;
+
+    const pengaduanAktif = laporan.filter((l: any) => l.status === 'menunggu' || l.status === 'diproses');
+
+    const now = new Date();
+    const agendaUpcoming = acara.filter((ac: any) => {
+        const acDate = new Date(ac.time || ac.date);
+        return acDate >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }).sort((a: any, b: any) => new Date(a.time || a.date).getTime() - new Date(b.time || b.date).getTime()).slice(0, 5);
+
+    // Limit returned unused data
+    const limitedUsers = users.map(u => ({_id: u._id, members: u.members?.map((m: any) => ({_id: m._id}))}));
+
+    res.json({
+      metrics: {
+        jumlahKK,
+        jumlahWarga: totalWarga,
+        saldoKas,
+        kasDetail: { kasRT, danaKematian, danaSosial },
+        iuranBulanIni: { lunasPct, totalIuranCount, lunasCount, totalAmount },
+        pengaduanAktif,
+        agendaUpcoming,
+        wargaList: limitedUsers
+      }
+    });
+  } catch (error) {
+    console.error("Dashboard fetch error:", error);
+    res.status(500).json({ error: "Failed to fetch dashboard data" });
+  }
+});
+
 // Status checking API
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", mode: "modular-tables", isDbConnected });

@@ -271,7 +271,7 @@ const themeColors = {
 const fontStyle = '"Plus Jakarta Sans", sans-serif';
 
 // --- Web UI Components (Dashboard Admin) ---
-const WebSidebar = ({ activeTab, onTabChange, allowedMenus = [] }: { activeTab: string, onTabChange: (tab: string) => void, allowedMenus?: string[] }) => (
+const WebSidebar = ({ activeTab, onTabChange, visibleMenus = [] }: { activeTab: string, onTabChange: (tab: string) => void, visibleMenus?: string[] }) => (
   <aside className="w-20 lg:w-[16rem] h-screen bg-white border-r border-gray-100 flex flex-col p-4 lg:p-6 fixed left-0 top-0 transition-all duration-300 z-50">
     <div className="flex items-center mb-10 gap-2.5 justify-center lg:justify-start">
       <div className="bg-gradient-to-br from-teal-500 to-emerald-600 p-1.5 rounded-xl shadow-sm border border-teal-400/30 shrink-0">
@@ -295,6 +295,7 @@ const WebSidebar = ({ activeTab, onTabChange, allowedMenus = [] }: { activeTab: 
         { name: 'Dokumen', icon: icons.dokumen },
         { name: 'Laporan', icon: icons.laporan },
         { name: 'Notulen Rapat', icon: icons.laporan },
+        { name: 'Voting', icon: icons.voting },
         { name: 'Pengumuman', icon: icons.pengumuman },
         { name: 'Media', icon: icons.media },
         { name: 'UMKM', icon: icons.umkm },
@@ -303,7 +304,7 @@ const WebSidebar = ({ activeTab, onTabChange, allowedMenus = [] }: { activeTab: 
         { name: 'Smart RT AI', icon: icons.gemini },
         { name: 'Pengaturan', icon: icons.pengaturan },
         { name: 'Akses Menu', icon: icons.pengaturan },
-      ].filter(item => allowedMenus.includes(item.name))
+      ].filter(item => visibleMenus.includes(item.name))
        .map((item) => (
         <button 
           key={item.name} 
@@ -375,7 +376,7 @@ const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNot
                     <div className="p-4 border-b border-gray-100 bg-white/50 flex justify-between items-center">
                       <h4 className="font-extrabold text-gray-800 text-sm">Notifikasi</h4>
                       <div className="flex items-center gap-2">
-                        {user?.role === 'admin' && (
+                        {user?.allowedMenus?.includes('Pengumuman') && (
                            <button onClick={(e) => { e.stopPropagation(); setShowNotifications(false); onOpenBroadcast?.(); }} className="text-[10px] uppercase font-bold text-white bg-teal-600 hover:bg-teal-700 px-2.5 py-1 rounded-full shadow-sm">Kirim Broadcast</button>
                         )}
                         {unreadCount > 0 && <span className="text-[10px] uppercase font-bold text-teal-700 bg-teal-100 px-2.5 py-1 rounded-full shadow-sm">{unreadCount} Baru</span>}
@@ -1732,7 +1733,7 @@ const MobileProfile = ({ user }: { user: any }) => {
   );
 };
 
-const MobileQuickActions = ({ onActionClick, allowedMenus = [] }: { onActionClick: (action: string) => void, allowedMenus?: string[] }) => {
+const MobileQuickActions = ({ onActionClick, visibleMenus = [] }: { onActionClick: (action: string) => void, visibleMenus?: string[] }) => {
   const [showAll, setShowAll] = useState(false);
 
   // Setup variasi animasi framer-motion
@@ -1768,7 +1769,7 @@ const MobileQuickActions = ({ onActionClick, allowedMenus = [] }: { onActionClic
   const filteredActions = quickActions.filter(action => {
     const webMenu = mobileToWebMap[action.name];
     if (!webMenu) return true;
-    return allowedMenus.includes(webMenu);
+    return visibleMenus.includes(webMenu);
   });
 
   const displayedActions = showAll ? filteredActions : filteredActions.slice(0, 8);
@@ -2281,29 +2282,17 @@ const MobileSaldoCard = () => {
 
   useEffect(() => {
     setLoading(!cachedSaldoResult);
-    apiFetch('/api/data/kas')
+    apiFetch('/api/dashboard')
       .then(res => res.json())
       .then(json => {
-        const data = json.data || [];
-        const kasRtData = data.filter((d: any) => (d.category || 'Kas RT') === 'Kas RT');
-        const masuk = kasRtData.filter((d: any) => d.type === 'Masuk').reduce((a: number, b: any) => a + (b.amount || 0), 0);
-        const keluar = kasRtData.filter((d: any) => d.type === 'Keluar').reduce((a: number, b: any) => a + (b.amount || 0), 0);
-        const s = masuk - keluar;
-        setSaldo(s);
-
-        const getSaldo = (cat: string) => {
-          const items = data.filter((d: any) => (d.category || 'Kas RT') === cat);
-          const m = items.filter((d: any) => d.type === 'Masuk').reduce((a: number, b: any) => a + (b.amount || 0), 0);
-          const k = items.filter((d: any) => d.type === 'Keluar').reduce((a: number, b: any) => a + (b.amount || 0), 0);
-          return m - k;
-        };
-
-        const k = getSaldo('Dana Kematian');
-        const sol = getSaldo('Dana Sosial');
-        setDanaKematian(k);
-        setDanaSosial(sol);
-        
-        cachedSaldoResult = { saldo: s, danaKematian: k, danaSosial: sol };
+        if (json.metrics && json.metrics.kasDetail) {
+          const detail = json.metrics.kasDetail;
+          setSaldo(detail.kasRT);
+          setDanaKematian(detail.danaKematian);
+          setDanaSosial(detail.danaSosial);
+          
+          cachedSaldoResult = { saldo: detail.kasRT, danaKematian: detail.danaKematian, danaSosial: detail.danaSosial };
+        }
       })
       .catch(e => console.error(e))
       .finally(() => setLoading(false));
@@ -2947,7 +2936,7 @@ const BroadcastModalView = ({ onClose, onSuccess, user }: { onClose: () => void,
 };
 
 // --- Main Combined View ---
-function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => void; onUpdateUser: (updatedData: any) => void }) {
+function MainApp({ user: originalUser, onLogout, onUpdateUser }: { user: any; onLogout: () => void; onUpdateUser: (updatedData: any) => void }) {
   const [activeWebTab, setActiveWebTab] = useState('Dashboard');
   const [activeMobileTab, setActiveMobileTab] = useState('Beranda');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -2963,7 +2952,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
   const [rtList, setRtList] = useState<{rtId: string, totalUsers: number, isVip: boolean}[]>([]);
 
   const fetchDeveloperStats = async () => {
-    if (user?.role !== 'developer') return;
+    if (originalUser?.role !== 'developer') return;
     try {
       const res = await apiFetch('/api/developer/stats');
       if (res.ok) {
@@ -3001,23 +2990,40 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
     sekretaris: ['Dashboard', 'Warga', 'Surat Online', 'Dokumen', 'Notulen Rapat', 'Pengumuman', 'Media', 'Inventaris', 'Pengaturan'],
     bendahara: ['Dashboard', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 'Pengaturan'],
     pengurus: ['Dashboard', 'Warga', 'Dokumen', 'Laporan', 'Pengumuman', 'Media', 'Inventaris', 'Pengaturan'],
-    warga: ['Dashboard', 'Surat Online', 'Iuran', 'Laporan', 'Pengumuman', 'Media', 'UMKM', 'Tamu', 'Smart RT AI', 'Pengaturan']
+    warga: []
   };
 
-  const userRole = user?.role || 'warga';
+  const userRole = originalUser?.role || 'warga';
   const rolePermission = menuPermissions.find(p => p.role === userRole);
   let allowedMenus = rolePermission ? rolePermission.allowedMenus : (fallbackPermissions[userRole] || fallbackPermissions.warga);
   
   const vipMenus = ['Notulen Rapat', 'Voting', 'Inventaris', 'Smart RT AI', 'UMKM', 'UMKM Warga'];
-  if (user?.role !== 'developer' && !user?.isVip) {
-    allowedMenus = allowedMenus.filter(m => !vipMenus.includes(m));
+  
+  // Semua role bisa melihat menu, list master menu yang ada
+  const allAppMenus = [
+    'Dashboard', 'Warga', 'Surat Online', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 
+    'Notulen Rapat', 'Voting', 'Pengumuman', 'Media', 'UMKM', 'Tamu', 'Inventaris', 
+    'Smart RT AI', 'Pengaturan'
+  ];
+  if (userRole === 'developer') {
+    allAppMenus.push('Akses Menu');
   }
 
+  // Filter visible menus hanya berdasarkan VIP (kecuali developer yang bisa lihat semua)
+  const visibleMenus = allAppMenus.filter(m => {
+    if (userRole === 'developer') return true;
+    if (vipMenus.includes(m) && !originalUser?.isVip) return false;
+    return true;
+  });
+
+  // Inject allowedMenus ke user object agar bisa diakses komponen children untuk Edit/Delete
+  const user = { ...originalUser, allowedMenus };
+
   useEffect(() => {
-    if (allowedMenus && allowedMenus.length > 0 && !allowedMenus.includes(activeWebTab)) {
-      setActiveWebTab(allowedMenus[0]);
+    if (visibleMenus && visibleMenus.length > 0 && !visibleMenus.includes(activeWebTab)) {
+      setActiveWebTab(visibleMenus[0]);
     }
-  }, [allowedMenus, activeWebTab]);
+  }, [visibleMenus, activeWebTab]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -3112,7 +3118,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
       {/* --- DESKTOP ADMIN VIEW --- */}
       {!isMobile ? (
       <div className="hidden md:flex relative z-10 w-full h-full">
-        <WebSidebar activeTab={activeWebTab} onTabChange={setActiveWebTab} allowedMenus={allowedMenus} />
+        <WebSidebar activeTab={activeWebTab} onTabChange={setActiveWebTab} visibleMenus={visibleMenus} />
         <div className="flex flex-col flex-grow w-full h-full overflow-hidden">
           <WebHeader 
             user={user} 
@@ -3295,7 +3301,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                           </div>
                         </div>
                       )}
-                      <MobileQuickActions onActionClick={setActiveMobileTab} allowedMenus={allowedMenus}/>
+                      <MobileQuickActions onActionClick={setActiveMobileTab} visibleMenus={visibleMenus}/>
                       <MobileEvents onActionClick={setActiveMobileTab} />
                     </>
                   )}
@@ -3366,9 +3372,9 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
           <div className="absolute inset-0 bg-black/50 z-50 flex justify-end flex-col">
             <div className="bg-white rounded-t-3xl min-h-[50%] max-h-[80%] flex flex-col">
                <div className="flex justify-between items-center p-5 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
+                   <div className="flex items-center gap-3">
                     <h3 className="font-bold text-gray-800">Notifikasi</h3>
-                    {user?.role === 'admin' && (
+                    {user?.allowedMenus?.includes('Pengumuman') && (
                        <button onClick={() => { setShowNotifications(false); setShowBroadcastModal(true); }} className="text-[10px] uppercase font-bold text-white bg-teal-600 hover:bg-teal-700 px-2.5 py-1 rounded-full shadow-sm">Kirim Broadcast</button>
                     )}
                   </div>

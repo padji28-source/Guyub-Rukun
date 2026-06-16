@@ -5,7 +5,7 @@ import { icons } from './App';
 
 export const MobileTamu = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
   const [data, setData] = useState<any[]>([]);
-  const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
+  const isAdminOrPengurus = currentUser?.allowedMenus?.includes('Tamu') || currentUser?.role === 'developer';
 
   const fetchData = async () => {
     try {
