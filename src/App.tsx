@@ -1764,7 +1764,8 @@ const MobileQuickActions = ({ onActionClick, allowedMenus = [] }: { onActionClic
     'UMKM': 'UMKM',
     'Tamu': 'Tamu',
     'Inventaris': 'Inventaris',
-    'Smart RT AI': 'Smart RT AI'
+    'Smart RT AI': 'Smart RT AI',
+    'Voting': 'Voting'
   };
 
   const filteredActions = quickActions.filter(action => {
@@ -2963,6 +2964,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
 
   const [menuPermissions, setMenuPermissions] = useState<any[]>([]);
   const [developerStats, setDeveloperStats] = useState<{ onlineCount: number; registeredCount: number }>({ onlineCount: 0, registeredCount: 0 });
+  const [rtList, setRtList] = useState<{rtId: string, totalUsers: number, isVip: boolean}[]>([]);
 
   const fetchDeveloperStats = async () => {
     if (user?.role !== 'developer') return;
@@ -2974,6 +2976,11 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
           onlineCount: json.onlineCount || 0,
           registeredCount: json.registeredCount || 0
         });
+      }
+      const rtRes = await apiFetch('/api/developer/rt');
+      if (rtRes.ok) {
+        const json = await rtRes.json();
+        setRtList(json.data || []);
       }
     } catch (e) {
       console.error("Gagal mengambil stats developer", e);
@@ -2993,8 +3000,8 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
   };
 
   const fallbackPermissions: { [key: string]: string[] } = {
-    developer: ['Dashboard', 'Warga', 'Surat Online', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 'Notulen Rapat', 'Pengumuman', 'Media', 'UMKM', 'Tamu', 'Inventaris', 'Smart RT AI', 'Pengaturan', 'Akses Menu'],
-    admin: ['Dashboard', 'Warga', 'Surat Online', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 'Notulen Rapat', 'Pengumuman', 'Media', 'UMKM', 'Tamu', 'Inventaris', 'Smart RT AI', 'Pengaturan'],
+    developer: ['Dashboard', 'Warga', 'Surat Online', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 'Notulen Rapat', 'Voting', 'Pengumuman', 'Media', 'UMKM', 'Tamu', 'Inventaris', 'Smart RT AI', 'Pengaturan', 'Akses Menu'],
+    admin: ['Dashboard', 'Warga', 'Surat Online', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 'Notulen Rapat', 'Voting', 'Pengumuman', 'Media', 'UMKM', 'Tamu', 'Inventaris', 'Smart RT AI', 'Pengaturan'],
     sekretaris: ['Dashboard', 'Warga', 'Surat Online', 'Dokumen', 'Notulen Rapat', 'Pengumuman', 'Media', 'Inventaris', 'Pengaturan'],
     bendahara: ['Dashboard', 'Iuran', 'Kas', 'Dokumen', 'Laporan', 'Pengaturan'],
     pengurus: ['Dashboard', 'Warga', 'Dokumen', 'Laporan', 'Pengumuman', 'Media', 'Inventaris', 'Pengaturan'],
@@ -3003,7 +3010,12 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
 
   const userRole = user?.role || 'warga';
   const rolePermission = menuPermissions.find(p => p.role === userRole);
-  const allowedMenus = rolePermission ? rolePermission.allowedMenus : (fallbackPermissions[userRole] || fallbackPermissions.warga);
+  let allowedMenus = rolePermission ? rolePermission.allowedMenus : (fallbackPermissions[userRole] || fallbackPermissions.warga);
+  
+  const vipMenus = ['Notulen Rapat', 'Voting', 'Inventaris', 'Smart RT AI', 'UMKM', 'UMKM Warga'];
+  if (user?.role !== 'developer' && !user?.isVip) {
+    allowedMenus = allowedMenus.filter(m => !vipMenus.includes(m));
+  }
 
   useEffect(() => {
     if (allowedMenus && allowedMenus.length > 0 && !allowedMenus.includes(activeWebTab)) {
@@ -3237,7 +3249,7 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-2 gap-4 mt-4">
                             {/* Counter 1: Users Registered */}
                             <div className="bg-white/5 border border-white/5 p-3 rounded-xl">
                               <span className="text-[10px] text-indigo-300 font-medium block mb-1">User Terdaftar</span>
@@ -3253,6 +3265,36 @@ function MainApp({ user, onLogout, onUpdateUser }: { user: any; onLogout: () => 
                                 {developerStats.onlineCount}
                                 <span className="text-[9px] font-normal text-indigo-300/60">aktif</span>
                               </div>
+                            </div>
+                          </div>
+
+                          {/* RT Subscriptions */}
+                          <div className="mt-4 border-t border-indigo-500/20 pt-4">
+                            <h4 className="text-xs font-bold text-indigo-200 mb-3 block">Kelola Berlangganan VIP RT</h4>
+                            <div className="flex flex-col gap-2">
+                              {rtList.length > 0 ? rtList.map(r => (
+                                <div key={r.rtId} className="flex flex-row items-center justify-between bg-white/5 border border-white/10 p-2.5 rounded-xl">
+                                  <div>
+                                    <div className="text-xs font-bold text-white uppercase">{r.rtId}</div>
+                                    <div className="text-[10px] text-indigo-300/70">{r.totalUsers} Warga</div>
+                                  </div>
+                                  <button
+                                    onClick={async () => {
+                                      const res = await apiFetch(`/api/developer/rt/${r.rtId}/vip`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ isVip: !r.isVip })
+                                      });
+                                      if(res.ok) fetchDeveloperStats();
+                                    }}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${r.isVip ? 'bg-amber-500/20 border-amber-500/30 text-amber-300' : 'bg-white/5 border-white/10 text-white/50'}`}
+                                  >
+                                    {r.isVip ? 'VIP Aktif' : 'VIP Nonaktif'}
+                                  </button>
+                                </div>
+                              )) : (
+                                <div className="text-[10px] text-indigo-300/60 text-center py-2">Belum ada data RT.</div>
+                              )}
                             </div>
                           </div>
                         </div>

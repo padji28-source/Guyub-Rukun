@@ -101,6 +101,7 @@ const UserSchema = new mongoose.Schema({
   status: { type: String },
   role: { type: String, enum: ['admin', 'warga', 'bendahara', 'sekretaris', 'pengurus', 'developer'], default: 'warga' },
   isApproved: { type: Boolean, default: false },
+  isVip: { type: Boolean, default: false },
   rtId: { type: String, required: true },
   umur: { type: Number },
   members: [{
@@ -115,6 +116,13 @@ const UserSchema = new mongoose.Schema({
   dokumenKtp: String,
 }, { timestamps: true });
 const UserModel: mongoose.Model<any> = mongoose.models.User || mongoose.model("User", UserSchema);
+
+// RT Config / Subscription Schema
+const RtConfigSchema = new mongoose.Schema({
+  rtId: { type: String, required: true, unique: true },
+  isVip: { type: Boolean, default: false }
+}, { timestamps: true });
+const RtConfigModel: mongoose.Model<any> = mongoose.models.RtConfig || mongoose.model("RtConfig", RtConfigSchema);
 
 // 2. Iuran Schema
 const IuranSchema = new mongoose.Schema({
@@ -936,6 +944,10 @@ app.post("/api/login", validateRequest(LoginValidator), async (req, res) => {
 
     const userJson = user.toObject();
     userJson.token = token; // Include token in nested user so client stores it
+    
+    // Inject RT VIP status
+    const rtConfig = await RtConfigModel.findOne({ rtId: user.rtId });
+    userJson.isVip = rtConfig?.isVip || false;
 
     res.json({ message: "Login Berhasil", user: userJson });
   } else {
@@ -943,16 +955,21 @@ app.post("/api/login", validateRequest(LoginValidator), async (req, res) => {
   }
 });
 
-app.post("/api/ping", (req, res) => {
+app.post("/api/ping", async (req, res) => {
   const { id } = req.body;
+  let isVip = false;
   if (id) {
     const wasOnline = activeSessions.has(id);
     activeSessions.set(id, Date.now());
     if (!wasOnline) {
       broadcastEvent('update', { type: 'online_status' });
     }
+    
+    const rtId = req.headers['x-rt-id'] as string || 'rt01';
+    const rtConfig = await RtConfigModel.findOne({ rtId });
+    isVip = rtConfig?.isVip || false;
   }
-  res.json({ success: true });
+  res.json({ success: true, isVip });
 });
 
 app.post("/api/logout", (req, res) => {
@@ -1229,6 +1246,23 @@ app.put("/api/warga/:id/approval", enforceRoles(['admin']), async (req, res) => 
     res.json({ message: "Status approval updated successfully", user });
   } else {
     res.status(400).json({ error: "Gagal update status approval" });
+  }
+});
+
+app.put("/api/warga/:id/vip", enforceRoles(['developer', 'admin']), async (req, res) => {
+  const { isVip } = req.body;
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+
+  const user = await UserModel.findOne({ id: req.params.id, rtId });
+  if (user) {
+    user.isVip = isVip;
+    await user.save();
+    
+    const statusText = isVip ? 'diaktifkan' : 'dinonaktifkan';
+    await addNotification(rtId, "Status VIP Diperbarui", `Akses VIP warga ${user.nama} ${statusText}.`, 'Developer', "warga", user.id);
+    res.json({ message: "VIP status updated successfully", user });
+  } else {
+    res.status(404).json({ error: "User not found" });
   }
 });
 
@@ -1807,6 +1841,45 @@ app.get("/api/developer/stats", enforceRoles(['developer']), async (req, res) =>
     res.json({ registeredCount, onlineCount });
   } catch (e: any) {
     res.status(500).json({ error: "Gagal mengambil statistik developer" });
+  }
+});
+
+// Endpoint untuk toggling RT VIP Status
+app.put("/api/developer/rt/:rtId/vip", enforceRoles(['developer']), async (req, res) => {
+  try {
+    const targetRtId = req.params.rtId;
+    const { isVip } = req.body;
+    await RtConfigModel.findOneAndUpdate(
+      { rtId: targetRtId },
+      { isVip },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, message: `Status VIP untuk RT ${targetRtId} diperbarui menjadi ${isVip}.` });
+  } catch (e) {
+    res.status(500).json({ error: "Gagal memperbarui status VIP" });
+  }
+});
+
+// Endpoint untuk rekap list RT
+app.get("/api/developer/rt", enforceRoles(['developer']), async (req, res) => {
+  try {
+    const rtsAgg = await UserModel.aggregate([
+      { $match: { role: { $ne: 'developer' } } },
+      { $group: { _id: "$rtId", totalUsers: { $sum: 1 } } }
+    ]);
+    const configs = await RtConfigModel.find({});
+    const configMap = new Map();
+    configs.forEach(c => configMap.set(c.rtId, c.isVip));
+    
+    const result = rtsAgg.map(r => ({
+      rtId: r._id,
+      totalUsers: r.totalUsers,
+      isVip: configMap.get(r._id) || false
+    }));
+    
+    res.json({ success: true, data: result });
+  } catch(e) {
+    res.status(500).json({ error: "Gagal mengambil rekap RT" });
   }
 });
 

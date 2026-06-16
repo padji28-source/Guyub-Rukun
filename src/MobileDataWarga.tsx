@@ -1,5 +1,5 @@
 import { apiFetch } from './apiInterceptor';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProfileAvatar } from './App'; 
 import { GoogleGenAI, Type } from '@google/genai';
@@ -53,10 +53,18 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
   const [filterBlok, setFilterBlok] = useState('');
   const [previewDocs, setPreviewDocs] = useState<{docs: {url: string, title: string}[], currentIndex: number, wargaName: string} | null>(null);
   const [extractingId, setExtractingId] = useState<string | null>(null);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const fetchWarga = async () => {
     try {
-      const res = await apiFetch(`/api/warga?page=${page}&limit=${limit}&search=${encodeURIComponent(searchQuery)}`);
+      const res = await apiFetch(`/api/warga?page=${page}&limit=${limit}&search=${encodeURIComponent(debouncedSearchQuery)}`);
       const data = await res.json();
       if (data.pagination) {
         cachedDataWarga = data.users || [];
@@ -74,11 +82,11 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
 
   useEffect(() => {
     fetchWarga();
-  }, [page, limit, searchQuery]);
+  }, [page, limit, debouncedSearchQuery]);
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery]);
+  }, [debouncedSearchQuery]);
 
   useEffect(() => {
     const handleUpdate = (e: any) => {
@@ -88,7 +96,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
     };
     window.addEventListener('app_data_update', handleUpdate);
     return () => window.removeEventListener('app_data_update', handleUpdate);
-  }, [page, limit, searchQuery]);
+  }, [page, limit, debouncedSearchQuery]);
 
   const handleAddWarga = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -238,7 +246,18 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
     return ages;
   };
 
-  const allAges = getAllAges();
+  const allAges = useMemo(() => getAllAges(), [wargaData]);
+
+  const filteredWargaData = useMemo(() => {
+    return wargaData.filter(w => {
+      if (w.role === 'developer') return false;
+      const q = debouncedSearchQuery.toLowerCase();
+      const matchName = w.nama.toLowerCase().includes(q) || 
+        (w.members || []).some((m: any) => m.name.toLowerCase().includes(q));
+      const matchBlok = !filterBlok || w.alamat?.match(/Blok\s+([a-zA-Z0-9]+)/i)?.[1] === filterBlok;
+      return matchName && matchBlok;
+    });
+  }, [wargaData, debouncedSearchQuery, filterBlok]);
 
   return (
     <div className="p-5 pb-24 bg-gray-50 min-h-screen">
@@ -375,12 +394,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
 
           {/* LIST WARGA */}
           <div className="space-y-4">
-            {wargaData.filter(w => {
-              const matchName = w.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                (w.members || []).some((m: any) => m.name.toLowerCase().includes(searchQuery.toLowerCase()));
-              const matchBlok = !filterBlok || w.alamat?.match(/Blok\s+([a-zA-Z0-9]+)/i)?.[1] === filterBlok;
-              return matchName && matchBlok;
-            }).map((warga, idx) => {
+            {filteredWargaData.map((warga, idx) => {
               const members = warga.members || [];
               const canEditFamily = isAdmin || currentUser?.id === warga.id;
               const isExpanded = expandedId === warga.id;
@@ -465,7 +479,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                       <div className="pt-4 space-y-4">
                         
                         {/* ADMIN CONTROLS */}
-                        {isAdmin && warga.id !== currentUser?.id && (
+                        {(isAdmin || currentUser?.role === 'developer') && warga.id !== currentUser?.id && (
                           <div className="bg-white p-3 rounded-2xl border border-red-100 flex flex-wrap gap-3 items-end">
                             <div className="flex-1 min-w-[120px]">
                               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Role Akun</label>
@@ -477,6 +491,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                                 }}
                                 className="w-full text-xs border border-gray-200 rounded-xl p-2 bg-gray-50 outline-none"
                               >
+                                {currentUser?.role === 'developer' && <option value="admin">Admin</option>}
                                 <option value="warga">Warga</option>
                                 <option value="pengurus">Pengurus</option>
                                 <option value="bendahara">Bendahara</option>
@@ -494,7 +509,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                                 className="w-full text-xs border border-gray-200 rounded-xl p-2 bg-gray-50 outline-none"
                               >
                                 <option value="aktif">Aktif</option>
-                                <option value="tidak_aktif">Tidak Aktif</option>
+                                <option value="tidak_aktif">Nonaktif / Belum disetujui</option>
                               </select>
                             </div>
                             <button onClick={(e) => { e.stopPropagation(); apiFetch(`/api/warga/${warga.id}`,{method:'DELETE'}).then(()=> { console.log('Warga berhasil dihapus!'); fetchWarga(); }); }} className="text-red-600 bg-red-50 hover:bg-red-100 font-semibold px-3 py-2 rounded-xl text-xs transition-colors h-[34px]">
