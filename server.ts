@@ -24,11 +24,25 @@ function hashPassword(password: string): string {
   return bcrypt.hashSync(password, 10);
 }
 
+import rateLimit from "express-rate-limit";
+
+// ==========================================
+// SECURITY RAMP UP
+// ==========================================
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+  message: "Terlalu banyak request dari IP ini, silakan coba lagi setelah 15 menit."
+});
+
 export const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+// Apply rate limiting to all requests
+app.use("/api/", apiLimiter);
 
 // Auth Verification Middleware
 function authMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -148,6 +162,7 @@ const KasSchema = new mongoose.Schema({
   iuranId: { type: String },
   rtId: { type: String, required: true },
   status: { type: String, enum: ['setuju', 'butuh_konfirmasi', 'selesai'], default: 'selesai' },
+  buktiTransaksi: { type: String },
   createdAt: { type: String, required: true }
 }, { timestamps: true });
 const KasModel: mongoose.Model<any> = mongoose.models.Kas || mongoose.model("Kas", KasSchema);
@@ -1972,6 +1987,29 @@ app.get("/api/backup/export", enforceRoles(['admin']), async (req, res) => {
 
   } catch (e: any) {
     res.status(500).json({ error: "Failed to export database cadangan." });
+  }
+});
+
+app.post("/api/backup/restore", enforceRoles(['admin']), async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  try {
+    const backupData = req.body;
+    if (backupData.rtId !== rtId) {
+      return res.status(400).json({ error: "Data backup tidak sesuai dengan RT saat ini." });
+    }
+
+    // Example minimal restore logic for critical collections
+    if (backupData.users) {
+      await UserModel.deleteMany({ rtId, role: { $ne: 'developer' } });
+      await UserModel.insertMany(backupData.users);
+    }
+    if (backupData.iuran) { await IuranModel.deleteMany({ rtId }); await IuranModel.insertMany(backupData.iuran); }
+    if (backupData.kas) { await KasModel.deleteMany({ rtId }); await KasModel.insertMany(backupData.kas); }
+    
+    await logAudit(rtId, "Admin", "RESTORE_DATABASE", "Melakukan pemulihan data dari sistem cadangan", null, null);
+    res.json({ success: true, message: "Restore data berhasil dilakukan (hanya sebagian modul utama)." });
+  } catch (e: any) {
+    res.status(500).json({ error: "Gagal memulihkan database cadangan." });
   }
 });
 
