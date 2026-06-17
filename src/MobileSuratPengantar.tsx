@@ -43,15 +43,20 @@ export const SignaturePad = ({ onSave, onClear, label }: SignaturePadProps) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [isEmpty, setIsEmpty] = useState(true);
 
+  // Initialize/re-verify context parameters
+  const initContext = (ctx: CanvasRenderingContext2D) => {
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3.0; // slightly thicker stroke for high-contrast visibility
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 2.5;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+        initContext(ctx);
       }
     }
   }, []);
@@ -85,6 +90,8 @@ export const SignaturePad = ({ onSave, onClear, label }: SignaturePadProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    initContext(ctx);
+
     const coords = getCoordinates(e);
     if (!coords) return;
 
@@ -101,19 +108,25 @@ export const SignaturePad = ({ onSave, onClear, label }: SignaturePadProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    initContext(ctx);
+
     const coords = getCoordinates(e);
     if (!coords) return;
 
     ctx.lineTo(coords.x, coords.y);
     ctx.stroke();
     setIsEmpty(false);
-
-    // Save as Data URL continuously
-    onSave(canvas.toDataURL('image/png'));
   };
 
   const stopDrawing = () => {
-    setIsDrawing(false);
+    if (isDrawing) {
+      setIsDrawing(false);
+      const canvas = canvasRef.current;
+      if (canvas) {
+        // Save the signatures base64 to state once when drawing is finished (stops severe lagging)
+        onSave(canvas.toDataURL('image/png'));
+      }
+    }
   };
 
   const clearCanvas = () => {
@@ -563,10 +576,11 @@ export const MobileSuratPengantar = ({
   };
 
   const filteredData = useMemo(() => {
+    const isKetuaRT = currentUser?.role === 'admin' || currentUser?.role === 'developer';
     return data
-      .filter(d => isAdminOrPengurus || d.userId === currentUser?.id)
+      .filter(d => isKetuaRT || d.userId === currentUser?.id)
       .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [data, isAdminOrPengurus, currentUser?.id]);
+  }, [data, currentUser]);
 
   const getStatusStyle = (status: string) => {
     const s = status?.toLowerCase();
@@ -876,7 +890,7 @@ export const MobileSuratPengantar = ({
                                 src={item.signaturePemohon} 
                                 alt="TTD Pemohon" 
                                 referrerPolicy="no-referrer"
-                                className="max-h-full max-w-full object-contain mix-blend-multiply" 
+                                className="max-h-full max-w-full object-contain" 
                               />
                             ) : (
                               <span className="text-[9px] italic text-slate-500 font-semibold">Belum ada</span>
@@ -894,7 +908,7 @@ export const MobileSuratPengantar = ({
                                 src={item.signatureKetuaRt} 
                                 alt="TTD Ketua RT" 
                                 referrerPolicy="no-referrer"
-                                className="max-h-full max-w-full object-contain mix-blend-multiply" 
+                                className="max-h-full max-w-full object-contain" 
                               />
                             ) : (
                               <span className="text-[9px] italic text-amber-500 font-extrabold animate-pulse">Menunggu...</span>

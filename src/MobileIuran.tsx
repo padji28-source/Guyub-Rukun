@@ -53,6 +53,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   const [viewBuktiUrl, setViewBuktiUrl] = useState<string | null>(null);
 
   const isAdminOrBendahara = currentUser?.allowedMenus?.includes('Iuran') || currentUser?.role === 'developer';
+  const isRTOrBendahara = currentUser?.role === 'admin' || currentUser?.role === 'bendahara' || currentUser?.role === 'developer';
   
   const [tagihanList, setTagihanList] = useState<any[]>([]);
   const totalTagihan = tagihanList.reduce((sum, item) => sum + Number(item.nominal || 0), 0);
@@ -398,7 +399,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
       </motion.div>
 
       {/* ADMIN CONTROLS */}
-      {isAdminOrBendahara && (
+      {isRTOrBendahara && (
         <AnimatePresence mode="wait">
           {!showTambahIuran ? (
             <motion.button 
@@ -552,7 +553,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
               </div>
 
               {/* Aksi Tambahan untuk Admin */}
-              {isAdminOrBendahara && (
+              {isRTOrBendahara && (
                 <div className="flex gap-2 pt-3 border-t border-slate-50 flex-wrap">
                   {item.buktiUrl && (
                     <button onClick={() => setViewBuktiUrl(item.buktiUrl)} className="text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-3 py-1.5 rounded-xl transition-colors">Lihat Bukti</button>

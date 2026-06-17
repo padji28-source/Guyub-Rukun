@@ -66,3 +66,32 @@ export function compressImage(file: File, maxWidth = 1000, maxHeight = 1000, qua
     reader.readAsDataURL(file);
   });
 }
+
+/**
+ * Checks if a user role has permission to perform a specific CRUD action on a menu.
+ * Fully backwards-compatible with old/default general configurations.
+ */
+export function checkMenuPermission(
+  allowedMenus: string[] | undefined,
+  menuName: string,
+  action: 'create' | 'read' | 'update' | 'delete',
+  isDeveloper: boolean = false
+): boolean {
+  if (isDeveloper) return true;
+  if (!allowedMenus || !Array.isArray(allowedMenus)) return false;
+
+  const specificKey = `${menuName}_${action}`;
+  if (allowedMenus.includes(specificKey)) {
+    return true;
+  }
+
+  // Fallback: If no crud-specific configs are defined at all for this menuName
+  // (e.g. none start with "MenuName_"), fallback to checking if "MenuName" itself is present.
+  const hasAnyCrudKey = allowedMenus.some((x: string) => x.startsWith(`${menuName}_`));
+  if (!hasAnyCrudKey) {
+    return allowedMenus.includes(menuName);
+  }
+
+  return false;
+}
+

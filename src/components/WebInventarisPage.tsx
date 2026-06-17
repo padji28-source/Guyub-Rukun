@@ -53,7 +53,8 @@ export const WebInventarisPage = ({ user }: { user: any }) => {
   const [formNotes, setFormNotes] = useState('');
   const [formError, setFormError] = useState('');
 
-  const isEditor = user?.allowedMenus?.includes('Inventaris') || user?.role === 'developer';
+  const isEditor = user?.role === 'admin' || user?.role === 'sekretaris' || user?.role === 'bendahara' || user?.role === 'pengurus' || user?.role === 'developer';
+  const isKetuaRT = user?.role === 'admin' || user?.role === 'developer';
   
   // Fetch all inventory items
   const fetchInventaris = async () => {
@@ -403,7 +404,7 @@ export const WebInventarisPage = ({ user }: { user: any }) => {
                   </div>
                 </div>
 
-                {isEditor && (
+                 {isEditor && (
                   <div className="flex items-center justify-end gap-2.5 mt-5 pt-3.5 border-t border-gray-50 shrink-0">
                     <button
                       onClick={() => openEditModal(item)}
@@ -412,13 +413,15 @@ export const WebInventarisPage = ({ user }: { user: any }) => {
                     >
                       <Edit className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="p-2 border border-rose-100 hover:bg-rose-50 text-rose-500 hover:text-rose-600 rounded-lg transition duration-150 pointer-events-auto cursor-pointer"
-                      title="Hapus Aset"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {isKetuaRT && (
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="p-2 border border-rose-100 hover:bg-rose-50 text-rose-500 hover:text-rose-600 rounded-lg transition duration-150 pointer-events-auto cursor-pointer"
+                        title="Hapus Aset"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 )}
               </motion.div>

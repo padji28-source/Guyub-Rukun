@@ -12,6 +12,8 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
   const [showTambahUMKM, setShowTambahUMKM] = useState(false);
 
   const isAdminOrPengurus = currentUser?.allowedMenus?.includes('UMKM') || currentUser?.role === 'developer';
+  const isEditorRT = currentUser?.role === 'admin' || currentUser?.role === 'sekretaris' || currentUser?.role === 'bendahara' || currentUser?.role === 'pengurus' || currentUser?.role === 'developer';
+  const isKetuaRT = currentUser?.role === 'admin' || currentUser?.role === 'developer';
 
   const fetchData = async () => {
     try {
@@ -96,7 +98,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
       </div>
 
       {/* Form Tambah UMKM */}
-      {isAdminOrPengurus && (
+      {isEditorRT && (
         !showTambahUMKM ? (
           <button
             onClick={() => setShowTambahUMKM(true)}
@@ -163,7 +165,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
               <svg className="w-10 h-10 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              {isAdminOrPengurus && (
+              {isKetuaRT && (
                 <button 
                   onClick={() => handleDelete(item.id)} 
                   className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg text-red-500 hover:text-white hover:bg-red-500 shadow-sm transition-colors"

@@ -38,6 +38,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
   });
 
   const isAdminOrBendahara = currentUser?.allowedMenus?.includes('Kas') || currentUser?.role === 'developer';
+  const isRTOrBendahara = currentUser?.role === 'admin' || currentUser?.role === 'bendahara' || currentUser?.role === 'developer';
 
   const fetchData = async () => {
     try {
@@ -239,7 +240,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
         </motion.div>
       </div>
 
-      {isAdminOrBendahara && (
+      {isRTOrBendahara && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8">
           {/* SEGMENTED CONTROL / TABS */}
           <div className="bg-slate-200/60 p-1 rounded-2xl flex mb-4 relative">
@@ -374,7 +375,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
                          fetchData();
                       }} className="text-[10px] text-white bg-teal-500 hover:bg-teal-600 px-3 py-1 rounded-full font-bold transition-colors">Setujui</button>
                     )}
-                    {isAdminOrBendahara && (
+                    {isRTOrBendahara && (
                       <button onClick={() => {
                         const newNominalStr = prompt('Masukkan nominal koreksi (angka saja):', item.amount);
                         if (newNominalStr) {

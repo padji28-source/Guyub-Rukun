@@ -135,27 +135,55 @@ export const WebMenuAccessPage = ({ user }: { user: any }) => {
     return perm ? perm.allowedMenus : [];
   };
 
-  const handleToggleMenu = (role: string, menuName: string) => {
+  const isCrudAllowed = (role: string, menuName: string, action: 'create' | 'read' | 'update' | 'delete') => {
+    const list = getRolePermissions(role);
+    const specificKey = `${menuName}_${action}`;
+    if (list.includes(specificKey)) {
+      return true;
+    }
+    const hasAnyCrudKey = list.some(x => x.startsWith(`${menuName}_`));
+    if (list.includes(menuName) && !hasAnyCrudKey) {
+      return true;
+    }
+    return false;
+  };
+
+  const handleToggleCrud = (role: string, menuName: string, action: 'create' | 'read' | 'update' | 'delete') => {
     setPermissions(prev => {
       return prev.map(p => {
         if (p.role === role) {
-          const exists = p.allowedMenus.includes(menuName);
+          const key = `${menuName}_${action}`;
+          const currentList = p.allowedMenus || [];
+          const exists = currentList.includes(key);
           let updatedMenus = [];
+
           if (exists) {
-            // Prevent developer from disabling its own developer access
-            if (role === 'developer' && menuName === 'Akses Menu') {
+            // Prevent developer from disabling its own Developer Access Menu
+            if (role === 'developer' && menuName === 'Akses Menu' && action === 'read') {
               return p;
             }
-            updatedMenus = p.allowedMenus.filter(m => m !== menuName);
+            updatedMenus = currentList.filter(m => m !== key);
           } else {
-            updatedMenus = [...p.allowedMenus, menuName];
+            updatedMenus = [...currentList, key];
+            // Make sure the base name is also in allowedMenus so sidebar queries still match
+            if (!currentList.includes(menuName)) {
+              updatedMenus.push(menuName);
+            }
           }
+
+          // If no specific CRUD keys exist for this menu in the new array, remove the base menu name too
+          const hasAnyCrudKey = updatedMenus.some(x => x.startsWith(`${menuName}_`));
+          if (!hasAnyCrudKey) {
+            updatedMenus = updatedMenus.filter(m => m !== menuName);
+          }
+
           return { ...p, allowedMenus: updatedMenus };
         }
         return p;
       });
     });
   };
+
 
   const handleSaveConfig = async (role: string) => {
     const allowedMenus = getRolePermissions(role);
@@ -312,7 +340,12 @@ export const WebMenuAccessPage = ({ user }: { user: any }) => {
                 {['developer', 'admin', 'sekretaris', 'bendahara', 'pengurus', 'warga'].map(role => {
                   const labelInfo = ROLE_LABELS[role] || { label: role, color: 'bg-gray-50 text-gray-700', desc: '' };
                   const isSelected = selectedRole === role;
-                  const count = getRolePermissions(role).length;
+                  const count = AVAILABLE_MENUS.filter(menu => 
+                    isCrudAllowed(role, menu.name, 'read') || 
+                    isCrudAllowed(role, menu.name, 'create') || 
+                    isCrudAllowed(role, menu.name, 'update') || 
+                    isCrudAllowed(role, menu.name, 'delete')
+                  ).length;
 
                   return (
                     <div
@@ -401,41 +434,77 @@ export const WebMenuAccessPage = ({ user }: { user: any }) => {
                 <p className="text-xs font-medium text-gray-400">Menyelaraskan lisensi akses database...</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {AVAILABLE_MENUS.map(menu => {
-                  const isChecked = currentAllowed.includes(menu.name);
                   // Enforce developer safety
                   const isDisabled = selectedRole === 'developer' && menu.name === 'Akses Menu';
+                  
+                  const hasAny = isCrudAllowed(selectedRole, menu.name, 'read') ||
+                                 isCrudAllowed(selectedRole, menu.name, 'create') ||
+                                 isCrudAllowed(selectedRole, menu.name, 'update') ||
+                                 isCrudAllowed(selectedRole, menu.name, 'delete');
+
+                  const crudActions: { key: 'read' | 'create' | 'update' | 'delete'; label: string; actionName: string }[] = [
+                    { key: 'read', label: 'R', actionName: 'Read (Melihat)' },
+                    { key: 'create', label: 'C', actionName: 'Create (Tambah)' },
+                    { key: 'update', label: 'U', actionName: 'Update (Ubah)' },
+                    { key: 'delete', label: 'D', actionName: 'Delete (Hapus)' },
+                  ];
 
                   return (
                     <div
                       key={menu.name}
-                      onClick={() => !isDisabled && handleToggleMenu(selectedRole, menu.name)}
-                      className={`p-4 rounded-xl border text-left transition-all relative select-none ${
-                        isChecked 
-                          ? 'bg-indigo-50/50 border-indigo-200 hover:border-indigo-300' 
-                          : 'bg-white border-gray-100 hover:border-gray-200'
-                      } ${isDisabled ? 'opacity-70 pointer-events-none' : 'cursor-pointer'}`}
+                      className={`p-4 rounded-xl border text-left transition-all relative select-none bg-white border-gray-200 hover:border-indigo-150 ${
+                        hasAny ? 'shadow-sm shadow-indigo-100/30 border-indigo-150 bg-indigo-50/5' : ''
+                      }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1 pr-4">
-                          <span className={`font-bold text-sm tracking-tight transition-colors ${
-                            isChecked ? 'text-indigo-900' : 'text-gray-800'
-                          }`}>
-                            {menu.name}
-                          </span>
-                          <p className="text-[10.5px] text-gray-400 leading-relaxed">
+                      <div className="flex flex-col h-full justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`font-bold text-sm tracking-tight ${
+                              hasAny ? 'text-indigo-900 font-extrabold' : 'text-gray-800'
+                            }`}>
+                              {menu.name}
+                            </span>
+                            {hasAny && (
+                              <span className="bg-indigo-50 text-indigo-700 text-[9px] font-black px-2 py-0.5 rounded-full border border-indigo-100">
+                                AKTIF
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10.5px] text-gray-400 leading-relaxed min-h-[32px]">
                             {menu.desc}
                           </p>
                         </div>
 
-                        {/* Interactive custom Checkbox indicator */}
-                        <div className={`w-5 h-5 shrink-0 rounded-md border flex items-center justify-center transition-all ${
-                          isChecked 
-                            ? 'bg-indigo-600 border-indigo-700 text-white' 
-                            : 'bg-gray-50 border-gray-200'
-                        }`}>
-                          {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        {/* Interactive CRUD Checkboxes */}
+                        <div className="grid grid-cols-4 gap-1.5 pt-2.5 border-t border-gray-100">
+                          {crudActions.map(action => {
+                            const isChecked = isCrudAllowed(selectedRole, menu.name, action.key);
+                            const isActionDisabled = isDisabled && action.key === 'read';
+
+                            return (
+                              <div
+                                key={action.key}
+                                onClick={() => !isActionDisabled && handleToggleCrud(selectedRole, menu.name, action.key)}
+                                className={`flex flex-col items-center justify-center p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                                  isChecked
+                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold shadow-sm'
+                                    : 'bg-gray-50 border-gray-150 text-gray-400 hover:bg-gray-100 hover:border-gray-200 hover:text-gray-600'
+                                } ${isActionDisabled ? 'opacity-40 pointer-events-none' : ''}`}
+                                title={action.actionName}
+                              >
+                                <span className="text-[9.5px] font-extrabold tracking-wider">{action.label}</span>
+                                <div className={`w-3.5 h-3.5 rounded mt-1 border flex items-center justify-center transition-all ${
+                                  isChecked 
+                                    ? 'bg-indigo-600 border-indigo-700 text-white' 
+                                    : 'bg-white border-gray-300'
+                                }`}>
+                                  {isChecked && <Check className="w-2.5 h-2.5 stroke-[3.5]" />}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
