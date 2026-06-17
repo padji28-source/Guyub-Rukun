@@ -2,6 +2,7 @@ import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App'; // Sesuaikan path jika perlu
+import { compressImage } from './utils';
 
 export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
   const [media, setMedia] = useState<any[]>([]);
@@ -30,58 +31,29 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
       const file = e.target.files[0];
       setLoading(true);
 
-      // Resize logic agar upload Base64 lebih ringan dan tidak error
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = async () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 1080;
-          const MAX_HEIGHT = 1080;
-          let width = img.width;
-          let height = img.height;
+      compressImage(file, 1080, 1080, 0.8).then(async (base64) => {
+        try {
+          await apiFetch('/api/data/media', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              imageUrl: base64, 
+              title: file.name,
+              userId: currentUser?.id,
+              uploaderName: currentUser?.nama
+            })
+          });
+          fetchData();
+        } catch(err) {
+          console.error(err);
+        } finally {
+          setLoading(false);
+        }
+      }).catch(err => {
+        console.error('Image compression failed:', err);
+        setLoading(false);
+      });
 
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-
-          const base64 = canvas.toDataURL('image/jpeg', 0.8); // Kompresi 80%
-
-          try {
-            await apiFetch('/api/data/media', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                imageUrl: base64, 
-                title: file.name,
-                userId: currentUser?.id,
-                uploaderName: currentUser?.nama
-              })
-            });
-            fetchData();
-          } catch(err) {
-            console.error(err);
-            console.log('Gagal mengunggah foto.');
-          } finally {
-            setLoading(false);
-          }
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
       e.target.value = ''; // Reset input
     }
   };

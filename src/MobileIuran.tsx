@@ -1,6 +1,7 @@
 import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { compressImage } from './utils';
 
 // --- Kumpulan Ikon ---
 const Icons = {
@@ -108,29 +109,16 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 400;
-          const MAX_HEIGHT = 400;
-          let width = img.width;
-          let height = img.height;
-          if (width > height) {
-            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-          } else {
-            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          setBuktiBase64(canvas.toDataURL('image/jpeg', 0.6));
+      compressImage(file, 400, 400, 0.6).then(dataUrl => {
+        setBuktiBase64(dataUrl);
+      }).catch(err => {
+        console.error('Image compression failed, using fallback:', err);
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setBuktiBase64(ev.target?.result as string);
         };
-        img.src = ev.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+      });
     }
   };
 

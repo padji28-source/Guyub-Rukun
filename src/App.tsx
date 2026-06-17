@@ -1,16 +1,19 @@
 import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { MobileDataWarga } from './MobileDataWarga';
-import { MobileSuratPengantar } from './MobileSuratPengantar';
-import { MobileLaporRT } from './MobileLaporRT';
-import { MobileLaporan } from './MobileLaporan';
-import { WebSuratOnlinePage } from './components/WebSuratOnlinePage';
+import LoadingSkeleton from './components/LoadingSkeleton';
+import { compressImage } from './utils';
 
-import { MobileDarurat } from './MobileDarurat';
-import { MobileDokumen } from './MobileDokumen';
-import { MobileTamu } from './MobileTamu';
-import { MobileVoting } from './MobileVoting';
+const MobileDataWarga = React.lazy(() => import('./MobileDataWarga').then(module => ({ default: module.MobileDataWarga })));
+const MobileSuratPengantar = React.lazy(() => import('./MobileSuratPengantar').then(module => ({ default: module.MobileSuratPengantar })));
+const MobileLaporRT = React.lazy(() => import('./MobileLaporRT').then(module => ({ default: module.MobileLaporRT })));
+const MobileLaporan = React.lazy(() => import('./MobileLaporan').then(module => ({ default: module.MobileLaporan })));
+const WebSuratOnlinePage = React.lazy(() => import('./components/WebSuratOnlinePage').then(module => ({ default: module.WebSuratOnlinePage })));
+
+const MobileDarurat = React.lazy(() => import('./MobileDarurat').then(module => ({ default: module.MobileDarurat })));
+const MobileDokumen = React.lazy(() => import('./MobileDokumen').then(module => ({ default: module.MobileDokumen })));
+const MobileTamu = React.lazy(() => import('./MobileTamu').then(module => ({ default: module.MobileTamu })));
+const MobileVoting = React.lazy(() => import('./MobileVoting').then(module => ({ default: module.MobileVoting })));
 
 const MobileVotingNotification = ({ onActionClick, notifications }: { onActionClick: (n: string) => void, notifications: any[] }) => {
   const [activeVotings, setActiveVotings] = useState<any[]>([]);
@@ -48,15 +51,15 @@ const MobileVotingNotification = ({ onActionClick, notifications }: { onActionCl
     </section>
   );
 };
-import { MobileAcaraPage } from './MobileAcara';
-import { MobileIuran } from './MobileIuran';
-import { MobileKas } from './MobileKas';
-import { MobileUMKM } from './MobileUMKM';
-import { WebSmartRtAiPage } from './components/WebSmartRtAiPage';
-import { WebDashboardRtView } from './components/WebDashboardRtView';
-import { WebInventarisPage } from './components/WebInventarisPage';
-import { WebNotulenPage } from './components/WebNotulenPage';
-import { WebMenuAccessPage } from './components/WebMenuAccessPage';
+const MobileAcaraPage = React.lazy(() => import('./MobileAcara').then(module => ({ default: module.MobileAcaraPage })));
+const MobileIuran = React.lazy(() => import('./MobileIuran').then(module => ({ default: module.MobileIuran })));
+const MobileKas = React.lazy(() => import('./MobileKas').then(module => ({ default: module.MobileKas })));
+const MobileUMKM = React.lazy(() => import('./MobileUMKM').then(module => ({ default: module.MobileUMKM })));
+const WebSmartRtAiPage = React.lazy(() => import('./components/WebSmartRtAiPage').then(module => ({ default: module.WebSmartRtAiPage })));
+const WebDashboardRtView = React.lazy(() => import('./components/WebDashboardRtView').then(module => ({ default: module.WebDashboardRtView })));
+const WebInventarisPage = React.lazy(() => import('./components/WebInventarisPage').then(module => ({ default: module.WebInventarisPage })));
+const WebNotulenPage = React.lazy(() => import('./components/WebNotulenPage').then(module => ({ default: module.WebNotulenPage })));
+const WebMenuAccessPage = React.lazy(() => import('./components/WebMenuAccessPage').then(module => ({ default: module.WebMenuAccessPage })));
 
 // --- Modern Icons Set ---
 export const icons = {
@@ -482,83 +485,26 @@ const WebStatsCards = () => {
   const [isMasked, setIsMasked] = useState(false);
 
   useEffect(() => {
-    // ... (Biarkan kode useEffect kamu sebelumnya apa adanya) ...
-// [TIDAK ADA PERUBAHAN DI AREA INI]
-
     const fetchStats = async () => {
       try {
-        const [wargaRes, laporanRes, kasRes, iuranRes] = await Promise.all([
-          apiFetch('/api/warga'),
-          apiFetch('/api/data/laporan'),
-          apiFetch('/api/data/kas'),
-          apiFetch('/api/data/iuran')
-        ]);
-        const wData = await wargaRes.json();
-        const lData = await laporanRes.json();
-        const kData = await kasRes.json();
-        const iData = await iuranRes.json();
-
-        // calc warga
-        const totalWarga = wData.users?.length || 0;
-        let totalWargaPerson = totalWarga;
-        let docUploaded = 0;
-        let docNotUploaded = 0;
-        (wData.users || []).forEach((u: any) => {
-          totalWargaPerson += (u.members?.length || 0);
-          if (u.dokumenKk || (Array.isArray(u.dokumenKtp) ? u.dokumenKtp.length > 0 : u.dokumenKtp)) {
-            docUploaded++;
-          } else {
-            docNotUploaded++;
-          }
-        });
-        
-        // calc laporan baru
-        const laporanBaru = (lData.data || []).filter((l: any) => l.status === 'menunggu').length;
-        // calc saldo (Kas RT + Dana Kematian + Dana Sosial)
-        const items = kData.data || [];
-        const m = items.filter((d: any) => d.type === 'Masuk').reduce((a: number, b: any) => a + (b.amount || 0), 0);
-        const k = items.filter((d: any) => d.type === 'Keluar').reduce((a: number, b: any) => a + (b.amount || 0), 0);
-        const saldo = m - k;
-
-        const getSaldo = (cat: string) => {
-          const catItems = items.filter((d: any) => (d.category || 'Kas RT') === cat);
-          const catM = catItems.filter((d: any) => d.type === 'Masuk').reduce((a: number, b: any) => a + (b.amount || 0), 0);
-          const catK = catItems.filter((d: any) => d.type === 'Keluar').reduce((a: number, b: any) => a + (b.amount || 0), 0);
-          return catM - catK;
-        };
-        const kasRT = getSaldo('Kas RT');
-        const danaKematian = getSaldo('Dana Kematian');
-        const danaSosial = getSaldo('Dana Sosial');
-        
-        // iuran bulan ini
-        const currentMonth = new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
-        let iuranTotal = 0;
-        let lunas = 0;
-        const currentIuran = (iData.data || []).filter((i: any) => i.bulan === currentMonth);
-        if (currentIuran.length > 0) {
-           iuranTotal = currentIuran.length;
-           lunas = currentIuran.filter((i: any) => i.status === 'verifikasi').length;
-        } else {
-           // fallback to overall if no iuran this month generated yet
-           const allIuran = iData.data || [];
-           iuranTotal = allIuran.length || 1;
-           lunas = allIuran.filter((i: any) => i.status === 'verifikasi').length;
-        }
+        const res = await apiFetch('/api/dashboard');
+        const json = await res.json();
+        const m = json.metrics;
+        if (!m) return;
         
         setStats({
-          warga: totalWarga,
-          totalWarga: totalWargaPerson,
-          laporan: laporanBaru,
-          saldo,
-          iuranRef: lunas,
-          iuranTotal,
-          kasRT,
-          danaKematian,
-          danaSosial,
-          docUploaded,
-          docNotUploaded
+          warga: m.jumlahKK,
+          totalWarga: m.jumlahWarga,
+          laporan: m.laporanBaruCount || 0,
+          saldo: m.saldoKas,
+          iuranRef: m.iuranBulanIni.lunasCount,
+          iuranTotal: m.iuranBulanIni.totalIuranCount,
+          kasRT: m.kasDetail.kasRT,
+          danaKematian: m.kasDetail.danaKematian,
+          danaSosial: m.kasDetail.danaSosial,
+          docUploaded: m.docUploaded || 0,
+          docNotUploaded: m.docNotUploaded || 0
         });
-
       } catch (e) {
         console.error(e);
       }
@@ -1794,7 +1740,7 @@ const MobileQuickActions = ({ onActionClick, visibleMenus = [] }: { onActionClic
         animate="show" 
         className="grid grid-cols-4 gap-y-5 gap-x-3 bg-white p-5 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100"
       >
-        {displayedActions.map((action, index) => (
+        {displayedActions.map((action: any, index) => (
           <motion.button 
             key={index} 
             variants={itemVariants}
@@ -2409,11 +2355,16 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfile({ ...profile, photo: e.target?.result as string });
-      };
-      reader.readAsDataURL(e.target.files[0]);
+      compressImage(e.target.files[0]).then(compressedBase64 => {
+        setProfile({ ...profile, photo: compressedBase64 });
+      }).catch(err => {
+        console.error('Image compression failed, falling back:', err);
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setProfile({ ...profile, photo: ev.target?.result as string });
+        };
+        reader.readAsDataURL(e.target.files[0]);
+      });
     }
   };
 
@@ -3306,61 +3257,63 @@ function MainApp({ user: originalUser, onLogout, onUpdateUser }: { user: any; on
                     </>
                   )}
 
-                  {activeMobileTab === 'Voting' && <MobileVoting currentUser={user} onBack={() => setActiveMobileTab('Beranda')} />}
-                  {activeMobileTab === 'Acara' && <MobileAcaraPage currentUser={user} />}
-                  {activeMobileTab === 'Laporan' && <MobileLaporan onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Surat' || activeMobileTab === 'Surat Pengantar' ? (
-                    <MobileSuratPengantar 
-                      onBack={() => setActiveMobileTab('Beranda')} 
-                      currentUser={user} 
-                      hittedSuratId={selectedSuratId}
-                      clearHighlight={() => setSelectedSuratId(null)}
-                    />
-                  ) : null}
-                  {activeMobileTab === 'Iuran' && <MobileIuran onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Kas' && <MobileKas onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Sedekah' && <MobileSedekah onBack={() => setActiveMobileTab('Beranda')} user={user} />}
-                  {activeMobileTab === 'UMKM' || activeMobileTab === 'UMKM Warga' ? <MobileUMKM onBack={() => setActiveMobileTab('Beranda')} currentUser={user} /> : null}
-                  {activeMobileTab === 'Lapor RT' && <MobileLaporRT onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Data Warga' && <MobileDataWarga onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Media' && <MobileMedia onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Darurat' && <MobileDarurat onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                  {activeMobileTab === 'Dokumen' && <MobileDokumen onBack={() => setActiveMobileTab('Beranda')} currentUser={user} onUpdateUser={onUpdateUser} />}
-                   {activeMobileTab === 'Tamu' && <MobileTamu onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
-                   {activeMobileTab === 'Inventaris' && (
-                     <div className="p-4 overflow-y-auto max-h-[calc(100vh-140px)]">
-                       <button className="flex items-center gap-2 mb-4 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-full outline-none pointer-events-auto cursor-pointer" onClick={() => setActiveMobileTab('Beranda')}>
-                         <icons.arrowLeft className="w-4 h-4" /> Kembali ke Beranda
-                       </button>
-                       <WebInventarisPage user={user} />
-                     </div>
-                   )}
-                   {activeMobileTab === 'Notulen Rapat' && (
-                     <div className="p-4 overflow-y-auto max-h-[calc(100vh-140px)]">
-                       <button className="flex items-center gap-2 mb-4 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-full outline-none pointer-events-auto cursor-pointer" onClick={() => setActiveMobileTab('Beranda')}>
-                         <icons.arrowLeft className="w-4 h-4" /> Kembali ke Beranda
-                       </button>
-                       <WebNotulenPage user={user} />
-                     </div>
-                   )}
-                  {activeMobileTab === 'Smart RT AI' && (
-                    <div className="p-4 overflow-y-auto max-h-[calc(100vh-140px)]">
-                      <button className="flex items-center gap-2 mb-4 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-full outline-none pointer-events-auto cursor-pointer" onClick={() => setActiveMobileTab('Beranda')}>
-                        <icons.arrowLeft className="w-4 h-4" /> Kembali ke Beranda
-                      </button>
-                      <WebSmartRtAiPage user={user} />
-                    </div>
-                  )}
+                  <React.Suspense fallback={<LoadingSkeleton />}>
+                    {activeMobileTab === 'Voting' && <MobileVoting currentUser={user} onBack={() => setActiveMobileTab('Beranda')} />}
+                    {activeMobileTab === 'Acara' && <MobileAcaraPage currentUser={user} />}
+                    {activeMobileTab === 'Laporan' && <MobileLaporan onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Surat' || activeMobileTab === 'Surat Pengantar' ? (
+                      <MobileSuratPengantar 
+                        onBack={() => setActiveMobileTab('Beranda')} 
+                        currentUser={user} 
+                        hittedSuratId={selectedSuratId}
+                        clearHighlight={() => setSelectedSuratId(null)}
+                      />
+                    ) : null}
+                    {activeMobileTab === 'Iuran' && <MobileIuran onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Kas' && <MobileKas onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Sedekah' && <MobileSedekah onBack={() => setActiveMobileTab('Beranda')} user={user} />}
+                    {activeMobileTab === 'UMKM' || activeMobileTab === 'UMKM Warga' ? <MobileUMKM onBack={() => setActiveMobileTab('Beranda')} currentUser={user} /> : null}
+                    {activeMobileTab === 'Lapor RT' && <MobileLaporRT onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Data Warga' && <MobileDataWarga onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Media' && <MobileMedia onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Darurat' && <MobileDarurat onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Dokumen' && <MobileDokumen onBack={() => setActiveMobileTab('Beranda')} currentUser={user} onUpdateUser={onUpdateUser} />}
+                    {activeMobileTab === 'Tamu' && <MobileTamu onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
+                    {activeMobileTab === 'Inventaris' && (
+                      <div className="p-4 overflow-y-auto max-h-[calc(100vh-140px)]">
+                        <button className="flex items-center gap-2 mb-4 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-full outline-none pointer-events-auto cursor-pointer" onClick={() => setActiveMobileTab('Beranda')}>
+                          <icons.arrowLeft className="w-4 h-4" /> Kembali ke Beranda
+                        </button>
+                        <WebInventarisPage user={user} />
+                      </div>
+                    )}
+                    {activeMobileTab === 'Notulen Rapat' && (
+                      <div className="p-4 overflow-y-auto max-h-[calc(100vh-140px)]">
+                        <button className="flex items-center gap-2 mb-4 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-full outline-none pointer-events-auto cursor-pointer" onClick={() => setActiveMobileTab('Beranda')}>
+                          <icons.arrowLeft className="w-4 h-4" /> Kembali ke Beranda
+                        </button>
+                        <WebNotulenPage user={user} />
+                      </div>
+                    )}
+                    {activeMobileTab === 'Smart RT AI' && (
+                      <div className="p-4 overflow-y-auto max-h-[calc(100vh-140px)]">
+                        <button className="flex items-center gap-2 mb-4 text-xs font-semibold text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-full outline-none pointer-events-auto cursor-pointer" onClick={() => setActiveMobileTab('Beranda')}>
+                          <icons.arrowLeft className="w-4 h-4" /> Kembali ke Beranda
+                        </button>
+                        <WebSmartRtAiPage user={user} />
+                      </div>
+                    )}
 
-                  {/* Fallback for unrecognized tabs */}
-                  {!['Beranda', 'Acara', 'Laporan', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu', 'Inventaris', 'Smart RT AI', 'Notulen Rapat'].includes(activeMobileTab) && (
-                    <div className="flex flex-col items-center justify-center h-full opacity-50 py-20">
-                      <icons.dashboard className="w-12 h-12 text-gray-300 mb-3" />
-                      <h2 className="text-lg font-semibold text-gray-500">Halaman {activeMobileTab}</h2>
-                      <p className="text-xs text-gray-400 mb-4">Fitur ini dalam pengembangan.</p>
-                      <button className="px-4 py-2 border rounded-full text-xs text-gray-600" onClick={() => setActiveMobileTab('Beranda')}>Kembali</button>
-                    </div>
-                  )}
+                    {/* Fallback for unrecognized tabs */}
+                    {!['Beranda', 'Acara', 'Laporan', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu', 'Inventaris', 'Smart RT AI', 'Notulen Rapat'].includes(activeMobileTab) && (
+                      <div className="flex flex-col items-center justify-center h-full opacity-50 py-20">
+                        <icons.dashboard className="w-12 h-12 text-gray-300 mb-3" />
+                        <h2 className="text-lg font-semibold text-gray-500">Halaman {activeMobileTab}</h2>
+                        <p className="text-xs text-gray-400 mb-4">Fitur ini dalam pengembangan.</p>
+                        <button className="px-4 py-2 border rounded-full text-xs text-gray-600" onClick={() => setActiveMobileTab('Beranda')}>Kembali</button>
+                      </div>
+                    )}
+                  </React.Suspense>
                 </>
               )}
             </motion.div>

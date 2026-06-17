@@ -24,6 +24,29 @@ export default defineConfig(({mode}) => {
               }
             },
             {
+              urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif|js|css|woff2?)$/,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'local-assets-cache',
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+                },
+              },
+            },
+            {
+              urlPattern: /^\/api\/[a-zA-Z0-9_-]/i,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'local-api-cache',
+                networkTimeoutSeconds: 5,
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 5 * 24 * 60 * 60, // 5 Days
+                },
+              },
+            },
+            {
               urlPattern: /^https:\/\/.*firebaseio\.com\/.*/i,
               handler: 'NetworkFirst',
               options: {
@@ -46,13 +69,26 @@ export default defineConfig(({mode}) => {
             {
               src: "/icon-192.png",
               sizes: "192x192",
-              type: "image/png"
+              type: "image/png",
+              purpose: "any"
+            },
+            {
+              src: "/icon-192.png",
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "maskable"
             },
             {
               src: "/icon-512.png",
               sizes: "512x512",
               type: "image/png",
-              purpose: "any maskable"
+              purpose: "any"
+            },
+            {
+              src: "/icon-512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable"
             }
           ]
         }

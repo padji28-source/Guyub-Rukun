@@ -12,6 +12,49 @@ dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || "guyubrukunsecretkey_for_jwt2026";
 
+// --- PER-ENDPOINT CACHE STORAGE (TTL: 30s) ---
+interface CacheEntry {
+  data: any;
+  expiresAt: number;
+}
+const cacheStore: { [key: string]: CacheEntry } = {};
+const CACHE_TTL = 30 * 1000;
+
+function getCache(resource: string, rtId: string, queryStr: string): any | null {
+  const key = `${resource}:${rtId}:${queryStr}`;
+  const entry = cacheStore[key];
+  if (entry && entry.expiresAt > Date.now()) {
+    return entry.data;
+  }
+  if (entry) {
+    delete cacheStore[key];
+  }
+  return null;
+}
+
+function setCache(resource: string, rtId: string, queryStr: string, data: any): void {
+  const key = `${resource}:${rtId}:${queryStr}`;
+  cacheStore[key] = {
+    data,
+    expiresAt: Date.now() + CACHE_TTL
+  };
+}
+
+function invalidateCache(resource: string): void {
+  const prefix = `${resource}:`;
+  Object.keys(cacheStore).forEach(key => {
+    if (key.startsWith(prefix)) {
+      delete cacheStore[key];
+    }
+  });
+  // Invalidate dashboard caches on resource updates
+  Object.keys(cacheStore).forEach(key => {
+    if (key.startsWith("dashboard:")) {
+      delete cacheStore[key];
+    }
+  });
+}
+
 // Secure Authentication Helpers
 function verifyPassword(input: string, stored: string): boolean {
   if (stored && stored.startsWith('$2') && stored.length >= 50) {
@@ -38,8 +81,8 @@ const apiLimiter = rateLimit({
 export const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ limit: "5mb", extended: true }));
 
 // Apply rate limiting to all requests
 app.use("/api/", apiLimiter);
@@ -1093,6 +1136,7 @@ app.put("/api/profile", async (req, res) => {
     
     const updater = req.body.updaterName || nama || user.nama || 'Sistem';
     await addNotification(rtId, "Profil Diperbarui", `Warga ${user.nama} memperbarui profil.`, updater, "warga", id);
+    invalidateCache("warga");
     
     res.json({ message: "Profile updated successfully", user: updatedUser });
   } else {
@@ -1107,6 +1151,12 @@ app.get("/api/warga", async (req, res) => {
   const limit = parseInt(req.query.limit as string) || 0;
   const search = req.query.search as string;
 
+  const queryStr = JSON.stringify({ page, limit, search });
+  const cached = getCache("warga", rtId, queryStr);
+  if (cached) {
+    return res.json(cached);
+  }
+
   const query: any = { rtId };
   if (search) {
     query.$or = [
@@ -1115,7 +1165,8 @@ app.get("/api/warga", async (req, res) => {
     ];
   }
 
-  let dbQuery = UserModel.find(query);
+  // Use projection to discard massive base64 document payloads
+  let dbQuery = UserModel.find(query).select("-dokumenKk -dokumenKtp");
   let sortedUsers: any[] = [];
   let total = 0;
 
@@ -1127,7 +1178,7 @@ app.get("/api/warga", async (req, res) => {
       ...u,
       isOnline: activeSessions.has(u.id) && Date.now() - activeSessions.get(u.id)! < 15000
     }));
-    res.json({
+    const responseData = {
       users: sortedUsers,
       pagination: {
         total,
@@ -1135,14 +1186,18 @@ app.get("/api/warga", async (req, res) => {
         limit,
         pages: Math.ceil(total / limit)
       }
-    });
+    };
+    setCache("warga", rtId, queryStr, responseData);
+    res.json(responseData);
   } else {
     const users = await dbQuery.lean();
     sortedUsers = users.map((u: any) => ({
       ...u,
       isOnline: activeSessions.has(u.id) && Date.now() - activeSessions.get(u.id)! < 15000
     }));
-    res.json({ users: sortedUsers });
+    const responseData = { users: sortedUsers };
+    setCache("warga", rtId, queryStr, responseData);
+    res.json(responseData);
   }
 });
 
@@ -1155,6 +1210,7 @@ app.delete("/api/warga/:id", enforceRoles(['admin']), async (req, res) => {
     
     await logAudit(rtId, req.headers['x-user-id'] as string || 'Admin', "DELETE_WARGA", `Menghapus data warga ${user.nama}`, beforeData, null);
     await addNotification(rtId, "Warga Dihapus", `Data warga ${user.nama} telah dihapus.`, 'Admin', "warga", req.params.id);
+    invalidateCache("warga");
     res.json({ message: "User deleted" });
   } else {
     res.status(404).json({ error: "Warga tidak ditemukan" });
@@ -1334,6 +1390,12 @@ app.get("/api/data/:resource", async (req, res) => {
   const limit = parseInt(req.query.limit as string) || 0;
   const search = req.query.search as string;
 
+  const queryStr = JSON.stringify({ ...req.query, page, limit, search });
+  const cached = getCache(resource, rtId, queryStr);
+  if (cached) {
+    return res.json(cached);
+  }
+
   let sortField = "createdAt";
   if (resource === 'notulen' || resource === 'acara') {
     sortField = "date";
@@ -1366,6 +1428,17 @@ app.get("/api/data/:resource", async (req, res) => {
   }
 
   let dbQuery = model.find(query);
+
+  const projectionMap: { [key: string]: string } = {
+    surat: "-signaturePemohon -signatureKetuaRt",
+    kas: "-buktiTransaksi",
+    dokumen: "-fileUrl",
+    iuran: "-proofUrl",
+  };
+  const projection = req.query.projection as string || projectionMap[resource];
+  if (projection && projection !== 'all') {
+    dbQuery = dbQuery.select(projection);
+  }
 
   let balances: any = undefined;
   if (resource === 'kas') {
@@ -1415,7 +1488,7 @@ app.get("/api/data/:resource", async (req, res) => {
     const total = await model.countDocuments(query);
     const skip = (page - 1) * limit;
     const results = await dbQuery.sort({ [sortField]: -1 }).skip(skip).limit(limit).lean();
-    res.json({
+    const responseData = {
       data: results,
       pagination: {
         total,
@@ -1424,10 +1497,14 @@ app.get("/api/data/:resource", async (req, res) => {
         pages: Math.ceil(total / limit)
       },
       balances
-    });
+    };
+    setCache(resource, rtId, queryStr, responseData);
+    res.json(responseData);
   } else {
     const results = await dbQuery.sort({ [sortField]: -1 }).lean();
-    res.json({ data: results, balances });
+    const responseData = { data: results, balances };
+    setCache(resource, rtId, queryStr, responseData);
+    res.json(responseData);
   }
 });
 
@@ -1581,6 +1658,11 @@ app.post("/api/data/:resource", async (req, res) => {
   if (resource === 'surat') title = 'Surat Keluar Baru';
 
   await addNotification(rtId, title, `Terdapat data baru pada modul ${resource} oleh ${creator}.`, creator, resource, createdItem.id);
+  invalidateCache(resource);
+  if (resource === 'iuran' || resource === 'kas') {
+    invalidateCache('iuran');
+    invalidateCache('kas');
+  }
   res.json({ message: "Created successfully", item: createdItem });
 });
 
@@ -1688,6 +1770,11 @@ app.put("/api/data/:resource/:id", async (req, res) => {
     await addNotification(rtId, `Data Diupdate: ${resource}`, `Terdapat perubahan data pada modul ${resource} oleh ${updater}.`, updater, resource, updatedItem.id);
   }
 
+  invalidateCache(resource);
+  if (resource === 'iuran' || resource === 'kas') {
+    invalidateCache('iuran');
+    invalidateCache('kas');
+  }
   res.json({ message: "Updated successfully", item: updatedItem });
 });
 
@@ -1739,6 +1826,11 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
   }
 
   await addNotification(rtId, `Data Dihapus: ${resource}`, `Terdapat penghapusan data pada modul ${resource} oleh ${updater}.`, updater);
+  invalidateCache(resource);
+  if (resource === 'iuran' || resource === 'kas') {
+    invalidateCache('iuran');
+    invalidateCache('kas');
+  }
   res.json({ message: "Deleted successfully" });
 });
 
@@ -2071,19 +2163,31 @@ app.post("/api/gemini/action", async (req, res) => {
 
 app.get("/api/dashboard", async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  const queryStr = JSON.stringify(req.query);
+  const cached = getCache("dashboard", rtId, queryStr);
+  if (cached) {
+    return res.json(cached);
+  }
   try {
     const [users, kas, iuran, laporan, acara] = await Promise.all([
-      UserModel.find({ rtId, role: { $ne: 'developer' } }).select('members').lean(),
+      UserModel.find({ rtId, role: { $ne: 'developer' } }).select('members dokumenKk dokumenKtp').lean(),
       KasModel.find({ rtId }).select('type amount status category').lean(),
       IuranModel.find({ rtId }).select('bulan status nominal').lean(),
-      LaporanModel.find({ rtId }).lean(),
-      AcaraModel.find({ rtId }).lean()
+      LaporanModel.find({ rtId }).select('id judul status createdAt').lean(),
+      AcaraModel.find({ rtId }).select('id title date time location desc').lean()
     ]);
 
     const jumlahKK = users.length;
     let totalWarga = jumlahKK;
+    let docUploaded = 0;
+    let docNotUploaded = 0;
     users.forEach((u: any) => {
       totalWarga += (u.members?.length || 0);
+      if (u.dokumenKk || u.dokumenKtp) {
+        docUploaded++;
+      } else {
+        docNotUploaded++;
+      }
     });
 
     const getSaldo = (cat: string) => {
@@ -2124,7 +2228,7 @@ app.get("/api/dashboard", async (req, res) => {
     // Limit returned unused data
     const limitedUsers = users.map(u => ({_id: u._id, members: u.members?.map((m: any) => ({_id: m._id}))}));
 
-    res.json({
+    const responseData = {
       metrics: {
         jumlahKK,
         jumlahWarga: totalWarga,
@@ -2133,9 +2237,15 @@ app.get("/api/dashboard", async (req, res) => {
         iuranBulanIni: { lunasPct, totalIuranCount, lunasCount, totalAmount },
         pengaduanAktif,
         agendaUpcoming,
-        wargaList: limitedUsers
+        wargaList: limitedUsers,
+        docUploaded,
+        docNotUploaded,
+        laporanBaruCount: laporan.filter((l: any) => l.status === 'menunggu').length,
       }
-    });
+    };
+
+    setCache("dashboard", rtId, queryStr, responseData);
+    res.json(responseData);
   } catch (error) {
     console.error("Dashboard fetch error:", error);
     res.status(500).json({ error: "Failed to fetch dashboard data" });
