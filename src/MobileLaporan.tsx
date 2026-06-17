@@ -5,8 +5,7 @@ import { icons } from './App';
 
 export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
   const [data, setData] = useState<any[]>([]);
-  const isAdminOrPengurus = currentUser?.allowedMenus?.includes('Laporan') || currentUser?.role === 'developer';
-  const canSeeAllLaporan = currentUser?.role === 'admin' || currentUser?.role === 'sekretaris' || currentUser?.role === 'bendahara' || currentUser?.role === 'developer';
+  const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
 
   const exportToExcel = () => {
     if (currentUser?.role !== 'admin') {
@@ -82,9 +81,9 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
   // Menggunakan useMemo agar filter & reverse tidak dihitung ulang berkali-kali pada tiap render
   const filteredData = useMemo(() => {
     return data
-      .filter(d => canSeeAllLaporan || d.userId === currentUser?.id)
+      .filter(d => isAdminOrPengurus || d.userId === currentUser?.id)
       .reverse();
-  }, [data, canSeeAllLaporan, currentUser?.id]);
+  }, [data, isAdminOrPengurus, currentUser?.id]);
 
   // Helper untuk warna badge status
   const getStatusStyle = (status: string) => {

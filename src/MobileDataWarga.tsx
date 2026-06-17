@@ -1,9 +1,8 @@
 import { apiFetch } from './apiInterceptor';
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProfileAvatar } from './App'; 
 import { GoogleGenAI, Type } from '@google/genai';
-import { checkMenuPermission } from './utils';
 
 // Icon Set - Diperbarui dan ditambah beberapa icon untuk mendukung UI baru
 const icons = {
@@ -56,12 +55,10 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
   const [extractingId, setExtractingId] = useState<string | null>(null);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 
-  const updateTimeoutRef = useRef<any>(null);
-
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 1000);
+    }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -94,17 +91,11 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
   useEffect(() => {
     const handleUpdate = (e: any) => {
       if (e.detail === 'users' || e.detail === 'online_status') {
-        if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
-        updateTimeoutRef.current = setTimeout(() => {
-          fetchWarga();
-        }, 500);
+        fetchWarga();
       }
     };
     window.addEventListener('app_data_update', handleUpdate);
-    return () => {
-      window.removeEventListener('app_data_update', handleUpdate);
-      if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
-    };
+    return () => window.removeEventListener('app_data_update', handleUpdate);
   }, [page, limit, debouncedSearchQuery]);
 
   const handleAddWarga = async (e: React.FormEvent) => {
@@ -236,13 +227,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
     }
   };
 
-  const isDeveloper = currentUser?.role === 'developer';
-  const canRead = checkMenuPermission(currentUser?.allowedMenus, 'Warga', 'read', isDeveloper);
-  const canCreate = checkMenuPermission(currentUser?.allowedMenus, 'Warga', 'create', isDeveloper);
-  const canUpdate = checkMenuPermission(currentUser?.allowedMenus, 'Warga', 'update', isDeveloper);
-  const canDelete = checkMenuPermission(currentUser?.allowedMenus, 'Warga', 'delete', isDeveloper);
-
-  const isAdmin = canRead;
+  const isAdmin = currentUser?.role === 'admin';
 
   const getAllAges = () => {
     const ages: number[] = [];
@@ -368,7 +353,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
             </div>
           </div>
 
-          {canCreate && (
+          {isAdmin && (
             <motion.button 
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowAddWarga(true)} 
@@ -494,18 +479,17 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                       <div className="pt-4 space-y-4">
                         
                         {/* ADMIN CONTROLS */}
-                        {(canUpdate || canDelete) && warga.id !== currentUser?.id && (
+                        {(isAdmin || currentUser?.role === 'developer') && warga.id !== currentUser?.id && (
                           <div className="bg-white p-3 rounded-2xl border border-red-100 flex flex-wrap gap-3 items-end">
                             <div className="flex-1 min-w-[120px]">
                               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Role Akun</label>
                               <select 
                                 value={warga.role || 'warga'} 
-                                disabled={!canUpdate}
                                 onChange={async (e) => {
                                   await apiFetch(`/api/warga/${warga.id}/role`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({role: e.target.value})});
                                   fetchWarga();
                                 }}
-                                className="w-full text-xs border border-gray-200 rounded-xl p-2 bg-gray-50 outline-none disabled:opacity-50"
+                                className="w-full text-xs border border-gray-200 rounded-xl p-2 bg-gray-50 outline-none"
                               >
                                 {currentUser?.role === 'developer' && <option value="admin">Admin</option>}
                                 <option value="warga">Warga</option>
@@ -518,22 +502,19 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
                               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Status</label>
                               <select 
                                 value={warga.isApproved ? 'aktif' : 'tidak_aktif'} 
-                                disabled={!canUpdate}
                                 onChange={async (e) => {
                                   await apiFetch(`/api/warga/${warga.id}/approval`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({isApproved: e.target.value === 'aktif'})});
                                   fetchWarga();
                                 }}
-                                className="w-full text-xs border border-gray-200 rounded-xl p-2 bg-gray-50 outline-none disabled:opacity-50"
+                                className="w-full text-xs border border-gray-200 rounded-xl p-2 bg-gray-50 outline-none"
                               >
                                 <option value="aktif">Aktif</option>
                                 <option value="tidak_aktif">Nonaktif / Belum disetujui</option>
                               </select>
                             </div>
-                            {canDelete && (
-                              <button onClick={(e) => { e.stopPropagation(); apiFetch(`/api/warga/${warga.id}`,{method:'DELETE'}).then(()=> { console.log('Warga berhasil dihapus!'); fetchWarga(); }); }} className="text-red-600 bg-red-50 hover:bg-red-100 font-semibold px-3 py-2 rounded-xl text-xs transition-colors h-[34px]">
-                                Hapus Warga
-                              </button>
-                            )}
+                            <button onClick={(e) => { e.stopPropagation(); apiFetch(`/api/warga/${warga.id}`,{method:'DELETE'}).then(()=> { console.log('Warga berhasil dihapus!'); fetchWarga(); }); }} className="text-red-600 bg-red-50 hover:bg-red-100 font-semibold px-3 py-2 rounded-xl text-xs transition-colors h-[34px]">
+                              Hapus Warga
+                            </button>
                           </div>
                         )}
 

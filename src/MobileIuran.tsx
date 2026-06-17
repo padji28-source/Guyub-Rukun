@@ -1,7 +1,6 @@
 import { apiFetch } from './apiInterceptor';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { compressImage } from './utils';
 
 // --- Kumpulan Ikon ---
 const Icons = {
@@ -52,8 +51,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   const [buktiBase64, setBuktiBase64] = useState('');
   const [viewBuktiUrl, setViewBuktiUrl] = useState<string | null>(null);
 
-  const isAdminOrBendahara = currentUser?.allowedMenus?.includes('Iuran') || currentUser?.role === 'developer';
-  const isRTOrBendahara = currentUser?.role === 'admin' || currentUser?.role === 'bendahara' || currentUser?.role === 'developer';
+  const isAdminOrBendahara = currentUser?.role === 'admin' || currentUser?.role === 'bendahara';
   
   const [tagihanList, setTagihanList] = useState<any[]>([]);
   const totalTagihan = tagihanList.reduce((sum, item) => sum + Number(item.nominal || 0), 0);
@@ -110,16 +108,29 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      compressImage(file, 400, 400, 0.6).then(dataUrl => {
-        setBuktiBase64(dataUrl);
-      }).catch(err => {
-        console.error('Image compression failed, using fallback:', err);
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          setBuktiBase64(ev.target?.result as string);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+          } else {
+            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          setBuktiBase64(canvas.toDataURL('image/jpeg', 0.6));
         };
-        reader.readAsDataURL(file);
-      });
+        img.src = ev.target?.result as string;
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -399,7 +410,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
       </motion.div>
 
       {/* ADMIN CONTROLS */}
-      {isRTOrBendahara && (
+      {isAdminOrBendahara && (
         <AnimatePresence mode="wait">
           {!showTambahIuran ? (
             <motion.button 
@@ -553,7 +564,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
               </div>
 
               {/* Aksi Tambahan untuk Admin */}
-              {isRTOrBendahara && (
+              {isAdminOrBendahara && (
                 <div className="flex gap-2 pt-3 border-t border-slate-50 flex-wrap">
                   {item.buktiUrl && (
                     <button onClick={() => setViewBuktiUrl(item.buktiUrl)} className="text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-3 py-1.5 rounded-xl transition-colors">Lihat Bukti</button>

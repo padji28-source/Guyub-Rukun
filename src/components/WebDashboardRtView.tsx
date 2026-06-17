@@ -1,5 +1,4 @@
-import React, { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../apiInterceptor';
 import { 
   Users, 
@@ -16,38 +15,44 @@ import {
 } from 'lucide-react';
 
 export const WebDashboardRtView = () => {
-  const { data: metrics, isLoading, refetch } = useQuery({
-    queryKey: ['dashboard_metrics'],
-    queryFn: async () => {
-      const res = await apiFetch('/api/dashboard');
-      const data = await res.json();
-      return data.metrics || {
-        jumlahKK: 0,
-        jumlahWarga: 0,
-        saldoKas: 0,
-        kasDetail: { kasRT: 0, danaKematian: 0, danaSosial: 0 },
-        iuranBulanIni: { lunasPct: 0, totalIuranCount: 0, lunasCount: 0, totalAmount: 0 },
-        pengaduanAktif: [] as any[],
-        agendaUpcoming: [] as any[],
-        wargaList: [] as any[]
-      };
-    },
-    staleTime: 300000, // 5 minutes
+  const [loading, setLoading] = useState(true);
+  const [metrics, setMetrics] = useState({
+    jumlahKK: 0,
+    jumlahWarga: 0,
+    saldoKas: 0,
+    kasDetail: { kasRT: 0, danaKematian: 0, danaSosial: 0 },
+    iuranBulanIni: { lunasPct: 0, totalIuranCount: 0, lunasCount: 0, totalAmount: 0 },
+    pengaduanAktif: [] as any[],
+    agendaUpcoming: [] as any[],
+    wargaList: [] as any[]
   });
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await apiFetch('/api/dashboard');
+      const data = await res.json();
+      if (data.metrics) {
+        setMetrics(data.metrics);
+      }
+    } catch (e) {
+      console.error('Failed to load Dashboard RT metrics:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const handleUpdate = () => {
-      refetch();
-    };
-    window.addEventListener('app_data_update', handleUpdate);
-    return () => window.removeEventListener('app_data_update', handleUpdate);
-  }, [refetch]);
+    fetchData();
+    window.addEventListener('app_data_update', fetchData);
+    return () => window.removeEventListener('app_data_update', fetchData);
+  }, []);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
   };
 
-  if (isLoading || !metrics) {
+  if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center py-24">
         <Clock className="w-10 h-10 text-teal-600 animate-spin mb-4" />
@@ -65,7 +70,7 @@ export const WebDashboardRtView = () => {
           <p className="text-xs text-gray-500 mt-1">Metrik ringkas operasional dan pelayanan warga Rukun Tetangga secara real-time.</p>
         </div>
         <button 
-          onClick={() => refetch()} 
+          onClick={fetchData} 
           className="px-4 py-2 bg-teal-50 hover:bg-teal-100 border border-teal-100 text-teal-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition pointer-events-auto cursor-pointer"
         >
           <Clock className="w-3.5 h-3.5" />

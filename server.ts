@@ -12,49 +12,6 @@ dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || "guyubrukunsecretkey_for_jwt2026";
 
-// --- PER-ENDPOINT CACHE STORAGE (TTL: 30s) ---
-interface CacheEntry {
-  data: any;
-  expiresAt: number;
-}
-const cacheStore: { [key: string]: CacheEntry } = {};
-const CACHE_TTL = 30 * 1000;
-
-function getCache(resource: string, rtId: string, queryStr: string): any | null {
-  const key = `${resource}:${rtId}:${queryStr}`;
-  const entry = cacheStore[key];
-  if (entry && entry.expiresAt > Date.now()) {
-    return entry.data;
-  }
-  if (entry) {
-    delete cacheStore[key];
-  }
-  return null;
-}
-
-function setCache(resource: string, rtId: string, queryStr: string, data: any): void {
-  const key = `${resource}:${rtId}:${queryStr}`;
-  cacheStore[key] = {
-    data,
-    expiresAt: Date.now() + CACHE_TTL
-  };
-}
-
-function invalidateCache(resource: string): void {
-  const prefix = `${resource}:`;
-  Object.keys(cacheStore).forEach(key => {
-    if (key.startsWith(prefix)) {
-      delete cacheStore[key];
-    }
-  });
-  // Invalidate dashboard caches on resource updates
-  Object.keys(cacheStore).forEach(key => {
-    if (key.startsWith("dashboard:")) {
-      delete cacheStore[key];
-    }
-  });
-}
-
 // Secure Authentication Helpers
 function verifyPassword(input: string, stored: string): boolean {
   if (stored && stored.startsWith('$2') && stored.length >= 50) {
@@ -74,16 +31,15 @@ import rateLimit from "express-rate-limit";
 // ==========================================
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 2000, // Limit each IP to 2000 requests per `window` to avoid blocking multi-tenant container proxies in development
-  message: { error: "Terlalu banyak request dari IP ini, silakan coba lagi nanti." }
+  max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+  message: "Terlalu banyak request dari IP ini, silakan coba lagi setelah 15 menit."
 });
 
 export const app = express();
-app.set("trust proxy", 1);
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: "5mb" }));
-app.use(express.urlencoded({ limit: "5mb", extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Apply rate limiting to all requests
 app.use("/api/", apiLimiter);
@@ -249,7 +205,6 @@ const LaporanSchema = new mongoose.Schema({
   deskripsi: { type: String, required: true },
   status: { type: String, default: 'baru' }, // 'baru', 'proses', 'selesai'
   nama: { type: String },
-  userId: { type: String },
   rtId: { type: String, required: true },
   createdAt: { type: String, required: true },
   latitude: { type: Number },
@@ -305,7 +260,6 @@ const TamuSchema = new mongoose.Schema({
   keperluan: { type: String },
   durasi: { type: String },
   alamatAsal: { type: String },
-  userId: { type: String },
   rtId: { type: String, required: true },
   createdAt: { type: String, required: true }
 }, { timestamps: true });
@@ -422,13 +376,11 @@ IuranSchema.index({ id: 1 }, { unique: true });
 IuranSchema.index({ rtId: 1, createdAt: -1 });
 IuranSchema.index({ rtId: 1, name: 1, createdAt: -1 });
 IuranSchema.index({ rtId: 1, status: 1, createdAt: -1 });
-IuranSchema.index({ rtId: 1, bulan: 1 });
 
 KasSchema.index({ id: 1 }, { unique: true });
 KasSchema.index({ rtId: 1, createdAt: -1 });
 KasSchema.index({ rtId: 1, name: 1, createdAt: -1 });
 KasSchema.index({ rtId: 1, type: 1, createdAt: -1 });
-KasSchema.index({ rtId: 1, category: 1 });
 
 VotingSchema.index({ id: 1 }, { unique: true });
 VotingSchema.index({ rtId: 1, createdAt: -1 });
@@ -438,7 +390,6 @@ AcaraSchema.index({ rtId: 1, date: -1 });
 
 LaporanSchema.index({ id: 1 }, { unique: true });
 LaporanSchema.index({ rtId: 1, createdAt: -1 });
-LaporanSchema.index({ rtId: 1, status: 1 });
 
 SuratSchema.index({ id: 1 }, { unique: true });
 SuratSchema.index({ rtId: 1, createdAt: -1 });
@@ -1142,7 +1093,6 @@ app.put("/api/profile", async (req, res) => {
     
     const updater = req.body.updaterName || nama || user.nama || 'Sistem';
     await addNotification(rtId, "Profil Diperbarui", `Warga ${user.nama} memperbarui profil.`, updater, "warga", id);
-    invalidateCache("warga");
     
     res.json({ message: "Profile updated successfully", user: updatedUser });
   } else {
@@ -1157,19 +1107,7 @@ app.get("/api/warga", async (req, res) => {
   const limit = parseInt(req.query.limit as string) || 0;
   const search = req.query.search as string;
 
-  const queryStr = JSON.stringify({ page, limit, search });
-  const cached = getCache("warga", rtId, queryStr);
-  if (cached) {
-    return res.json(cached);
-  }
-
   const query: any = { rtId };
-  const reqRole = (req.headers['x-user-role'] as string) || 'warga';
-  const reqUserId = req.headers['x-user-id'] as string;
-  if (reqRole !== 'admin' && reqRole !== 'developer') {
-    query.id = reqUserId;
-  }
-
   if (search) {
     query.$or = [
       { nama: { $regex: search, $options: 'i' } },
@@ -1177,8 +1115,7 @@ app.get("/api/warga", async (req, res) => {
     ];
   }
 
-  // Use projection to discard massive base64 document payloads
-  let dbQuery = UserModel.find(query).select("-dokumenKk -dokumenKtp");
+  let dbQuery = UserModel.find(query);
   let sortedUsers: any[] = [];
   let total = 0;
 
@@ -1190,7 +1127,7 @@ app.get("/api/warga", async (req, res) => {
       ...u,
       isOnline: activeSessions.has(u.id) && Date.now() - activeSessions.get(u.id)! < 15000
     }));
-    const responseData = {
+    res.json({
       users: sortedUsers,
       pagination: {
         total,
@@ -1198,18 +1135,14 @@ app.get("/api/warga", async (req, res) => {
         limit,
         pages: Math.ceil(total / limit)
       }
-    };
-    setCache("warga", rtId, queryStr, responseData);
-    res.json(responseData);
+    });
   } else {
     const users = await dbQuery.lean();
     sortedUsers = users.map((u: any) => ({
       ...u,
       isOnline: activeSessions.has(u.id) && Date.now() - activeSessions.get(u.id)! < 15000
     }));
-    const responseData = { users: sortedUsers };
-    setCache("warga", rtId, queryStr, responseData);
-    res.json(responseData);
+    res.json({ users: sortedUsers });
   }
 });
 
@@ -1222,7 +1155,6 @@ app.delete("/api/warga/:id", enforceRoles(['admin']), async (req, res) => {
     
     await logAudit(rtId, req.headers['x-user-id'] as string || 'Admin', "DELETE_WARGA", `Menghapus data warga ${user.nama}`, beforeData, null);
     await addNotification(rtId, "Warga Dihapus", `Data warga ${user.nama} telah dihapus.`, 'Admin', "warga", req.params.id);
-    invalidateCache("warga");
     res.json({ message: "User deleted" });
   } else {
     res.status(404).json({ error: "Warga tidak ditemukan" });
@@ -1231,12 +1163,6 @@ app.delete("/api/warga/:id", enforceRoles(['admin']), async (req, res) => {
 
 // Add Family members to Kartu Keluarga
 app.post("/api/warga/:id/members", async (req, res) => {
-  const reqRole = (req.headers['x-user-role'] as string) || 'warga';
-  const reqUserId = req.headers['x-user-id'] as string;
-  if (reqRole !== 'admin' && reqRole !== 'developer' && reqUserId !== req.params.id) {
-    return res.status(403).json({ error: "Akses ditolak: Anda hanya dapat memperbarui data keluarga Anda sendiri." });
-  }
-
   const { name, role, age, tglLahir } = req.body;
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
 
@@ -1258,12 +1184,6 @@ app.post("/api/warga/:id/members", async (req, res) => {
 });
 
 app.put("/api/warga/:id/members/:memberId", async (req, res) => {
-  const reqRole = (req.headers['x-user-role'] as string) || 'warga';
-  const reqUserId = req.headers['x-user-id'] as string;
-  if (reqRole !== 'admin' && reqRole !== 'developer' && reqUserId !== req.params.id) {
-    return res.status(403).json({ error: "Akses ditolak: Anda hanya dapat memperbarui data keluarga Anda sendiri." });
-  }
-
   const { name, role, age, tglLahir } = req.body;
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
 
@@ -1288,12 +1208,6 @@ app.put("/api/warga/:id/members/:memberId", async (req, res) => {
 });
 
 app.delete("/api/warga/:id/members/:memberId", async (req, res) => {
-  const reqRole = (req.headers['x-user-role'] as string) || 'warga';
-  const reqUserId = req.headers['x-user-id'] as string;
-  if (reqRole !== 'admin' && reqRole !== 'developer' && reqUserId !== req.params.id) {
-    return res.status(403).json({ error: "Akses ditolak: Anda hanya dapat memperbarui data keluarga Anda sendiri." });
-  }
-
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
   const user = await UserModel.findOne({ id: req.params.id, rtId });
   if (user && user.members) {
@@ -1420,41 +1334,14 @@ app.get("/api/data/:resource", async (req, res) => {
   const limit = parseInt(req.query.limit as string) || 0;
   const search = req.query.search as string;
 
-  const queryStr = JSON.stringify({ ...req.query, page, limit, search });
-  const cached = getCache(resource, rtId, queryStr);
-  if (cached) {
-    return res.json(cached);
-  }
-
   let sortField = "createdAt";
   if (resource === 'notulen' || resource === 'acara') {
     sortField = "date";
   }
 
   const query: any = { rtId };
-
-  // High-Security Granular Role Validation for GET reads
-  const reqRole = (req.headers['x-user-role'] as string) || 'warga';
-  const reqUserId = req.headers['x-user-id'] as string;
-
-  if (resource === 'surat') {
-    // Only Ketua RT (admin) or developer can see all history
-    if (reqRole !== 'admin' && reqRole !== 'developer') {
-      query.userId = reqUserId;
-    } else if (req.query.userId) {
-      query.userId = req.query.userId;
-    }
-  } else if (resource === 'laporan' || resource === 'tamu') {
-    // Only Ketua RT (admin), Sekretaris, Bendahara, or developer can see all citizen reports / tamu
-    if (reqRole !== 'admin' && reqRole !== 'sekretaris' && reqRole !== 'bendahara' && reqRole !== 'developer') {
-      query.userId = reqUserId;
-    } else if (req.query.userId) {
-      query.userId = req.query.userId;
-    }
-  } else {
-    if (req.query.userId) {
-      query.userId = req.query.userId;
-    }
+  if (req.query.userId) {
+    query.userId = req.query.userId;
   }
   if (req.query.status) {
     query.status = req.query.status;
@@ -1479,17 +1366,6 @@ app.get("/api/data/:resource", async (req, res) => {
   }
 
   let dbQuery = model.find(query);
-
-  const projectionMap: { [key: string]: string } = {
-    surat: "-signaturePemohon -signatureKetuaRt",
-    kas: "-buktiTransaksi",
-    dokumen: "-fileUrl",
-    iuran: "-proofUrl",
-  };
-  const projection = req.query.projection as string || projectionMap[resource];
-  if (projection && projection !== 'all') {
-    dbQuery = dbQuery.select(projection);
-  }
 
   let balances: any = undefined;
   if (resource === 'kas') {
@@ -1539,7 +1415,7 @@ app.get("/api/data/:resource", async (req, res) => {
     const total = await model.countDocuments(query);
     const skip = (page - 1) * limit;
     const results = await dbQuery.sort({ [sortField]: -1 }).skip(skip).limit(limit).lean();
-    const responseData = {
+    res.json({
       data: results,
       pagination: {
         total,
@@ -1548,14 +1424,10 @@ app.get("/api/data/:resource", async (req, res) => {
         pages: Math.ceil(total / limit)
       },
       balances
-    };
-    setCache(resource, rtId, queryStr, responseData);
-    res.json(responseData);
+    });
   } else {
     const results = await dbQuery.sort({ [sortField]: -1 }).lean();
-    const responseData = { data: results, balances };
-    setCache(resource, rtId, queryStr, responseData);
-    res.json(responseData);
+    res.json({ data: results, balances });
   }
 });
 
@@ -1582,31 +1454,11 @@ app.post("/api/data/:resource", async (req, res) => {
   const model = map[resource];
   if (!model) return res.status(404).json({ error: "Resource not found" });
 
-  // Role-based validation rules for POST creations
-  const role = (req.headers['x-user-role'] as string) || 'warga';
-  const userId = req.headers['x-user-id'] as string;
-
+  // Role validation for notulen
   if (resource === 'notulen') {
-    if (role !== 'admin' && role !== 'sekretaris' && role !== 'developer') {
+    const role = (req.headers['x-user-role'] as string) || 'warga';
+    if (role !== 'admin' && role !== 'sekretaris') {
       return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Sekretaris yang dapat membuat notulen rapat." });
-    }
-  }
-
-  if (resource === 'kas') {
-    if (role !== 'admin' && role !== 'bendahara' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Bendahara yang dapat mencatat transaksi kas." });
-    }
-  }
-
-  if (resource === 'acara') {
-    if (role !== 'admin' && role !== 'sekretaris' && role !== 'bendahara' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT, Sekretaris, atau Bendahara yang dapat membuat acara baru." });
-    }
-  }
-
-  if (resource === 'umkm' || resource === 'inventaris') {
-    if (role !== 'admin' && role !== 'sekretaris' && role !== 'bendahara' && role !== 'pengurus' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT, Sekretaris, Bendahara, atau Pengurus yang dapat menambah data UMKM / Inventaris." });
     }
   }
 
@@ -1633,19 +1485,6 @@ app.post("/api/data/:resource", async (req, res) => {
     createdAt: new Date().toISOString(),
     ...req.body
   };
-
-  // Securely populate status and ownership for Iuran
-  if (resource === 'iuran') {
-    if (role !== 'admin' && role !== 'bendahara' && role !== 'developer') {
-      newItemData.userId = userId;
-      newItemData.status = 'menunggu'; // Force waiting verification/approval
-    }
-  }
-
-  // Securely enforce user identity on submitted letters / reports / tamu
-  if (['surat', 'laporan', 'tamu'].includes(resource)) {
-    newItemData.userId = userId;
-  }
 
   // Auto numbering list for surat
   if (resource === 'surat') {
@@ -1742,11 +1581,6 @@ app.post("/api/data/:resource", async (req, res) => {
   if (resource === 'surat') title = 'Surat Keluar Baru';
 
   await addNotification(rtId, title, `Terdapat data baru pada modul ${resource} oleh ${creator}.`, creator, resource, createdItem.id);
-  invalidateCache(resource);
-  if (resource === 'iuran' || resource === 'kas') {
-    invalidateCache('iuran');
-    invalidateCache('kas');
-  }
   res.json({ message: "Created successfully", item: createdItem });
 });
 
@@ -1772,54 +1606,16 @@ app.put("/api/data/:resource/:id", async (req, res) => {
   const model = map[resource];
   if (!model) return res.status(404).json({ error: "Resource not found" });
 
-  // Role & Ownership validations for PUT edits
-  const role = (req.headers['x-user-role'] as string) || 'warga';
-  const userId = req.headers['x-user-id'] as string;
-
+  // Role validation for notulen
   if (resource === 'notulen') {
-    if (role !== 'admin' && role !== 'sekretaris' && role !== 'developer') {
+    const role = (req.headers['x-user-role'] as string) || 'warga';
+    if (role !== 'admin' && role !== 'sekretaris') {
       return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Sekretaris yang dapat mengedit notulen rapat." });
-    }
-  }
-
-  if (resource === 'kas') {
-    if (role !== 'admin' && role !== 'bendahara' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Bendahara yang dapat memperbarui transaksi kas." });
-    }
-  }
-
-  if (resource === 'acara') {
-    if (role !== 'admin' && role !== 'sekretaris' && role !== 'bendahara' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT, Sekretaris, atau Bendahara yang dapat memperbarui acara." });
-    }
-  }
-
-  if (resource === 'umkm' || resource === 'inventaris') {
-    if (role !== 'admin' && role !== 'sekretaris' && role !== 'bendahara' && role !== 'pengurus' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT, Sekretaris, Bendahara, atau Pengurus yang dapat memperbarui UMKM / Inventaris." });
     }
   }
 
   const oldItem = await model.findOne({ id: req.params.id, rtId });
   if (!oldItem) return res.status(404).json({ error: "Item not found" });
-
-  if (resource === 'iuran') {
-    if (req.body.status === 'verifikasi' && role !== 'admin' && role !== 'bendahara' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Bendahara yang dapat memproses verifikasi pembayaran iuran." });
-    }
-    if (oldItem.userId !== userId && role !== 'admin' && role !== 'bendahara' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Anda hanya dapat memperbarui iuran milik Anda sendiri." });
-    }
-  }
-
-  if (resource === 'surat') {
-    if (oldItem.userId !== userId && role !== 'admin' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Anda hanya dapat memperbarui surat pengantar milik Anda sendiri." });
-    }
-    if (req.body.status === 'selesai' && role !== 'admin' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT yang dapat menyelesaikan atau menandatangani surat pengantar." });
-    }
-  }
 
   const beforeDataObj = oldItem.toObject();
   const updatePayload = { ...req.body };
@@ -1892,11 +1688,6 @@ app.put("/api/data/:resource/:id", async (req, res) => {
     await addNotification(rtId, `Data Diupdate: ${resource}`, `Terdapat perubahan data pada modul ${resource} oleh ${updater}.`, updater, resource, updatedItem.id);
   }
 
-  invalidateCache(resource);
-  if (resource === 'iuran' || resource === 'kas') {
-    invalidateCache('iuran');
-    invalidateCache('kas');
-  }
   res.json({ message: "Updated successfully", item: updatedItem });
 });
 
@@ -1922,49 +1713,16 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
   const model = map[resource];
   if (!model) return res.status(404).json({ error: "Resource not found" });
 
-  // Role & Ownership validations for DELETE actions
-  const role = (req.headers['x-user-role'] as string) || 'warga';
-  const userId = req.headers['x-user-id'] as string;
-
+  // Role validation for notulen
   if (resource === 'notulen') {
-    if (role !== 'admin' && role !== 'sekretaris' && role !== 'developer') {
+    const role = (req.headers['x-user-role'] as string) || 'warga';
+    if (role !== 'admin' && role !== 'sekretaris') {
       return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Sekretaris yang dapat menghapus notulen rapat." });
-    }
-  }
-
-  if (resource === 'kas') {
-    if (role !== 'admin' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT yang dapat menghapus data kas." });
-    }
-  }
-
-  if (resource === 'iuran') {
-    if (role !== 'admin' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT yang dapat menghapus data iuran." });
-    }
-  }
-
-  if (resource === 'acara') {
-    if (role !== 'admin' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT yang dapat menghapus acara." });
-    }
-  }
-
-  if (resource === 'umkm' || resource === 'inventaris') {
-    if (role !== 'admin' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT yang dapat menghapus data UMKM / Inventaris." });
     }
   }
 
   const oldItem = await model.findOne({ id: req.params.id, rtId });
   if (!oldItem) return res.status(404).json({ error: "Item not found" });
-
-  // Ownership validations for deleting personal items (surat, laporan, tamu)
-  if (['surat', 'laporan', 'tamu'].includes(resource)) {
-    if (oldItem.userId !== userId && role !== 'admin' && role !== 'developer') {
-      return res.status(403).json({ error: "Akses ditolak: Anda hanya dapat menghapus data milik Anda sendiri." });
-    }
-  }
 
   const beforeDataObj = oldItem.toObject();
   await model.deleteOne({ id: req.params.id, rtId });
@@ -1981,11 +1739,6 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
   }
 
   await addNotification(rtId, `Data Dihapus: ${resource}`, `Terdapat penghapusan data pada modul ${resource} oleh ${updater}.`, updater);
-  invalidateCache(resource);
-  if (resource === 'iuran' || resource === 'kas') {
-    invalidateCache('iuran');
-    invalidateCache('kas');
-  }
   res.json({ message: "Deleted successfully" });
 });
 
@@ -2318,140 +2071,60 @@ app.post("/api/gemini/action", async (req, res) => {
 
 app.get("/api/dashboard", async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
-  const queryStr = JSON.stringify(req.query);
-  const cached = getCache("dashboard", rtId, queryStr);
-  if (cached) {
-    return res.json(cached);
-  }
   try {
-    await connectDB();
-
-    // 1. Optimize UserModel using aggregation pipeline to get counts and counts of members / docs on DB side
-    const userAggPromise = UserModel.aggregate([
-      { $match: { rtId, role: { $ne: 'developer' } } },
-      {
-        $project: {
-          hasKk: { $cond: [ { $and: [ { $ne: [ "$dokumenKk", null ] }, { $ne: [ "$dokumenKk", "" ] } ] }, 1, 0 ] },
-          hasKtp: { 
-            $cond: [ 
-              { 
-                $or: [
-                  { $and: [ { $ne: [ "$dokumenKtp", null ] }, { $ne: [ "$dokumenKtp", "" ] }, { $not: { $isArray: "$dokumenKtp" } } ] },
-                  { $and: [ { $isArray: "$dokumenKtp" }, { $gt: [{ $size: "$dokumenKtp" }, 0] } ] }
-                ] 
-              }, 
-              1, 
-              0 
-            ] 
-          },
-          membersCount: { $size: { $ifNull: [ "$members", [] ] } }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          jumlahKK: { $sum: 1 },
-          totalMembers: { $sum: "$membersCount" },
-          docUploaded: {
-            $sum: {
-              $cond: [
-                { $or: [ { $eq: ["$hasKk", 1] }, { $eq: ["$hasKtp", 1] } ] },
-                1,
-                0
-              ]
-            }
-          }
-        }
-      }
+    const [users, kas, iuran, laporan, acara] = await Promise.all([
+      UserModel.find({ rtId, role: { $ne: 'developer' } }).select('members').lean(),
+      KasModel.find({ rtId }).select('type amount status category').lean(),
+      IuranModel.find({ rtId }).select('bulan status nominal').lean(),
+      LaporanModel.find({ rtId }).lean(),
+      AcaraModel.find({ rtId }).lean()
     ]);
 
-    // 2. Optimize KasModel using aggregation to group by category and type
-    const kasAggPromise = KasModel.aggregate([
-      { $match: { rtId } },
-      {
-        $group: {
-          _id: { category: { $ifNull: ["$category", "Kas RT"] }, type: "$type" },
-          totalAmount: { $sum: { $ifNull: ["$amount", 0] } }
-        }
-      }
-    ]);
-
-    // 3. Current month Iuran and Fallback Iuran as targeted find operations
-    const currentMonth = new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
-    const currentIuranPromise = IuranModel.find({ rtId, bulan: currentMonth }).select('status nominal').lean();
-
-    // 4. LaporanModel: fetch only active reports and count pending reports directly on DB side
-    const activeLaporanPromise = LaporanModel.find({ rtId, status: { $in: ['menunggu', 'diproses'] } }).select('id judul status createdAt').limit(20).lean();
-    const pendingLaporanCountPromise = LaporanModel.countDocuments({ rtId, status: 'menunggu' });
-
-    // 5. AcaraModel: Fetch all events once and keep upcoming ones
-    const acaraPromise = AcaraModel.find({ rtId }).select('id title date time location desc').lean();
-
-    // Fire all optimized parallel promises
-    const [userAggResult, kasAggResult, currentIuran, pengaduanAktif, laporanBaruCount, allAcara] = await Promise.all([
-      userAggPromise,
-      kasAggPromise,
-      currentIuranPromise,
-      activeLaporanPromise,
-      pendingLaporanCountPromise,
-      acaraPromise
-    ]);
-
-    // Format User metrics
-    const uStats = userAggResult[0] || { jumlahKK: 0, totalMembers: 0, docUploaded: 0 };
-    const jumlahKK = uStats.jumlahKK;
-    const totalWarga = jumlahKK + uStats.totalMembers;
-    const docUploaded = uStats.docUploaded;
-    const docNotUploaded = jumlahKK - docUploaded;
-
-    // Calculate Kas detail from aggregation
-    let kasRT = 0;
-    let danaKematian = 0;
-    let danaSosial = 0;
-
-    kasAggResult.forEach((item: any) => {
-      const category = item._id.category || 'Kas RT';
-      const type = item._id.type;
-      const amount = item.totalAmount || 0;
-
-      if (category === 'Kas RT') {
-        if (type === 'Masuk') kasRT += amount;
-        else if (type === 'Keluar') kasRT -= amount;
-      } else if (category === 'Dana Kematian') {
-        if (type === 'Masuk') danaKematian += amount;
-        else if (type === 'Keluar') danaKematian -= amount;
-      } else if (category === 'Dana Sosial') {
-        if (type === 'Masuk') danaSosial += amount;
-        else if (type === 'Keluar') danaSosial -= amount;
-      }
+    const jumlahKK = users.length;
+    let totalWarga = jumlahKK;
+    users.forEach((u: any) => {
+      totalWarga += (u.members?.length || 0);
     });
+
+    const getSaldo = (cat: string) => {
+      const catItems = kas.filter((d: any) => (d.category || 'Kas RT') === cat);
+      const catM = catItems.filter((d: any) => d.type === 'Masuk').reduce((a: number, b: any) => a + (b.amount || 0), 0);
+      const catK = catItems.filter((d: any) => d.type === 'Keluar').reduce((a: number, b: any) => a + (b.amount || 0), 0);
+      return catM - catK;
+    };
+    const kasRT = getSaldo('Kas RT');
+    const danaKematian = getSaldo('Dana Kematian');
+    const danaSosial = getSaldo('Dana Sosial');
     const saldoKas = kasRT + danaKematian + danaSosial;
 
-    // Calculate Iuran Bulan Ini
+    const currentMonth = new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+    const currentIuran = iuran.filter((i: any) => i.bulan === currentMonth);
     let lunasCount = 0;
     let totalIuranCount = currentIuran.length;
     let totalAmount = 0;
-
+    
     if (totalIuranCount > 0) {
       lunasCount = currentIuran.filter((i: any) => i.status === 'verifikasi').length;
       totalAmount = currentIuran.reduce((acc: number, curr: any) => acc + (Number(curr.nominal) || 0), 0);
     } else {
-      // fallback to all iurans with lean selection
-      const allIuran = await IuranModel.find({ rtId }).select('status nominal').lean();
-      totalIuranCount = allIuran.length;
-      lunasCount = allIuran.filter((i: any) => i.status === 'verifikasi').length;
-      totalAmount = allIuran.reduce((acc: number, curr: any) => acc + (Number(curr.nominal) || 0), 0);
+      totalIuranCount = iuran.length;
+      lunasCount = iuran.filter((i: any) => i.status === 'verifikasi').length;
+      totalAmount = iuran.reduce((acc: number, curr: any) => acc + (Number(curr.nominal) || 0), 0);
     }
     const lunasPct = totalIuranCount > 0 ? Math.round((lunasCount / totalIuranCount) * 100) : 0;
 
-    // Calculate upcoming agenda
+    const pengaduanAktif = laporan.filter((l: any) => l.status === 'menunggu' || l.status === 'diproses');
+
     const now = new Date();
-    const agendaUpcoming = allAcara.filter((ac: any) => {
+    const agendaUpcoming = acara.filter((ac: any) => {
         const acDate = new Date(ac.time || ac.date);
         return acDate >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
     }).sort((a: any, b: any) => new Date(a.time || a.date).getTime() - new Date(b.time || b.date).getTime()).slice(0, 5);
 
-    const responseData = {
+    // Limit returned unused data
+    const limitedUsers = users.map(u => ({_id: u._id, members: u.members?.map((m: any) => ({_id: m._id}))}));
+
+    res.json({
       metrics: {
         jumlahKK,
         jumlahWarga: totalWarga,
@@ -2460,15 +2133,9 @@ app.get("/api/dashboard", async (req, res) => {
         iuranBulanIni: { lunasPct, totalIuranCount, lunasCount, totalAmount },
         pengaduanAktif,
         agendaUpcoming,
-        wargaList: [], // Now empty since it is unused in the frontend
-        docUploaded,
-        docNotUploaded,
-        laporanBaruCount,
+        wargaList: limitedUsers
       }
-    };
-
-    setCache("dashboard", rtId, queryStr, responseData);
-    res.json(responseData);
+    });
   } catch (error) {
     console.error("Dashboard fetch error:", error);
     res.status(500).json({ error: "Failed to fetch dashboard data" });

@@ -2,7 +2,6 @@ import { apiFetch } from './apiInterceptor';
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App';
-import { compressImage } from './utils';
 
 export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: () => void, currentUser: any, onUpdateUser: (u: any) => void }) => {
   const [loading, setLoading] = useState(false);
@@ -17,27 +16,44 @@ export const MobileDokumen = ({ onBack, currentUser, onUpdateUser }: { onBack: (
     const file = e.target.files?.[0];
     if (!file) return;
     
-    compressImage(file, 800, 800, 0.7).then(dataUrl => {
-      if (type === 'kk') {
-        setDokumenKk(dataUrl);
-      } else {
-        setDokumenKtp(prev => [...prev, dataUrl]);
-      }
-    }).catch(err => {
-      console.error('Image upload compression failed:', err);
-      // fallback
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const val = event.target?.result as string;
-        if (type === 'kk') {
-          setDokumenKk(val);
+    // Resize image logic to avoid MongoDB 16MB document limit
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
         } else {
-          setDokumenKtp(prev => [...prev, val]);
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        if (type === 'kk') {
+            setDokumenKk(dataUrl);
+        } else {
+            setDokumenKtp(prev => [...prev, dataUrl]);
         }
       };
-      reader.readAsDataURL(file);
-    });
-
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
     // Clear input value so same file can be selected again if deleted
     e.target.value = '';
   };

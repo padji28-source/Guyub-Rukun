@@ -21,21 +21,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
   const [desc, setDesc] = useState('');
   const [date, setDate] = useState('');
 
-  const isEditorRT = currentUser?.role === 'admin' || currentUser?.role === 'sekretaris' || currentUser?.role === 'bendahara' || currentUser?.role === 'developer';
-  const isKetuaRT = currentUser?.role === 'admin' || currentUser?.role === 'developer';
-
-  const handleGoogleCalendarUrl = (item: any) => {
-    try {
-      const dateObj = new Date(item.date);
-      const year = dateObj.getFullYear();
-      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const day = String(dateObj.getDate()).padStart(2, '0');
-      const dateStr = `${year}${month}${day}`;
-      return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(item.title)}&dates=${dateStr}T080000Z/${dateStr}T120000Z&details=${encodeURIComponent(item.desc)}`;
-    } catch (e) {
-      return '#';
-    }
-  };
+  const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
 
   const fetchData = async () => {
     try {
@@ -116,7 +102,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
       </motion.div>
 
       {/* ADMIN CONTROLS (FORM TAMBAH ACARA) */}
-      {isEditorRT && (
+      {isAdminOrPengurus && (
         <div className="mb-8">
           <AnimatePresence mode="wait">
             {!showForm ? (
@@ -217,20 +203,10 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-2">
                        <p className="text-xs text-slate-600 leading-relaxed font-medium whitespace-pre-wrap">{item.desc}</p>
                     </div>
-                    <div className="mt-2.5">
-                       <a 
-                         href={handleGoogleCalendarUrl(item)} 
-                         target="_blank" 
-                         rel="noopener noreferrer" 
-                         className="inline-flex items-center gap-1.5 text-[10px] text-indigo-600 bg-indigo-50 hover:bg-indigo-100 font-bold px-3 py-1.5 rounded-xl transition-all border border-indigo-100/50 shadow-xs cursor-pointer select-none"
-                       >
-                         <span>🔔</span> Atur Pengingat Kalender
-                       </a>
-                    </div>
                   </div>
 
                   {/* Tombol Hapus (Admin Only) */}
-                  {isKetuaRT && (
+                  {isAdminOrPengurus && (
                     <button 
                       onClick={() => handleDelete(item.id)} 
                       className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center bg-rose-50 text-rose-500 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors border border-rose-100 opacity-80 hover:opacity-100"

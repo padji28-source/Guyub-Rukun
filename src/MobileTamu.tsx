@@ -5,8 +5,7 @@ import { icons } from './App';
 
 export const MobileTamu = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
   const [data, setData] = useState<any[]>([]);
-  const isAdminOrPengurus = currentUser?.allowedMenus?.includes('Tamu') || currentUser?.role === 'developer';
-  const canSeeAllTamu = currentUser?.role === 'admin' || currentUser?.role === 'sekretaris' || currentUser?.role === 'bendahara' || currentUser?.role === 'developer';
+  const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
 
   const fetchData = async () => {
     try {
@@ -49,7 +48,7 @@ export const MobileTamu = ({ onBack, currentUser }: { onBack: () => void, curren
       <div>
         <h3 className="font-bold text-gray-800 text-sm mb-3">Daftar Laporan Tamu</h3>
         <div className="space-y-3">
-          {data.filter(d => canSeeAllTamu || d.userId === currentUser?.id).reverse().map(item => (
+          {data.filter(d => isAdminOrPengurus || d.userId === currentUser?.id).reverse().map(item => (
             <div key={item.id} className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
               <div className="flex justify-between items-start mb-2 border-b border-gray-50 pb-2">
                 <div>
@@ -80,7 +79,7 @@ export const MobileTamu = ({ onBack, currentUser }: { onBack: () => void, curren
                 </div>
               </div>
               
-              {canSeeAllTamu && item.status !== 'Selesai' && (
+              {isAdminOrPengurus && item.status !== 'Selesai' && (
                 <div className="flex justify-end gap-2 border-t pt-2 border-gray-50">
                   <button 
                     onClick={() => handleUpdateStatus(item.id, 'Selesai')} 
@@ -93,7 +92,7 @@ export const MobileTamu = ({ onBack, currentUser }: { onBack: () => void, curren
               )}
             </div>
           ))}
-          {data.filter(d => canSeeAllTamu || d.userId === currentUser?.id).length === 0 && (
+          {data.filter(d => isAdminOrPengurus || d.userId === currentUser?.id).length === 0 && (
             <p className="text-xs text-gray-550 text-center py-4 font-semibold">Belum ada laporan tamu.</p>
           )}
         </div>

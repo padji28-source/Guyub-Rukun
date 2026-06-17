@@ -47,20 +47,15 @@ const SignatureCanvas = ({ onSave, onClear, label }: SignatureCanvasProps) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [isEmpty, setIsEmpty] = useState(true);
 
-  // Initialize/re-verify context parameters
-  const initContext = (ctx: CanvasRenderingContext2D) => {
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3.0; // slightly thicker stroke for high-contrast visibility
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-  };
-
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        initContext(ctx);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
       }
     }
   }, []);
@@ -92,8 +87,6 @@ const SignatureCanvas = ({ onSave, onClear, label }: SignatureCanvasProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    initContext(ctx);
-
     const coords = getCoordinates(e);
     if (!coords) return;
 
@@ -110,25 +103,18 @@ const SignatureCanvas = ({ onSave, onClear, label }: SignatureCanvasProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    initContext(ctx);
-
     const coords = getCoordinates(e);
     if (!coords) return;
 
     ctx.lineTo(coords.x, coords.y);
     ctx.stroke();
     setIsEmpty(false);
+
+    onSave(canvas.toDataURL('image/png'));
   };
 
   const stopDrawing = () => {
-    if (isDrawing) {
-      setIsDrawing(false);
-      const canvas = canvasRef.current;
-      if (canvas) {
-        // Save the signatures base64 to state once when drawing is finished (stops severe lagging)
-        onSave(canvas.toDataURL('image/png'));
-      }
-    }
+    setIsDrawing(false);
   };
 
   const clearCanvas = () => {
@@ -225,7 +211,7 @@ export const WebSuratOnlinePage = ({
   const [editingNomorSurat, setEditingNomorSurat] = useState('');
   const [isSignOpen, setIsSignOpen] = useState(false);
 
-  const isAdminOrPengurus = user?.allowedMenus?.includes('Surat Online') || user?.role === 'developer';
+  const isAdminOrPengurus = user?.role === 'admin' || user?.role === 'pengurus';
 
   const exportToExcel = () => {
     if (user?.role !== 'admin') {
@@ -293,14 +279,13 @@ export const WebSuratOnlinePage = ({
   // Handle setting default initial selected item on load
   useEffect(() => {
     if (!selectedItem && data.length > 0) {
-      const isKetuaRT = user?.role === 'admin' || user?.role === 'developer';
-      const allowed = data.filter(d => isKetuaRT || d.userId === user?.id);
+      const allowed = data.filter(d => isAdminOrPengurus || d.userId === user?.id);
       if (allowed.length > 0) {
         setSelectedItem(allowed[0]);
         setEditingNomorSurat(allowed[0].nomorSurat || '');
       }
     }
-  }, [data, selectedItem, user]);
+  }, [data, selectedItem]);
 
   const handleNextStep = () => {
     if (formStep === 1) {
@@ -588,11 +573,10 @@ export const WebSuratOnlinePage = ({
   };
 
   const filteredList = useMemo(() => {
-    const isKetuaRT = user?.role === 'admin' || user?.role === 'developer';
     return data
       .filter(item => {
         // Enforce user visibility
-        if (!isKetuaRT && item.userId !== user?.id) return false;
+        if (!isAdminOrPengurus && item.userId !== user?.id) return false;
         
         // Match Search query
         const matchesSearch = 
@@ -607,16 +591,15 @@ export const WebSuratOnlinePage = ({
         return matchesSearch;
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [data, search, statusFilter, user]);
+  }, [data, search, statusFilter, isAdminOrPengurus, user?.id]);
 
   const stats = useMemo(() => {
-    const isKetuaRT = user?.role === 'admin' || user?.role === 'developer';
-    const allowed = data.filter(d => isKetuaRT || d.userId === user?.id);
+    const allowed = data.filter(d => isAdminOrPengurus || d.userId === user?.id);
     const total = allowed.length;
     const proses = allowed.filter(d => d.status !== 'selesai').length;
     const selesai = allowed.filter(d => d.status === 'selesai').length;
     return { total, proses, selesai };
-  }, [data, user]);
+  }, [data, isAdminOrPengurus, user?.id]);
 
   return (
     <div className="flex flex-col xl:flex-row gap-6 w-full h-full">
@@ -922,7 +905,7 @@ export const WebSuratOnlinePage = ({
                           src={selectedItem.signaturePemohon} 
                           alt="Ttd Pemohon" 
                           referrerPolicy="no-referrer"
-                          className="max-h-full max-w-full object-contain" 
+                          className="max-h-full max-w-full object-contain mix-blend-multiply" 
                         />
                       ) : (
                         <div className="text-[8.5px] italic text-slate-350">TTD belum dibubuhkan</div>
@@ -946,7 +929,7 @@ export const WebSuratOnlinePage = ({
                           src={selectedItem.signatureKetuaRt} 
                           alt="Ttd Ketua RT" 
                           referrerPolicy="no-referrer"
-                          className="max-h-full max-w-full object-contain" 
+                          className="max-h-full max-w-full object-contain mix-blend-multiply" 
                         />
                       ) : (
                         <div className="text-[8.5px] text-amber-600/70 border border-amber-200/50 bg-amber-50 rounded px-2.5 py-1 select-none font-bold">

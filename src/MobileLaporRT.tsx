@@ -2,7 +2,6 @@ import { apiFetch } from './apiInterceptor';
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App'; // Sesuaikan jika perlu
-import { compressImage } from './utils';
 
 export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () => void, currentUser: any, defaultTab?: 'Keluhan' | 'Tamu' }) => {
   const [judul, setJudul] = useState('');
@@ -50,16 +49,11 @@ export const MobileLaporRT = ({ onBack, currentUser, defaultTab }: { onBack: () 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      compressImage(file).then(dataUrl => {
-        setFotoDataUrl(dataUrl);
-      }).catch(err => {
-        console.error('Image upload compression failed:', err);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setFotoDataUrl(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-      });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFotoDataUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
