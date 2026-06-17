@@ -51,7 +51,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   const [buktiBase64, setBuktiBase64] = useState('');
   const [viewBuktiUrl, setViewBuktiUrl] = useState<string | null>(null);
 
-  const isAdminOrBendahara = currentUser?.allowedMenus?.includes('Iuran') || currentUser?.role === 'developer';
+  const isAdminOrBendahara = ['admin', 'developer', 'bendahara'].includes(currentUser?.role);
   
   const [tagihanList, setTagihanList] = useState<any[]>([]);
   const totalTagihan = tagihanList.reduce((sum, item) => sum + Number(item.nominal || 0), 0);
@@ -572,7 +572,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
                   {item.status !== 'verifikasi' && item.status !== 'butuh_konfirmasi' && (
                     <button onClick={() => handleUpdateStatus(item.id, 'verifikasi')} className="text-[10px] bg-teal-50 text-teal-600 hover:bg-teal-100 font-bold px-3 py-1.5 rounded-xl transition-colors">Verifikasi Lunas</button>
                   )}
-                  {currentUser?.role === 'admin' && item.status === 'butuh_konfirmasi' && (
+                  {['admin', 'developer', 'bendahara'].includes(currentUser?.role) && item.status === 'butuh_konfirmasi' && (
                     <button onClick={() => handleUpdateStatus(item.id, 'verifikasi')} className="text-[10px] bg-teal-500 text-white hover:bg-teal-600 font-bold px-3 py-1.5 rounded-xl transition-colors shadow-sm">Sah Lunas</button>
                   )}
                   <button onClick={() => {
@@ -585,7 +585,7 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
                       }
                     }
                   }} className="text-[10px] text-slate-500 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl font-bold transition-colors ml-auto">Koreksi</button>
-                  {currentUser?.role === 'admin' && (
+                  {['admin', 'developer'].includes(currentUser?.role) && (
                     <button onClick={() => handleDeleteClick(item.id)} className="text-[10px] bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold px-3 py-1.5 rounded-xl transition-colors">Hapus</button>
                   )}
                 </div>

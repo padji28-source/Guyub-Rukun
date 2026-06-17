@@ -37,7 +37,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
     "Dana Sosial": 0
   });
 
-  const isAdminOrBendahara = currentUser?.allowedMenus?.includes('Kas') || currentUser?.role === 'developer';
+  const isAdminOrBendahara = ['admin', 'developer', 'bendahara'].includes(currentUser?.role);
 
   const fetchData = async () => {
     try {
@@ -388,7 +388,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
                         <Icons.edit className="w-3 h-3"/> Koreksi
                       </button>
                     )}
-                    {currentUser?.role === 'admin' && (
+                    {['admin', 'developer'].includes(currentUser?.role) && (
                       <button onClick={() => handleDeleteClick(item.id)} className="text-[10px] text-rose-500 bg-rose-50 px-2 py-1 rounded flex items-center gap-1 font-bold hover:bg-rose-100 transition-colors">
                         <Icons.delete className="w-3 h-3"/> Hapus
                       </button>

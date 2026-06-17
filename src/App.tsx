@@ -1800,10 +1800,11 @@ const MobileQuickActions = ({ onActionClick, visibleMenus = [] }: { onActionClic
             variants={itemVariants}
             whileTap={{ scale: 0.85 }} // Mengecil saat ditekan
             onClick={() => {
-              if (action.url) {
-                window.open(action.url, '_blank');
+              const act = action as any;
+              if (act.url) {
+                window.open(act.url, '_blank');
               } else {
-                onActionClick(action.name);
+                onActionClick(act.name);
               }
             }} 
             className="flex flex-col items-center text-center gap-2.5 group outline-none"

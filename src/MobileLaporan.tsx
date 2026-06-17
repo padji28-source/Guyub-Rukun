@@ -3,9 +3,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App';
 
+let cachedLaporanData: any[] | null = null;
+
 export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
-  const [data, setData] = useState<any[]>([]);
-  const isAdminOrPengurus = currentUser?.allowedMenus?.includes('Laporan') || currentUser?.role === 'developer';
+  const [data, setData] = useState<any[]>(cachedLaporanData || []);
+  const isAdminOrPengurus = ['admin', 'developer', 'sekretaris', 'bendahara'].includes(currentUser?.role);
 
   const exportToExcel = () => {
     if (currentUser?.role !== 'admin') {
@@ -40,7 +42,8 @@ export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, cur
     try {
       const res = await apiFetch('/api/data/laporan');
       const json = await res.json();
-      setData(json.data || []);
+      cachedLaporanData = json.data || [];
+      setData(cachedLaporanData!);
     } catch(e) { 
       console.error(e); 
     }

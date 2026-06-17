@@ -53,7 +53,8 @@ export const WebInventarisPage = ({ user }: { user: any }) => {
   const [formNotes, setFormNotes] = useState('');
   const [formError, setFormError] = useState('');
 
-  const isEditor = user?.allowedMenus?.includes('Inventaris') || user?.role === 'developer';
+  const isEditor = ['admin', 'developer', 'sekretaris', 'bendahara', 'pengurus'].includes(user?.role);
+  const canDelete = ['admin', 'developer'].includes(user?.role);
   
   // Fetch all inventory items
   const fetchInventaris = async () => {
@@ -403,22 +404,26 @@ export const WebInventarisPage = ({ user }: { user: any }) => {
                   </div>
                 </div>
 
-                {isEditor && (
+                {(isEditor || canDelete) && (
                   <div className="flex items-center justify-end gap-2.5 mt-5 pt-3.5 border-t border-gray-50 shrink-0">
-                    <button
-                      onClick={() => openEditModal(item)}
-                      className="p-2 border border-gray-200 hover:bg-slate-50 text-slate-600 hover:text-slate-800 rounded-lg transition duration-150 pointer-events-auto cursor-pointer"
-                      title="Edit Aset"
-                    >
-                      <Edit className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="p-2 border border-rose-100 hover:bg-rose-50 text-rose-500 hover:text-rose-600 rounded-lg transition duration-150 pointer-events-auto cursor-pointer"
-                      title="Hapus Aset"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {isEditor && (
+                      <button
+                        onClick={() => openEditModal(item)}
+                        className="p-2 border border-gray-200 hover:bg-slate-50 text-slate-600 hover:text-slate-800 rounded-lg transition duration-150 pointer-events-auto cursor-pointer"
+                        title="Edit Aset"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="p-2 border border-rose-100 hover:bg-rose-50 text-rose-500 hover:text-rose-600 rounded-lg transition duration-150 pointer-events-auto cursor-pointer"
+                        title="Hapus Aset"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 )}
               </motion.div>

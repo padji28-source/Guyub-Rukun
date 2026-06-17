@@ -228,7 +228,7 @@ export const MobileDataWarga = ({ onBack, currentUser }: { onBack: () => void, c
   };
 
   const isDeveloper = currentUser?.role === 'developer';
-  const isAdmin = currentUser?.allowedMenus?.includes('Warga') || isDeveloper;
+  const isAdmin = currentUser?.role === 'admin' || isDeveloper;
 
   const getAllAges = () => {
     const ages: number[] = [];

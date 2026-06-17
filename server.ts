@@ -1208,6 +1208,10 @@ app.put("/api/warga/:id/members/:memberId", async (req, res) => {
 });
 
 app.delete("/api/warga/:id/members/:memberId", async (req, res) => {
+  const role = (req.headers['x-user-role'] as string) || 'warga';
+  if (role !== 'admin' && role !== 'developer') {
+    return res.status(403).json({ error: "Akses ditolak: Anggota keluarga hanya dapat dihapus oleh Ketua RT." });
+  }
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
   const user = await UserModel.findOne({ id: req.params.id, rtId });
   if (user && user.members) {
@@ -1454,10 +1458,21 @@ app.post("/api/data/:resource", async (req, res) => {
   const model = map[resource];
   if (!model) return res.status(404).json({ error: "Resource not found" });
 
-  // Role validation for notulen
+  const role = (req.headers['x-user-role'] as string) || 'warga';
+
+  // Strict backend role checks for creating resources
+  if (resource === 'kas') {
+    if (role !== 'admin' && role !== 'developer' && role !== 'bendahara') {
+      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Bendahara yang dapat menginput transaksi kas." });
+    }
+  }
+  if (resource === 'acara' || resource === 'umkm' || resource === 'inventaris') {
+    if (role !== 'admin' && role !== 'developer' && role !== 'sekretaris' && role !== 'bendahara' && role !== 'pengurus') {
+      return res.status(403).json({ error: `Akses ditolak: Anda tidak memiliki wewenang untuk menambahkan ${resource}.` });
+    }
+  }
   if (resource === 'notulen') {
-    const role = (req.headers['x-user-role'] as string) || 'warga';
-    if (role !== 'admin' && role !== 'sekretaris') {
+    if (role !== 'admin' && role !== 'developer' && role !== 'sekretaris') {
       return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Sekretaris yang dapat membuat notulen rapat." });
     }
   }
@@ -1606,11 +1621,31 @@ app.put("/api/data/:resource/:id", async (req, res) => {
   const model = map[resource];
   if (!model) return res.status(404).json({ error: "Resource not found" });
 
-  // Role validation for notulen
+  const role = (req.headers['x-user-role'] as string) || 'warga';
+  const userId = req.headers['x-user-id'] as string;
+
+  // Strict backend role checks for updating resources
+  if (resource === 'kas' || resource === 'iuran') {
+    if (role !== 'admin' && role !== 'developer' && role !== 'bendahara') {
+      return res.status(403).json({ error: `Akses ditolak: Hanya Ketua RT atau Bendahara yang dapat mengedit/memverifikasi transaksi ${resource}.` });
+    }
+  }
+  if (resource === 'acara' || resource === 'umkm' || resource === 'inventaris') {
+    if (role !== 'admin' && role !== 'developer' && role !== 'sekretaris' && role !== 'bendahara' && role !== 'pengurus') {
+      return res.status(403).json({ error: `Akses ditolak: Anda tidak memiliki wewenang untuk mengedit ${resource}.` });
+    }
+  }
   if (resource === 'notulen') {
-    const role = (req.headers['x-user-role'] as string) || 'warga';
-    if (role !== 'admin' && role !== 'sekretaris') {
+    if (role !== 'admin' && role !== 'developer' && role !== 'sekretaris') {
       return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Sekretaris yang dapat mengedit notulen rapat." });
+    }
+  }
+  if (resource === 'surat') {
+    if (role !== 'admin' && role !== 'developer' && role !== 'sekretaris' && role !== 'pengurus') {
+      const existingSurat = await model.findOne({ id: req.params.id, rtId });
+      if (!existingSurat || existingSurat.userId !== userId) {
+        return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT, Sekretaris, Pengurus atau pembuat surat yang dapat mengedit surat ini." });
+      }
     }
   }
 
@@ -1713,11 +1748,11 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
   const model = map[resource];
   if (!model) return res.status(404).json({ error: "Resource not found" });
 
-  // Role validation for notulen
-  if (resource === 'notulen') {
-    const role = (req.headers['x-user-role'] as string) || 'warga';
-    if (role !== 'admin' && role !== 'sekretaris') {
-      return res.status(403).json({ error: "Akses ditolak: Hanya Ketua RT atau Sekretaris yang dapat menghapus notulen rapat." });
+  // Strict role verification for deletion (Only Ketua RT / Admin & Developer can delete core resources)
+  const role = (req.headers['x-user-role'] as string) || 'warga';
+  if (['surat', 'laporan', 'tamu', 'kas', 'iuran', 'acara', 'umkm', 'inventaris', 'notulen'].includes(resource)) {
+    if (role !== 'admin' && role !== 'developer') {
+      return res.status(403).json({ error: `Akses ditolak: Operasi hapus data ${resource} hanya dapat dilakukan oleh Ketua RT.` });
     }
   }
 

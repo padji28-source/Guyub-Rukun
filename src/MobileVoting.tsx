@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { apiFetch } from './apiInterceptor';
 import { icons } from './App';
 
+let cachedVotingData: any[] | null = null;
+
 export const MobileVoting = ({ currentUser, onBack }: { currentUser: any, onBack: () => void }) => {
-  const [votings, setVotings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [votings, setVotings] = useState<any[]>(cachedVotingData || []);
+  const [loading, setLoading] = useState(!cachedVotingData);
   const isAdmin = currentUser?.allowedMenus?.includes('Voting') || currentUser?.role === 'developer';
   const [showAdd, setShowAdd] = useState(false);
 
@@ -19,7 +21,8 @@ export const MobileVoting = ({ currentUser, onBack }: { currentUser: any, onBack
     try {
       const res = await apiFetch('/api/voting');
       const json = await res.json();
-      setVotings(json.data || []);
+      cachedVotingData = json.data || [];
+      setVotings(cachedVotingData!);
     } catch (e) {
       console.error(e);
     }

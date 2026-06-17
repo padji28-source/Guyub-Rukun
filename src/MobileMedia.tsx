@@ -3,8 +3,10 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { icons } from './App'; // Sesuaikan path jika perlu
 
+let cachedMediaData: any[] | null = null;
+
 export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
-  const [media, setMedia] = useState<any[]>([]);
+  const [media, setMedia] = useState<any[]>(cachedMediaData || []);
   const [loading, setLoading] = useState(false);
   const [viewImage, setViewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -15,7 +17,8 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
     try {
       const res = await apiFetch('/api/data/media');
       const json = await res.json();
-      setMedia(json.data || []);
+      cachedMediaData = json.data || [];
+      setMedia(cachedMediaData!);
     } catch(e) { 
       console.error(e); 
     }

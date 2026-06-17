@@ -210,6 +210,7 @@ export const MobileSuratPengantar = ({
   const [formSignaturePemohonEdit, setFormSignaturePemohonEdit] = useState('');
 
   const isAdminOrPengurus = currentUser?.allowedMenus?.includes('Surat Online') || currentUser?.role === 'developer';
+  const canSeeAllHistory = currentUser?.role === 'admin' || currentUser?.role === 'developer';
 
   // Watch for notification trigger selection on mobile
   useEffect(() => {
@@ -564,9 +565,9 @@ export const MobileSuratPengantar = ({
 
   const filteredData = useMemo(() => {
     return data
-      .filter(d => isAdminOrPengurus || d.userId === currentUser?.id)
+      .filter(d => canSeeAllHistory || d.userId === currentUser?.id)
       .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [data, isAdminOrPengurus, currentUser?.id]);
+  }, [data, canSeeAllHistory, currentUser?.id]);
 
   const getStatusStyle = (status: string) => {
     const s = status?.toLowerCase();

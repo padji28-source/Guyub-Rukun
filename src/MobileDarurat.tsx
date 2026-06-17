@@ -3,15 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { icons } from './App'; // Pastikan import icons dari App atau sesuaikan path-nya
 
+let cachedDaruratData: any[] | null = null;
+
 export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<any[]>(cachedDaruratData || []);
   const isAdmin = currentUser?.allowedMenus?.includes('Darurat') || currentUser?.role === 'developer';
 
   const fetchData = async () => {
     try {
       const res = await apiFetch('/api/data/darurat');
       const json = await res.json();
-      setData(json.data || []);
+      cachedDaruratData = json.data || [];
+      setData(cachedDaruratData!);
     } catch(e) { 
       console.error(e); 
     }

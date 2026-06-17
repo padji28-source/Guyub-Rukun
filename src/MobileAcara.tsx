@@ -13,6 +13,40 @@ const EventIcons = {
 
 let cachedAcaraData: any[] | null = null;
 
+const getEventReminder = (dateStr: string) => {
+  const eventDate = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  eventDate.setHours(0,0,0,0);
+  
+  const diffTime = eventDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) {
+    return null; // Acara sudah terlewat
+  } else if (diffDays === 0) {
+    return {
+      text: '🚨 Pengingat: Hari ini berlangsung!',
+      className: 'bg-rose-50 text-rose-700 border-rose-100 font-extrabold animate-pulse'
+    };
+  } else if (diffDays === 1) {
+    return {
+      text: '⏰ Pengingat: Berlangsung besok!',
+      className: 'bg-amber-50 text-amber-700 border-amber-100 font-bold'
+    };
+  } else if (diffDays <= 7) {
+    return {
+      text: `🔔 Pengingat: Tinggal ${diffDays} hari lagi!`,
+      className: 'bg-blue-50 text-blue-700 border-blue-100 font-semibold'
+    };
+  } else {
+    return {
+      text: `📅 Pengingat: Terjadwal ${diffDays} hari lagi`,
+      className: 'bg-emerald-50 text-emerald-700 border-emerald-100 font-medium'
+    };
+  }
+};
+
 export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
   const [data, setData] = useState<any[]>(cachedAcaraData || []);
   const [loading, setLoading] = useState(!cachedAcaraData);
@@ -21,7 +55,8 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
   const [desc, setDesc] = useState('');
   const [date, setDate] = useState('');
 
-  const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
+  const canCreateAndEdit = ['admin', 'developer', 'sekretaris', 'bendahara'].includes(currentUser?.role);
+  const canDelete = ['admin', 'developer'].includes(currentUser?.role);
 
   const fetchData = async () => {
     try {
@@ -102,7 +137,7 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
       </motion.div>
 
       {/* ADMIN CONTROLS (FORM TAMBAH ACARA) */}
-      {isAdminOrPengurus && (
+      {canCreateAndEdit && (
         <div className="mb-8">
           <AnimatePresence mode="wait">
             {!showForm ? (
@@ -200,13 +235,21 @@ export const MobileAcaraPage = ({ currentUser }: { currentUser?: any }) => {
                     <p className="text-[10px] font-bold text-slate-600 mb-2 flex items-center gap-1.5">
                       <EventIcons.calendar className="w-3.5 h-3.5 shrink-0" /> {fullDate}
                     </p>
+                    {(() => {
+                      const reminder = getEventReminder(item.date);
+                      return reminder ? (
+                        <div className={`my-2 text-[10px] px-3 py-2 rounded-xl border flex items-center gap-2 font-bold ${reminder.className}`}>
+                          <span>{reminder.text}</span>
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-2">
                        <p className="text-xs text-slate-600 leading-relaxed font-medium whitespace-pre-wrap">{item.desc}</p>
                     </div>
                   </div>
 
                   {/* Tombol Hapus (Admin Only) */}
-                  {isAdminOrPengurus && (
+                  {canDelete && (
                     <button 
                       onClick={() => handleDelete(item.id)} 
                       className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center bg-rose-50 text-rose-500 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors border border-rose-100 opacity-80 hover:opacity-100"

@@ -3,15 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { icons } from './App';
 
+let cachedTamuData: any[] | null = null;
+
 export const MobileTamu = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
-  const [data, setData] = useState<any[]>([]);
-  const isAdminOrPengurus = currentUser?.allowedMenus?.includes('Tamu') || currentUser?.role === 'developer';
+  const [data, setData] = useState<any[]>(cachedTamuData || []);
+  const isAdminOrPengurus = ['admin', 'developer', 'sekretaris', 'bendahara'].includes(currentUser?.role);
 
   const fetchData = async () => {
     try {
       const res = await apiFetch('/api/data/tamu');
       const json = await res.json();
-      setData(json.data || []);
+      cachedTamuData = json.data || [];
+      setData(cachedTamuData!);
     } catch(e) { console.error(e); }
   };
 

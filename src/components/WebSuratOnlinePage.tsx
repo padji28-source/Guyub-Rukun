@@ -212,6 +212,7 @@ export const WebSuratOnlinePage = ({
   const [isSignOpen, setIsSignOpen] = useState(false);
 
   const isAdminOrPengurus = user?.allowedMenus?.includes('Surat Online') || user?.role === 'developer';
+  const canSeeAllHistory = user?.role === 'admin' || user?.role === 'developer';
 
   const exportToExcel = () => {
     if (user?.role !== 'admin') {
@@ -279,7 +280,7 @@ export const WebSuratOnlinePage = ({
   // Handle setting default initial selected item on load
   useEffect(() => {
     if (!selectedItem && data.length > 0) {
-      const allowed = data.filter(d => isAdminOrPengurus || d.userId === user?.id);
+      const allowed = data.filter(d => canSeeAllHistory || d.userId === user?.id);
       if (allowed.length > 0) {
         setSelectedItem(allowed[0]);
         setEditingNomorSurat(allowed[0].nomorSurat || '');
@@ -576,7 +577,7 @@ export const WebSuratOnlinePage = ({
     return data
       .filter(item => {
         // Enforce user visibility
-        if (!isAdminOrPengurus && item.userId !== user?.id) return false;
+        if (!canSeeAllHistory && item.userId !== user?.id) return false;
         
         // Match Search query
         const matchesSearch = 
@@ -591,15 +592,15 @@ export const WebSuratOnlinePage = ({
         return matchesSearch;
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [data, search, statusFilter, isAdminOrPengurus, user?.id]);
+  }, [data, search, statusFilter, canSeeAllHistory, user?.id]);
 
   const stats = useMemo(() => {
-    const allowed = data.filter(d => isAdminOrPengurus || d.userId === user?.id);
+    const allowed = data.filter(d => canSeeAllHistory || d.userId === user?.id);
     const total = allowed.length;
     const proses = allowed.filter(d => d.status !== 'selesai').length;
     const selesai = allowed.filter(d => d.status === 'selesai').length;
     return { total, proses, selesai };
-  }, [data, isAdminOrPengurus, user?.id]);
+  }, [data, canSeeAllHistory, user?.id]);
 
   return (
     <div className="flex flex-col xl:flex-row gap-6 w-full h-full">
