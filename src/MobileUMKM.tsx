@@ -11,7 +11,7 @@ export const MobileUMKM = ({ onBack, currentUser }: { onBack: () => void, curren
   const [kontak, setKontak] = useState('');
   const [showTambahUMKM, setShowTambahUMKM] = useState(false);
 
-  const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
+  const isAdminOrPengurus = currentUser?.allowedMenus?.includes('UMKM') || currentUser?.role === 'developer';
 
   const fetchData = async () => {
     try {

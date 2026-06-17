@@ -211,7 +211,7 @@ export const WebSuratOnlinePage = ({
   const [editingNomorSurat, setEditingNomorSurat] = useState('');
   const [isSignOpen, setIsSignOpen] = useState(false);
 
-  const isAdminOrPengurus = user?.role === 'admin' || user?.role === 'pengurus';
+  const isAdminOrPengurus = user?.allowedMenus?.includes('Surat Online') || user?.role === 'developer';
 
   const exportToExcel = () => {
     if (user?.role !== 'admin') {

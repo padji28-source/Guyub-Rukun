@@ -5,7 +5,7 @@ import { icons } from './App'; // Pastikan import icons dari App atau sesuaikan 
 
 export const MobileDarurat = ({ onBack, currentUser }: { onBack: () => void, currentUser?: any }) => {
   const [data, setData] = useState<any[]>([]);
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.allowedMenus?.includes('Darurat') || currentUser?.role === 'developer';
 
   const fetchData = async () => {
     try {

@@ -37,7 +37,7 @@ export const MobileKas = ({ onBack, currentUser }: { onBack: () => void, current
     "Dana Sosial": 0
   });
 
-  const isAdminOrBendahara = currentUser?.role === 'admin' || currentUser?.role === 'bendahara';
+  const isAdminOrBendahara = currentUser?.allowedMenus?.includes('Kas') || currentUser?.role === 'developer';
 
   const fetchData = async () => {
     try {

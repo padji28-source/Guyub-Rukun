@@ -6,7 +6,7 @@ import { icons } from './App';
 export const MobileVoting = ({ currentUser, onBack }: { currentUser: any, onBack: () => void }) => {
   const [votings, setVotings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
+  const isAdmin = currentUser?.allowedMenus?.includes('Voting') || currentUser?.role === 'developer';
   const [showAdd, setShowAdd] = useState(false);
 
   // Form states

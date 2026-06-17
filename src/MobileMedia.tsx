@@ -9,7 +9,7 @@ export const MobileMedia = ({ onBack, currentUser }: { onBack: () => void, curre
   const [viewImage, setViewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus' || currentUser?.role === 'bendahara';
+  const isAdminOrPengurus = currentUser?.allowedMenus?.includes('Media') || currentUser?.role === 'developer';
 
   const fetchData = async () => {
     try {

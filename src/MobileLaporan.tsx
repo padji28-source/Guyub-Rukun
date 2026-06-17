@@ -5,7 +5,7 @@ import { icons } from './App';
 
 export const MobileLaporan = ({ onBack, currentUser }: { onBack: () => void, currentUser: any }) => {
   const [data, setData] = useState<any[]>([]);
-  const isAdminOrPengurus = currentUser?.role === 'admin' || currentUser?.role === 'pengurus';
+  const isAdminOrPengurus = currentUser?.allowedMenus?.includes('Laporan') || currentUser?.role === 'developer';
 
   const exportToExcel = () => {
     if (currentUser?.role !== 'admin') {

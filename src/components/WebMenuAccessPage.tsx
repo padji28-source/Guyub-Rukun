@@ -195,7 +195,7 @@ export const WebMenuAccessPage = ({ user }: { user: any }) => {
           <AlertCircle className="w-12 h-12 text-red-600 mx-auto" />
           <h3 className="font-bold text-red-800 text-lg">Akses Ditolak (Developer Only)</h3>
           <p className="text-sm text-red-600 leading-relaxed">
-            Halaman ini khusus untuk Akun Developer Lisensi untuk mengatur segmentasi menu masing-masing role demi keperluan lisensi paket berlangganan RT.
+            Halaman ini khusus untuk Akun Developer Lisensi untuk mengatur <b>HAK MANAJEMEN (Edit & Hapus)</b> pada modul masing-masing role demi keperluan lisensi paket berlangganan RT.
           </p>
         </div>
       </div>
@@ -353,7 +353,7 @@ export const WebMenuAccessPage = ({ user }: { user: any }) => {
             </div>
             <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1 shadow-sm">Info Segmentasi SaaS</h4>
             <p className="text-[11px] text-indigo-200 leading-relaxed mb-3">
-              Perubahan pada menu langsung memperbarui navigasi seluruh pengguna ber-role terkait secara dynamic saat itu juga (Real-time SSE event disebarkan).
+              Perubahan pada menu langsung memperbarui <b>hak akses pengelolaan (Edit & Hapus)</b> seluruh pengguna ber-role terkait secara dynamic saat itu juga (Real-time SSE event disebarkan). Semua role tetap bisa melihat semua menu kecuali modul VIP.
             </p>
             <div className="flex items-center gap-1.5 text-[10px] text-white/90">
               <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
