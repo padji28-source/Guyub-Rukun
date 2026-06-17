@@ -20,6 +20,9 @@ interface MenuPermission {
   _id?: string;
   role: string;
   allowedMenus: string[];
+  createMenus: string[];
+  updateMenus: string[];
+  deleteMenus: string[];
 }
 
 const AVAILABLE_MENUS = [
@@ -130,27 +133,65 @@ export const WebMenuAccessPage = ({ user }: { user: any }) => {
     };
   }, []);
 
-  const getRolePermissions = (role: string): string[] => {
+  const getRolePermissionObj = (role: string): MenuPermission => {
     const perm = permissions.find(p => p.role === role);
-    return perm ? perm.allowedMenus : [];
+    return perm || { role, allowedMenus: [], createMenus: [], updateMenus: [], deleteMenus: [] };
   };
 
-  const handleToggleMenu = (role: string, menuName: string) => {
+  const handleToggleMenu = (role: string, menuName: string, actionType: 'read' | 'create' | 'update' | 'delete') => {
     setPermissions(prev => {
-      return prev.map(p => {
+      // Periksa apakah role sudah ada
+      let hasRole = prev.find(p => p.role === role);
+      let updatedPrev = [...prev];
+      if (!hasRole) {
+        updatedPrev.push({ role, allowedMenus: [], createMenus: [], updateMenus: [], deleteMenus: [] });
+      }
+      
+      return updatedPrev.map(p => {
         if (p.role === role) {
-          const exists = p.allowedMenus.includes(menuName);
-          let updatedMenus = [];
-          if (exists) {
-            // Prevent developer from disabling its own developer access
-            if (role === 'developer' && menuName === 'Akses Menu') {
-              return p;
-            }
-            updatedMenus = p.allowedMenus.filter(m => m !== menuName);
-          } else {
-            updatedMenus = [...p.allowedMenus, menuName];
+          // Initialize if missing
+          p.allowedMenus = p.allowedMenus || [];
+          p.createMenus = p.createMenus || [];
+          p.updateMenus = p.updateMenus || [];
+          p.deleteMenus = p.deleteMenus || [];
+          
+          if (role === 'developer' && menuName === 'Akses Menu') {
+            return p; // Protect developer
           }
-          return { ...p, allowedMenus: updatedMenus };
+
+          let updatedAllowed = [...p.allowedMenus];
+          let updatedCreate = [...p.createMenus];
+          let updatedUpdate = [...p.updateMenus];
+          let updatedDelete = [...p.deleteMenus];
+
+          if (actionType === 'read') {
+            if (updatedAllowed.includes(menuName)) {
+              updatedAllowed = updatedAllowed.filter(m => m !== menuName);
+              // if read is disabled, disable all others
+              updatedCreate = updatedCreate.filter(m => m !== menuName);
+              updatedUpdate = updatedUpdate.filter(m => m !== menuName);
+              updatedDelete = updatedDelete.filter(m => m !== menuName);
+            } else {
+              updatedAllowed.push(menuName);
+            }
+          } else if (actionType === 'create') {
+            if (updatedCreate.includes(menuName)) updatedCreate = updatedCreate.filter(m => m !== menuName);
+            else { updatedCreate.push(menuName); if (!updatedAllowed.includes(menuName)) updatedAllowed.push(menuName); }
+          } else if (actionType === 'update') {
+            if (updatedUpdate.includes(menuName)) updatedUpdate = updatedUpdate.filter(m => m !== menuName);
+            else { updatedUpdate.push(menuName); if (!updatedAllowed.includes(menuName)) updatedAllowed.push(menuName); }
+          } else if (actionType === 'delete') {
+            if (updatedDelete.includes(menuName)) updatedDelete = updatedDelete.filter(m => m !== menuName);
+            else { updatedDelete.push(menuName); if (!updatedAllowed.includes(menuName)) updatedAllowed.push(menuName); }
+          }
+
+          return { 
+            ...p, 
+            allowedMenus: updatedAllowed,
+            createMenus: updatedCreate,
+            updateMenus: updatedUpdate,
+            deleteMenus: updatedDelete
+          };
         }
         return p;
       });
@@ -158,7 +199,7 @@ export const WebMenuAccessPage = ({ user }: { user: any }) => {
   };
 
   const handleSaveConfig = async (role: string) => {
-    const allowedMenus = getRolePermissions(role);
+    const perm = getRolePermissionObj(role);
     setSavingRole(role);
     setMessage(null);
 
@@ -166,7 +207,13 @@ export const WebMenuAccessPage = ({ user }: { user: any }) => {
       const res = await apiFetch('/api/menu-permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role, allowedMenus })
+        body: JSON.stringify({ 
+          role, 
+          allowedMenus: perm.allowedMenus,
+          createMenus: perm.createMenus,
+          updateMenus: perm.updateMenus,
+          deleteMenus: perm.deleteMenus
+        })
       });
 
       const json = await res.json();
@@ -202,9 +249,10 @@ export const WebMenuAccessPage = ({ user }: { user: any }) => {
     );
   }
 
-  const currentAllowed = getRolePermissions(selectedRole);
+  const currentPermObj = getRolePermissionObj(selectedRole);
+  const currentAllowed = currentPermObj.allowedMenus || [];
 
-  const totalPermissionsCount = permissions.reduce((acc, curr) => acc + curr.allowedMenus.length, 0);
+  const totalPermissionsCount = permissions.reduce((acc, curr) => acc + (curr.allowedMenus?.length || 0), 0);
 
   return (
     <div className="w-full min-h-[calc(100vh-100px)] p-6 bg-[#FAFBFD] space-y-6">
@@ -312,7 +360,7 @@ export const WebMenuAccessPage = ({ user }: { user: any }) => {
                 {['developer', 'admin', 'sekretaris', 'bendahara', 'pengurus', 'warga'].map(role => {
                   const labelInfo = ROLE_LABELS[role] || { label: role, color: 'bg-gray-50 text-gray-700', desc: '' };
                   const isSelected = selectedRole === role;
-                  const count = getRolePermissions(role).length;
+                  const count = (getRolePermissionObj(role).allowedMenus || []).length;
 
                   return (
                     <div
@@ -401,42 +449,70 @@ export const WebMenuAccessPage = ({ user }: { user: any }) => {
                 <p className="text-xs font-medium text-gray-400">Menyelaraskan lisensi akses database...</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {AVAILABLE_MENUS.map(menu => {
-                  const isChecked = currentAllowed.includes(menu.name);
+                  const currentPerm = getRolePermissionObj(selectedRole);
+                  const isRead = (currentPerm.allowedMenus || []).includes(menu.name);
+                  const isCreate = (currentPerm.createMenus || []).includes(menu.name);
+                  const isUpdate = (currentPerm.updateMenus || []).includes(menu.name);
+                  const isDelete = (currentPerm.deleteMenus || []).includes(menu.name);
+                  
                   // Enforce developer safety
                   const isDisabled = selectedRole === 'developer' && menu.name === 'Akses Menu';
 
                   return (
                     <div
                       key={menu.name}
-                      onClick={() => !isDisabled && handleToggleMenu(selectedRole, menu.name)}
-                      className={`p-4 rounded-xl border text-left transition-all relative select-none ${
-                        isChecked 
-                          ? 'bg-indigo-50/50 border-indigo-200 hover:border-indigo-300' 
+                      className={`p-4 rounded-xl border text-left flex flex-col gap-3 transition-all relative select-none ${
+                        isRead 
+                          ? 'bg-indigo-50/30 border-indigo-200' 
                           : 'bg-white border-gray-100 hover:border-gray-200'
-                      } ${isDisabled ? 'opacity-70 pointer-events-none' : 'cursor-pointer'}`}
+                      } ${isDisabled ? 'opacity-70 pointer-events-none' : ''}`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1 pr-4">
-                          <span className={`font-bold text-sm tracking-tight transition-colors ${
-                            isChecked ? 'text-indigo-900' : 'text-gray-800'
-                          }`}>
-                            {menu.name}
-                          </span>
-                          <p className="text-[10.5px] text-gray-400 leading-relaxed">
-                            {menu.desc}
-                          </p>
-                        </div>
-
-                        {/* Interactive custom Checkbox indicator */}
-                        <div className={`w-5 h-5 shrink-0 rounded-md border flex items-center justify-center transition-all ${
-                          isChecked 
-                            ? 'bg-indigo-600 border-indigo-700 text-white' 
-                            : 'bg-gray-50 border-gray-200'
+                      <div className="space-y-1">
+                        <span className={`font-bold text-sm tracking-tight transition-colors ${
+                          isRead ? 'text-indigo-900' : 'text-gray-800'
                         }`}>
-                          {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                        </div>
+                          {menu.name}
+                        </span>
+                        <p className="text-[10px] text-gray-400 leading-relaxed">
+                          {menu.desc}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 mt-auto">
+                        <button 
+                          onClick={() => !isDisabled && handleToggleMenu(selectedRole, menu.name, 'read')}
+                          className={`px-2 py-1 flex flex-col sm:flex-row items-center gap-1 rounded border text-[9px] font-bold ${
+                            isRead ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                          }`}
+                        >
+                          <Check className={`w-3 h-3 ${isRead ? 'opacity-100' : 'opacity-0'}`} /> Read
+                        </button>
+                        <button 
+                          onClick={() => !isDisabled && handleToggleMenu(selectedRole, menu.name, 'create')}
+                          className={`px-2 py-1 flex flex-col sm:flex-row items-center gap-1 rounded border text-[9px] font-bold ${
+                            isCreate ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-emerald-50 hover:text-emerald-600'
+                          }`}
+                        >
+                          <Check className={`w-3 h-3 ${isCreate ? 'opacity-100' : 'opacity-0'}`} /> Create
+                        </button>
+                        <button 
+                          onClick={() => !isDisabled && handleToggleMenu(selectedRole, menu.name, 'update')}
+                          className={`px-2 py-1 flex flex-col sm:flex-row items-center gap-1 rounded border text-[9px] font-bold ${
+                            isUpdate ? 'bg-amber-500 text-white border-amber-600' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-amber-50 hover:text-amber-600'
+                          }`}
+                        >
+                          <Check className={`w-3 h-3 ${isUpdate ? 'opacity-100' : 'opacity-0'}`} /> Update
+                        </button>
+                        <button 
+                          onClick={() => !isDisabled && handleToggleMenu(selectedRole, menu.name, 'delete')}
+                          className={`px-2 py-1 flex flex-col sm:flex-row items-center gap-1 rounded border text-[9px] font-bold ${
+                            isDelete ? 'bg-rose-600 text-white border-rose-700' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-rose-50 hover:text-rose-600'
+                          }`}
+                        >
+                          <Check className={`w-3 h-3 ${isDelete ? 'opacity-100' : 'opacity-0'}`} /> Delete
+                        </button>
                       </div>
                     </div>
                   );

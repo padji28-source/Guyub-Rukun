@@ -3200,14 +3200,14 @@ function MainApp({ user: originalUser, onLogout, onUpdateUser }: { user: any; on
         <MobileHeader notifications={notifications} onShowNotifications={handleShowNotifications} />
         <MobileProfile user={user} />
         <div className="flex-grow overflow-hidden bg-white relative">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeMobileTab}
-              initial={{ opacity: 0, x: 5 }}
+              initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -5 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              className="h-full overflow-y-auto pb-24"
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+              className="h-full overflow-y-auto pb-24 relative"
             >
               {activeMobileTab === 'Profil' ? (
                 <MobileProfilPage user={user} onLogout={onLogout} onUpdateUser={onUpdateUser} />
@@ -3594,6 +3594,8 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void, key?: string }) => {
   );
 };
 
+import { InstallPrompt } from './components/InstallPrompt';
+
 export default function App() {
   const [user, setUser] = useState<any>(() => {
     try {
@@ -3649,9 +3651,11 @@ export default function App() {
   };
 
   return (
-    <AnimatePresence mode="wait">
-      {showSplash ? (
-        <SplashScreen key="splash" onFinish={() => setShowSplash(false)} />
+    <>
+      <InstallPrompt />
+      <AnimatePresence mode="wait">
+        {showSplash ? (
+          <SplashScreen key="splash" onFinish={() => setShowSplash(false)} />
       ) : (
         !selectedRt ? (
           <motion.div
@@ -3714,5 +3718,6 @@ export default function App() {
         )
       )}
     </AnimatePresence>
+    </>
   );
 }

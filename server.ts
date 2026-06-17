@@ -1,4 +1,5 @@
 import express from "express";
+import "express-async-errors";
 import fs from "fs";
 import path from "path";
 import mongoose from "mongoose";
@@ -32,10 +33,12 @@ import rateLimit from "express-rate-limit";
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
-  message: "Terlalu banyak request dari IP ini, silakan coba lagi setelah 15 menit."
+  message: "Terlalu banyak request dari IP ini, silakan coba lagi setelah 15 menit.",
+  validate: { trustProxy: false, xForwardedForHeader: false }
 });
 
 export const app = express();
+app.set("trust proxy", 1);
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: "50mb" }));
@@ -358,7 +361,10 @@ const NotulenModel: mongoose.Model<any> = mongoose.models.Notulen || mongoose.mo
 // 17. Menu Access Schema (Menu and Subscription Permission Management)
 const MenuAccessSchema = new mongoose.Schema({
   role: { type: String, required: true, unique: true },
-  allowedMenus: [{ type: String }]
+  allowedMenus: [{ type: String }], // Maps to "Read/View"
+  createMenus: [{ type: String }],
+  updateMenus: [{ type: String }],
+  deleteMenus: [{ type: String }]
 }, { timestamps: true });
 const MenuAccessModel: mongoose.Model<any> = mongoose.models.MenuAccess || mongoose.model("MenuAccess", MenuAccessSchema);
 
@@ -921,52 +927,47 @@ setInterval(() => {
   }
 }, 5000);
 
-app.post("/api/login", validateRequest(LoginValidator), async (req, res) => {
-  const { username, password } = req.body;
-  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+app.post("/api/login", validateRequest(LoginValidator), async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+    const rtId = req.headers['x-rt-id'] as string || 'rt01';
 
-  await connectDB();
-  const query: any = { username };
-  if (username !== 'developer') {
-    query.rtId = rtId;
-  }
-  const user = await UserModel.findOne(query);
-
-  if (user && verifyPassword(password, user.password)) {
-    // Silently upgrade plain-text passwords to secure hashes on first login
-    if (!user.password.startsWith('$2') && user.password === password) {
-      user.password = hashPassword(password);
-      await user.save();
+    await connectDB();
+    const query: any = { username };
+    if (username !== 'developer') {
+      query.rtId = rtId;
     }
+    const user = await UserModel.findOne(query);
 
-    if (activeSessions.has(user.id) && Date.now() - activeSessions.get(user.id)! < 10000) {
-      return res.status(409).json({ error: "User sedang aktif digunakan pada perangkat lain" });
+    if (user && verifyPassword(password, user.password)) {
+      if (!user.password.startsWith('$2') && user.password === password) {
+        user.password = hashPassword(password);
+        await user.save();
+      }
+
+      if (activeSessions.has(user.id) && Date.now() - activeSessions.get(user.id)! < 10000) {
+        return res.status(409).json({ error: "User sedang aktif digunakan pada perangkat lain" });
+      }
+      activeSessions.set(user.id, Date.now());
+
+      const token = jwt.sign(
+        { id: user.id, username: user.username, role: user.role, nama: user.nama, rtId: user.rtId },
+        JWT_SECRET,
+        { expiresIn: "24h" }
+      );
+
+      const userJson = user.toObject();
+      userJson.token = token;
+      
+      const rtConfig = await RtConfigModel.findOne({ rtId: user.rtId });
+      userJson.isVip = rtConfig?.isVip || false;
+
+      res.json({ message: "Login Berhasil", user: userJson });
+    } else {
+      res.status(401).json({ error: "Username atau password salah" });
     }
-    activeSessions.set(user.id, Date.now());
-
-    // Generate JWT token containing secure identity claims
-    const token = jwt.sign(
-      {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        nama: user.nama,
-        rtId: user.rtId
-      },
-      JWT_SECRET,
-      { expiresIn: "24h" }
-    );
-
-    const userJson = user.toObject();
-    userJson.token = token; // Include token in nested user so client stores it
-    
-    // Inject RT VIP status
-    const rtConfig = await RtConfigModel.findOne({ rtId: user.rtId });
-    userJson.isVip = rtConfig?.isVip || false;
-
-    res.json({ message: "Login Berhasil", user: userJson });
-  } else {
-    res.status(401).json({ error: "Username atau password salah" });
+  } catch(error) {
+    next(error);
   }
 });
 
@@ -1943,7 +1944,7 @@ app.get("/api/menu-permissions", async (req, res) => {
 });
 
 app.post("/api/menu-permissions", enforceRoles(['developer']), async (req, res) => {
-  const { role, allowedMenus } = req.body;
+  const { role, allowedMenus, createMenus, updateMenus, deleteMenus } = req.body;
   if (!role || !Array.isArray(allowedMenus)) {
     return res.status(400).json({ error: "Format request salah. Parameter role dan list allowedMenus dibutuhkan." });
   }
@@ -1951,7 +1952,12 @@ app.post("/api/menu-permissions", enforceRoles(['developer']), async (req, res) 
   try {
     const updated = await MenuAccessModel.findOneAndUpdate(
       { role },
-      { allowedMenus },
+      { 
+        allowedMenus, 
+        createMenus: Array.isArray(createMenus) ? createMenus : [],
+        updateMenus: Array.isArray(updateMenus) ? updateMenus : [],
+        deleteMenus: Array.isArray(deleteMenus) ? deleteMenus : []
+      },
       { upsert: true, new: true }
     );
     // Broadcast updates to clients
@@ -2190,6 +2196,16 @@ export async function startServer(listen = true) {
     await initDb('rt02');
     await initDb('rt03');
   }
+
+  // Global Error Handler for APIs
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.path.startsWith('/api/')) {
+      console.error("API Error:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    } else {
+      next(err);
+    }
+  });
 
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const viteDynamic = "vite";
