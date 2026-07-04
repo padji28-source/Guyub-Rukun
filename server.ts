@@ -39,7 +39,7 @@ const apiLimiter = rateLimit({
 
 export const app = express();
 app.set("trust proxy", 1);
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = 3000;
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -1025,7 +1025,7 @@ app.post("/api/notifications/read", async (req, res) => {
 
 app.get("/api/tangerang-logo-proxy", async (req, res) => {
   try {
-    const url = "https://tangerangkab.go.id/tangerangkab-web/images/logo_kabupatentangerang_perda.png";
+    const url = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Seal_of_Tangerang_Regency.svg/500px-Seal_of_Tangerang_Regency.svg.png";
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to fetch logo: ${response.statusText}`);

@@ -233,14 +233,15 @@ export const MobileSuratPengantar = ({
   const [formSignatureRt, setFormSignatureRt] = useState('');
   
   // Cap/stamp fields for RT signature confirmation
-  const [capX, setCapX] = useState(-5);
-  const [capY, setCapY] = useState(-5);
-  const [capSize, setCapSize] = useState(30);
+  const [capX, setCapX] = useState(-15);
+  const [capY, setCapY] = useState(2);
+  const [capSize, setCapSize] = useState(40);
   const [useCap, setUseCap] = useState(true);
 
   // Applicant Edit Signature State (SEBELUM DIKONFIRMASI)
   const [activeEditSignatureItem, setActiveEditSignatureItem] = useState<any | null>(null);
   const [formSignaturePemohonEdit, setFormSignaturePemohonEdit] = useState('');
+  const [signStep, setSignStep] = useState<1 | 2>(1);
 
   const isAdminOrPengurus = currentUser?.allowedMenus?.includes('Surat Online') || currentUser?.role === 'developer';
   const canSeeAllHistory = currentUser?.role === 'admin' || currentUser?.role === 'developer';
@@ -251,6 +252,7 @@ export const MobileSuratPengantar = ({
       const matched = data.find(item => item.id === hittedSuratId);
       if (matched) {
         if (isAdminOrPengurus && matched.status !== 'selesai') {
+          setSignStep(1);
           setActiveRtSignatureItem(matched);
         } else {
           // Highlight/scroll to element
@@ -492,7 +494,7 @@ export const MobileSuratPengantar = ({
         capPositionX: capX,
         capPositionY: capY,
         capWidth: capSize,
-        capHeight: capSize
+        capHeight: capSize / 2.56
       } : item
     ));
     setActiveRtSignatureItem(null);
@@ -509,7 +511,7 @@ export const MobileSuratPengantar = ({
           capPositionX: capX,
           capPositionY: capY,
           capWidth: capSize,
-          capHeight: capSize,
+          capHeight: capSize / 2.56,
           updaterName: currentUser?.nama 
         })
       });
@@ -996,10 +998,10 @@ export const MobileSuratPengantar = ({
                                     referrerPolicy="no-referrer"
                                     className="absolute mix-blend-multiply pointer-events-none" 
                                     style={{
-                                      width: `${(item.capWidth ?? 30) * 1.3}px`,
-                                      height: `${(item.capHeight ?? 30) * 1.3}px`,
-                                      left: `calc(50% - 25px + ${(item.capPositionX ?? -5) * 1.3}px)`,
-                                      top: `calc(50% - 13px + ${(item.capPositionY ?? -5) * 1.3}px)`
+                                      width: `${(item.capWidth ?? 40) * 1.3}px`,
+                                      height: `${(item.capHeight ?? (40 / 2.56)) * 1.3}px`,
+                                      left: `calc(50% - ${((item.capWidth ?? 40) * 1.3) / 2}px + ${(item.capPositionX ?? -15) * 1.3}px)`,
+                                      top: `calc(50% - ${((item.capHeight ?? (40 / 2.56)) * 1.3) / 2}px + ${(item.capPositionY ?? 2) * 1.3}px)`
                                     }}
                                   />
                                 )}
@@ -1015,12 +1017,13 @@ export const MobileSuratPengantar = ({
                     </div>
 
                     {/* ADMIN ACTION: RT Digital Signature Confirmation Box */}
-                    {isAdminOrPengurus && item.status !== 'selesai' && (
+                    {(currentUser?.role === 'admin' || currentUser?.role === 'sekretaris' || currentUser?.role === 'developer') && item.status !== 'selesai' && (
                       <div className="mt-4 pt-4 border-t border-slate-100">
                         <button 
                           onClick={() => {
-                            setActiveRtSignatureItem(item);
                             setFormSignatureRt('');
+                            setSignStep(1);
+                            setActiveRtSignatureItem(item);
                           }}
                           className="w-full py-2.5 px-4 text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black transition shadow-xs flex items-center justify-center gap-1.5 pointer-events-auto cursor-pointer"
                         >
@@ -1108,188 +1111,227 @@ export const MobileSuratPengantar = ({
                 </button>
               </div>
 
-              {/* Pad component */}
-              <div className="bg-slate-50 p-2 rounded-xl border border-slate-150">
-                <SignaturePad 
-                  label="Tanda Tangan Ketua RT 001" 
-                  onSave={(dataUrl) => setFormSignatureRt(dataUrl)} 
-                />
+              {/* Step indicator */}
+              <div className="flex items-center gap-1 pb-1 border-b border-slate-100 select-none">
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider transition-colors ${signStep === 1 ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                  1. Tanda Tangan
+                </span>
+                <span className="text-slate-300 text-[10px]">➔</span>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider transition-colors ${signStep === 2 ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                  2. Atur Cap RT
+                </span>
               </div>
 
-              {/* Interactive Stamp Customizer */}
-              {formSignatureRt && (
-                <div className="space-y-3 border-t border-slate-100 pt-3">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
-                      Atur Cap RT (Cap Basah)
-                    </label>
-                    <label className="inline-flex items-center gap-1 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={useCap}
-                        onChange={(e) => setUseCap(e.target.checked)}
-                        className="w-3.5 h-3.5 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
-                      />
-                      <span className="text-[11px] font-bold text-slate-600 ml-1">Cap</span>
-                    </label>
+              {signStep === 1 ? (
+                <div className="space-y-3 pt-1">
+                  {/* Pad component */}
+                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-150">
+                    <SignaturePad 
+                      label="Tanda Tangan Ketua RT 001" 
+                      onSave={(dataUrl) => setFormSignatureRt(dataUrl)} 
+                    />
                   </div>
 
-                  {useCap && (
-                    <>
-                      <p className="text-[9px] text-slate-400 font-bold leading-normal">
-                        Seret (drag) langsung pada gambar atau gunakan slider untuk posisi presisi.
-                      </p>
+                  <p className="text-[10px] text-slate-400 font-bold bg-teal-50 px-2.5 py-2 rounded-lg border border-teal-100/50 leading-relaxed">
+                    Silakan gores tanda tangan pada pad abu-abu di atas terlebih dahulu, kemudian klik tombol untuk masuk ke langkah pembubuhan cap basah.
+                  </p>
 
-                      {/* Interactive Drag Frame */}
-                      <div className="relative w-full h-[140px] bg-slate-900/[0.02] border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center select-none shadow-inner">
-                        <div className="absolute inset-x-0 top-1.5 text-center pointer-events-none">
-                          <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Preview Area TTD + Cap</span>
-                        </div>
+                  <div className="flex gap-2.5 pt-1">
+                    <button
+                      onClick={() => setActiveRtSignatureItem(null)}
+                      className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-extrabold rounded-xl transition pointer-events-auto cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      onClick={() => setSignStep(2)}
+                      disabled={!formSignatureRt}
+                      className="flex-1 py-3 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-xl shadow-md transition pointer-events-auto cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      Konfirmasi TTD & Lanjut ➔
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 pt-1">
+                  {/* Interactive Stamp Customizer */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+                        Atur Cap RT (Cap Basah)
+                      </label>
+                      <label className="inline-flex items-center gap-1 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={useCap}
+                          onChange={(e) => setUseCap(e.target.checked)}
+                          className="w-3.5 h-3.5 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
+                        />
+                        <span className="text-[11px] font-bold text-slate-600 ml-1">Gunakan Cap</span>
+                      </label>
+                    </div>
 
-                        {/* Signature & Stamp Group Wrapper */}
-                        <div className="relative w-[160px] h-[80px] border border-dashed border-slate-200 bg-white flex items-center justify-center">
-                          {/* Sign Base Image */}
-                          <img
-                            src={formSignatureRt}
-                            alt="Signature Preview"
-                            className="max-w-full max-h-full object-contain mix-blend-multiply opacity-80"
-                          />
+                    {useCap ? (
+                      <>
+                        <p className="text-[9px] text-slate-400 font-bold leading-normal">
+                          Seret (drag) langsung pada gambar atau gunakan slider untuk posisi presisi.
+                        </p>
 
-                          {/* Cap Overlaid Absolute Div */}
-                          <div
-                            className="absolute border border-dashed border-rose-500/50 rounded-full cursor-move group"
-                            style={{
-                              width: `${capSize * 1.8}px`,
-                              height: `${capSize * 1.8}px`,
-                              left: `calc(50% - ${capSize * 0.9}px + ${capX * 1.8}px)`,
-                              top: `calc(50% - ${capSize * 0.9}px + ${capY * 1.8}px)`,
-                              backgroundImage: 'url("/caprt.png")',
-                              backgroundSize: 'contain',
-                              backgroundPosition: 'center',
-                              backgroundRepeat: 'no-repeat',
-                            }}
-                            onMouseDown={(e) => {
-                              const startX = e.clientX;
-                              const startY = e.clientY;
-                              const initialX = capX;
-                              const initialY = capY;
+                        {/* Interactive Drag Frame */}
+                        <div className="relative w-full h-[140px] bg-slate-900/[0.02] border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center select-none shadow-inner">
+                          <div className="absolute inset-x-0 top-1.5 text-center pointer-events-none">
+                            <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Preview Area TTD + Cap</span>
+                          </div>
 
-                              const handleMouseMove = (moveEvent: MouseEvent) => {
-                                const deltaX = (moveEvent.clientX - startX) / 1.8;
-                                const deltaY = (moveEvent.clientY - startY) / 1.8;
-                                setCapX(Math.max(-40, Math.min(40, Math.round(initialX + deltaX))));
-                                setCapY(Math.max(-30, Math.min(30, Math.round(initialY + deltaY))));
-                              };
+                          {/* Signature & Stamp Group Wrapper */}
+                          <div className="relative w-[160px] h-[80px] border border-dashed border-slate-200 bg-white flex items-center justify-center">
+                            {/* Sign Base Image */}
+                            <img
+                              src={formSignatureRt}
+                              alt="Signature Preview"
+                              className="max-w-full max-h-full object-contain mix-blend-multiply opacity-80"
+                            />
 
-                              const handleMouseUp = () => {
-                                window.removeEventListener('mousemove', handleMouseMove);
-                                window.removeEventListener('mouseup', handleMouseUp);
-                              };
+                            {/* Cap Overlaid Absolute Div */}
+                            <div
+                              className="absolute border border-dashed border-rose-500/50 rounded-full cursor-move group"
+                              style={{
+                                width: `${capSize * 1.8}px`,
+                                height: `${(capSize / 2.56) * 1.8}px`,
+                                left: `calc(50% - ${(capSize * 1.8) / 2}px + ${capX * 1.8}px)`,
+                                top: `calc(50% - ${((capSize / 2.56) * 1.8) / 2}px + ${capY * 1.8}px)`,
+                                backgroundImage: 'url("/caprt.png")',
+                                backgroundSize: 'contain',
+                                backgroundPosition: 'center',
+                                backgroundRepeat: 'no-repeat',
+                              }}
+                              onMouseDown={(e) => {
+                                const startX = e.clientX;
+                                const startY = e.clientY;
+                                const initialX = capX;
+                                const initialY = capY;
 
-                              window.addEventListener('mousemove', handleMouseMove);
-                              window.addEventListener('mouseup', handleMouseUp);
-                            }}
-                            onTouchStart={(e) => {
-                              if (e.touches.length === 0) return;
-                              const startX = e.touches[0].clientX;
-                              const startY = e.touches[0].clientY;
-                              const initialX = capX;
-                              const initialY = capY;
+                                const handleMouseMove = (moveEvent: MouseEvent) => {
+                                  const deltaX = (moveEvent.clientX - startX) / 1.8;
+                                  const deltaY = (moveEvent.clientY - startY) / 1.8;
+                                  setCapX(Math.max(-40, Math.min(40, Math.round(initialX + deltaX))));
+                                  setCapY(Math.max(-30, Math.min(30, Math.round(initialY + deltaY))));
+                                };
 
-                              const handleTouchMove = (moveEvent: TouchEvent) => {
-                                if (moveEvent.touches.length === 0) return;
-                                const deltaX = (moveEvent.touches[0].clientX - startX) / 1.8;
-                                const deltaY = (moveEvent.touches[0].clientY - startY) / 1.8;
-                                setCapX(Math.max(-40, Math.min(40, Math.round(initialX + deltaX))));
-                                setCapY(Math.max(-30, Math.min(30, Math.round(initialY + deltaY))));
-                              };
+                                const handleMouseUp = () => {
+                                  window.removeEventListener('mousemove', handleMouseMove);
+                                  window.removeEventListener('mouseup', handleMouseUp);
+                                };
 
-                              const handleTouchEnd = () => {
-                                window.removeEventListener('touchmove', handleTouchMove);
-                                window.removeEventListener('touchend', handleTouchEnd);
-                              };
+                                window.addEventListener('mousemove', handleMouseMove);
+                                window.addEventListener('mouseup', handleMouseUp);
+                              }}
+                              onTouchStart={(e) => {
+                                if (e.touches.length === 0) return;
+                                const startX = e.touches[0].clientX;
+                                const startY = e.touches[0].clientY;
+                                const initialX = capX;
+                                const initialY = capY;
 
-                              window.addEventListener('touchmove', handleTouchMove);
-                              window.addEventListener('touchend', handleTouchEnd);
-                            }}
-                          >
-                            <div className="absolute inset-0 bg-rose-500/5 flex items-center justify-center rounded-full">
-                              <span className="text-[7px] text-rose-550 font-bold bg-white/90 px-1 py-0.5 rounded shadow-xs">
-                                GESER
-                              </span>
+                                const handleTouchMove = (moveEvent: TouchEvent) => {
+                                  if (moveEvent.touches.length === 0) return;
+                                  const deltaX = (moveEvent.touches[0].clientX - startX) / 1.8;
+                                  const deltaY = (moveEvent.touches[0].clientY - startY) / 1.8;
+                                  setCapX(Math.max(-40, Math.min(40, Math.round(initialX + deltaX))));
+                                  setCapY(Math.max(-30, Math.min(30, Math.round(initialY + deltaY))));
+                                };
+
+                                const handleTouchEnd = () => {
+                                  window.removeEventListener('touchmove', handleTouchMove);
+                                  window.removeEventListener('touchend', handleTouchEnd);
+                                };
+
+                                window.addEventListener('touchmove', handleTouchMove);
+                                window.addEventListener('touchend', handleTouchEnd);
+                              }}
+                            >
+                              <div className="absolute inset-0 bg-rose-500/5 flex items-center justify-center rounded-full">
+                                <span className="text-[7px] text-rose-550 font-bold bg-white/90 px-1 py-0.5 rounded shadow-xs">
+                                  GESER
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
+
+                        {/* Sliders */}
+                        <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                              <span>Geser Kiri/Kanan (X)</span>
+                              <span className="font-mono text-teal-600">{capX} mm</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="-40"
+                              max="40"
+                              value={capX}
+                              onChange={(e) => setCapX(Number(e.target.value))}
+                              className="w-full accent-teal-600 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                              <span>Geser Atas/Bawah (Y)</span>
+                              <span className="font-mono text-teal-600">{capY} mm</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="-30"
+                              max="30"
+                              value={capY}
+                              onChange={(e) => setCapY(Number(e.target.value))}
+                              className="w-full accent-teal-600 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                              <span>Ukuran Cap</span>
+                              <span className="font-mono text-teal-600">{capSize} mm</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="15"
+                              max="50"
+                              value={capSize}
+                              onChange={(e) => setCapSize(Number(e.target.value))}
+                              className="w-full accent-teal-600 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="p-4 bg-slate-50 border border-slate-200 border-dashed rounded-xl text-center text-xs text-slate-500 font-bold select-none">
+                        Cap basah ditiadakan. Surat pengantar hanya dibubuhkan tanda tangan Ketua RT saja.
                       </div>
+                    )}
+                  </div>
 
-                      {/* Sliders */}
-                      <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[10px] font-bold text-slate-500">
-                            <span>Geser Kiri/Kanan (X)</span>
-                            <span className="font-mono text-teal-600">{capX} mm</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="-40"
-                            max="40"
-                            value={capX}
-                            onChange={(e) => setCapX(Number(e.target.value))}
-                            className="w-full accent-teal-600 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[10px] font-bold text-slate-500">
-                            <span>Geser Atas/Bawah (Y)</span>
-                            <span className="font-mono text-teal-600">{capY} mm</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="-30"
-                            max="30"
-                            value={capY}
-                            onChange={(e) => setCapY(Number(e.target.value))}
-                            className="w-full accent-teal-600 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[10px] font-bold text-slate-500">
-                            <span>Ukuran Cap</span>
-                            <span className="font-mono text-teal-600">{capSize} mm</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="15"
-                            max="50"
-                            value={capSize}
-                            onChange={(e) => setCapSize(Number(e.target.value))}
-                            className="w-full accent-teal-600 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  <div className="flex gap-2.5 pt-1">
+                    <button
+                      onClick={() => setSignStep(1)}
+                      className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-extrabold rounded-xl transition pointer-events-auto cursor-pointer"
+                    >
+                      ⬅ Kembali ke TTD
+                    </button>
+                    <button
+                      onClick={handleRtConfirmApproval}
+                      disabled={isSubmitting}
+                      className="flex-1 py-3 bg-emerald-650 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-md transition pointer-events-auto cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      Konfirmasi & Setujui
+                    </button>
+                  </div>
                 </div>
               )}
-
-              <div className="flex gap-2.5 pt-2">
-                <button
-                  onClick={() => setActiveRtSignatureItem(null)}
-                  className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-extrabold rounded-xl transition pointer-events-auto cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={handleRtConfirmApproval}
-                  disabled={isSubmitting}
-                  className="flex-1 py-3 bg-emerald-650 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-md transition pointer-events-auto cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  Konfirmasi & Setujui
-                </button>
-              </div>
             </motion.div>
           </div>
         )}
