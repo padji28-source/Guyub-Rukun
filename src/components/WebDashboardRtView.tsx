@@ -11,11 +11,14 @@ import {
   Clock,
   ChevronRight,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Store,
+  MessageCircle
 } from 'lucide-react';
 
 export const WebDashboardRtView = () => {
   const [loading, setLoading] = useState(true);
+  const [umkmList, setUmkmList] = useState<any[]>([]);
   const [metrics, setMetrics] = useState({
     jumlahKK: 0,
     jumlahWarga: 0,
@@ -34,6 +37,12 @@ export const WebDashboardRtView = () => {
       const data = await res.json();
       if (data.metrics) {
         setMetrics(data.metrics);
+      }
+      
+      const umkmRes = await apiFetch('/api/data/umkm');
+      const umkmData = await umkmRes.json();
+      if (umkmData.data) {
+        setUmkmList(umkmData.data);
       }
     } catch (e) {
       console.error('Failed to load Dashboard RT metrics:', e);
@@ -254,6 +263,62 @@ export const WebDashboardRtView = () => {
         </div>
 
       </div>
+
+      {/* Etalase Promosi UMKM Warga */}
+      {umkmList.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm space-y-5">
+          <div className="flex items-center justify-between border-b pb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-teal-50 rounded-lg text-teal-600">
+                <Store className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-gray-900 text-sm">Etalase Sponsor & Iklan UMKM Mandiri Warga</h3>
+                <p className="text-[11px] text-gray-500 mt-0.5">Dukung perekonomian warga dengan berbelanja di usaha lokal tetangga kita.</p>
+              </div>
+            </div>
+            <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200/50 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
+              Iklan Warga RT
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {umkmList.map((item) => (
+              <div key={item.id} className="group relative bg-gray-50/50 hover:bg-white border border-gray-100/80 hover:border-teal-200 rounded-2xl p-4 transition-all duration-300 hover:shadow-md flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[9px] bg-teal-50 border border-teal-100 text-teal-700 font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      {item.category || 'Usaha Lokal'}
+                    </span>
+                    <span className="text-[9px] text-gray-400 font-mono">ID: {item.id.slice(-4)}</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-extrabold text-gray-900 group-hover:text-teal-700 transition-colors line-clamp-1">{item.nama}</h4>
+                    <p className="text-[11px] text-gray-500 mt-1 line-clamp-3 leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-gray-100/70 flex items-center justify-between">
+                  {item.kontak ? (
+                    <a
+                      href={`https://wa.me/${item.kontak.replace(/[^0-9]/g, '')}?text=Halo%20saya%20warga%20RT%20tertarik%20dengan%20usaha%20${encodeURIComponent(item.nama)}%20di%20aplikasi%20Guyub%20Rukun.`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366] hover:text-white text-[11px] font-black py-2 rounded-xl text-center transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      Hubungi Toko (WA)
+                    </a>
+                  ) : (
+                    <span className="text-[10px] text-gray-400 italic">No kontak tidak tersedia</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

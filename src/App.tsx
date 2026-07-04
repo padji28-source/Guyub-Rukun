@@ -52,6 +52,7 @@ import { MobileAcaraPage } from './MobileAcara';
 import { MobileIuran } from './MobileIuran';
 import { MobileKas } from './MobileKas';
 import { MobileUMKM } from './MobileUMKM';
+import { MobileUMKMAds } from './components/MobileUMKMAds';
 import { WebSmartRtAiPage } from './components/WebSmartRtAiPage';
 import { WebDashboardRtView } from './components/WebDashboardRtView';
 import { WebInventarisPage } from './components/WebInventarisPage';
@@ -663,33 +664,24 @@ const WebDateWidget = () => {
 
   useEffect(() => {
     localStorage.setItem('event_reminders', JSON.stringify(reminders));
+    window.dispatchEvent(new Event('storage'));
   }, [reminders]);
 
   useEffect(() => {
+    const handleStorage = () => {
+      const saved = localStorage.getItem('event_reminders');
+      setReminders(saved ? JSON.parse(saved) : []);
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => {
-      const now = new Date();
-      setDate(now);
-
-      // Check for reminders
-      events.forEach(e => {
-        if (reminders.includes(e.id) && e.time) {
-          const eventDate = new Date(e.date);
-          const [hours, minutes] = e.time.split(':').map(Number);
-          eventDate.setHours(hours, minutes, 0, 0);
-
-          const timeDiff = eventDate.getTime() - now.getTime();
-          // Notify if strictly between 9 and 10 minutes (600000ms = 10m)
-          if (timeDiff > 0 && timeDiff <= 10 * 60 * 1000 && timeDiff > 9 * 60 * 1000) {
-            setToastMessage(`Pengingat: Acara "${e.title}" akan mulai dalam 10 menit!`);
-            // Remove from reminders after notifying to avoid spam
-            setReminders(prev => prev.filter(id => id !== e.id));
-            setTimeout(() => setToastMessage(null), 10000);
-          }
-        }
-      });
+      setDate(new Date());
     }, 1000);
     return () => clearInterval(timer);
-  }, [events, reminders]);
+  }, []);
 
   useEffect(() => {
     apiFetch('/api/data/acara').then(r => r.json()).then(json => {
@@ -1854,28 +1846,17 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
 
   useEffect(() => {
     localStorage.setItem('event_reminders', JSON.stringify(reminders));
+    window.dispatchEvent(new Event('storage'));
   }, [reminders]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      backendEvents.forEach((e: any) => {
-        if (reminders.includes(e.id) && e.time) {
-          const eventDate = new Date(e.date);
-          const [hours, minutes] = e.time.split(':').map(Number);
-          eventDate.setHours(hours, minutes, 0, 0);
-
-          const timeDiff = eventDate.getTime() - now.getTime();
-          if (timeDiff > 0 && timeDiff <= 10 * 60 * 1000 && timeDiff > 9 * 60 * 1000) {
-            setToastMessage(`Pengingat: Acara "${e.title}" akan mulai dalam 10 menit!`);
-            setReminders(prev => prev.filter(id => id !== e.id));
-            setTimeout(() => setToastMessage(null), 10000);
-          }
-        }
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [backendEvents, reminders]);
+    const handleStorage = () => {
+      const saved = localStorage.getItem('event_reminders');
+      setReminders(saved ? JSON.parse(saved) : []);
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   useEffect(() => {
     setLoadingMedia(!cachedMediaList);
@@ -3303,6 +3284,7 @@ function MainApp({ user: originalUser, onLogout, onUpdateUser }: { user: any; on
                         </div>
                       )}
                       <MobileQuickActions onActionClick={setActiveMobileTab} visibleMenus={visibleMenus}/>
+                      <MobileUMKMAds />
                       <MobileEvents onActionClick={setActiveMobileTab} />
                     </>
                   )}
@@ -3640,6 +3622,76 @@ export default function App() {
     };
   }, [user]);
 
+  const [globalEvents, setGlobalEvents] = useState<any[]>([]);
+  const [activeToast, setActiveToast] = useState<{ id: string; title: string; time: string } | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const fetchGlobalEvents = () => {
+      apiFetch('/api/data/acara')
+        .then(res => res.json())
+        .then(json => {
+          if (json.data) {
+            setGlobalEvents(json.data);
+          }
+        })
+        .catch(err => console.error('Error loading events for reminders:', err));
+    };
+
+    fetchGlobalEvents();
+    const interval = setInterval(fetchGlobalEvents, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  useEffect(() => {
+    if (globalEvents.length === 0) return;
+
+    const timer = setInterval(() => {
+      const now = new Date();
+      
+      let localReminders: string[] = [];
+      try {
+        const saved = localStorage.getItem('event_reminders');
+        localReminders = saved ? JSON.parse(saved) : [];
+      } catch {}
+
+      if (localReminders.length === 0) return;
+
+      globalEvents.forEach((e: any) => {
+        if (localReminders.includes(e.id) && e.time) {
+          const eventDate = new Date(e.date);
+          const [hours, minutes] = e.time.split(':').map(Number);
+          eventDate.setHours(hours, minutes, 0, 0);
+
+          const timeDiff = eventDate.getTime() - now.getTime();
+          
+          if (timeDiff > 0 && timeDiff <= 10 * 60 * 1000) {
+            setActiveToast({ id: e.id, title: e.title || e.name, time: e.time });
+            
+            try {
+              const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+              audio.play().catch(err => console.log('Autoplay audio blocked:', err));
+            } catch {}
+
+            if ("Notification" in window && Notification.permission === "granted") {
+              new Notification(`Pengingat Acara RT`, {
+                body: `Acara "${e.title || e.name}" akan dimulai dalam 10 menit (${e.time})!`,
+                icon: '/icon-192.png'
+              });
+            }
+
+            const updated = localReminders.filter(id => id !== e.id);
+            localStorage.setItem('event_reminders', JSON.stringify(updated));
+            window.dispatchEvent(new Event('storage'));
+          }
+        }
+      });
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [globalEvents]);
+
   const handleLogout = async () => {
     if (user?.id) {
       try {
@@ -3653,6 +3705,41 @@ export default function App() {
   return (
     <>
       <InstallPrompt />
+      <AnimatePresence>
+        {activeToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 16, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-[9999] bg-slate-900/95 text-white p-4 rounded-2xl shadow-2xl border border-teal-500/40 flex items-start gap-3.5 backdrop-blur-md"
+          >
+            <div className="w-10 h-10 bg-teal-500/20 text-teal-400 border border-teal-500/30 rounded-xl flex items-center justify-center shrink-0 animate-bounce">
+              <svg className="w-5 h-5 text-teal-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+              </svg>
+            </div>
+            <div className="flex-grow min-w-0">
+              <h4 className="text-xs font-black uppercase tracking-wider text-teal-400">Pengingat Acara RT</h4>
+              <p className="text-sm font-bold mt-1 text-slate-100 leading-snug">{activeToast.title}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Mulai jam {activeToast.time} WIB. Mari bersiap!</p>
+              <button
+                onClick={() => setActiveToast(null)}
+                className="mt-3 bg-teal-600 hover:bg-teal-500 text-white font-extrabold text-[10px] px-3.5 py-1.5 rounded-lg shadow-sm transition-all active:scale-95 uppercase tracking-wider"
+              >
+                Saya Mengerti
+              </button>
+            </div>
+            <button
+              onClick={() => setActiveToast(null)}
+              className="text-slate-400 hover:text-white transition-colors p-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence mode="wait">
         {showSplash ? (
           <SplashScreen key="splash" onFinish={() => setShowSplash(false)} />
