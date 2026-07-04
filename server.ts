@@ -235,6 +235,11 @@ const SuratSchema = new mongoose.Schema({
   nomorSurat: { type: String },
   signaturePemohon: { type: String },
   signatureKetuaRt: { type: String },
+  capPositionX: { type: Number, default: 0 },
+  capPositionY: { type: Number, default: 0 },
+  capWidth: { type: Number, default: 40 },
+  capHeight: { type: Number, default: 40 },
+  hasCap: { type: Boolean, default: false },
   userId: { type: String },
   userName: { type: String },
   rtId: { type: String, required: true },
@@ -1776,6 +1781,50 @@ app.delete("/api/data/:resource/:id", async (req, res) => {
 
   await addNotification(rtId, `Data Dihapus: ${resource}`, `Terdapat penghapusan data pada modul ${resource} oleh ${updater}.`, updater);
   res.json({ message: "Deleted successfully" });
+});
+
+
+// ==========================================
+// QRIS SEDEKAH / INFAQ MASJID ENDPOINT
+// ==========================================
+app.post("/api/sedekah", async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  const { name, amount, message, paymentMethod } = req.body;
+
+  if (!amount || Number(amount) < 1000) {
+    return res.status(400).json({ error: "Jumlah donasi minimal Rp 1.000." });
+  }
+
+  const donatorName = name && name.trim() !== '' ? name.trim() : 'Hamba Allah';
+  const parsedAmount = Number(amount);
+
+  try {
+    const newKas = await KasModel.create({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+      createdAt: new Date().toISOString(),
+      type: 'Masuk',
+      amount: parsedAmount,
+      name: donatorName,
+      message: `[Sedekah QRIS - ${paymentMethod || 'QRIS'}] ${message || 'Infaq & Sedekah Masjid Al Ikhlas'}`,
+      category: 'Lainnya',
+      rtId,
+      status: 'selesai'
+    });
+
+    await logAudit(rtId, donatorName, "CREATE_SEDEKAH_QRIS", `Menerima donasi QRIS sebesar Rp ${parsedAmount.toLocaleString('id-ID')} dari ${donatorName}`, null, newKas);
+
+    await addNotification(
+      rtId,
+      "Sedekah QRIS Diterima",
+      `Alhamdulillah, infaq/sedekah sebesar Rp ${parsedAmount.toLocaleString('id-ID')} dari ${donatorName} telah diterima melalui QRIS. Terima kasih atas kedermawanan Anda.`,
+      donatorName
+    );
+
+    res.json({ message: "Donasi berhasil diterima. Terima kasih!", item: newKas });
+  } catch (error: any) {
+    console.error("Error saving QRIS donation:", error);
+    res.status(500).json({ error: "Gagal menyimpan transaksi donasi." });
+  }
 });
 
 

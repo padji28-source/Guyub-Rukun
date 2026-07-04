@@ -2709,11 +2709,112 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
 
 const MobileSedekah = ({ onBack, user }: { onBack: () => void; user?: any }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanLaserPos, setScanLaserPos] = useState(0);
+  const [donationAmount, setDonationAmount] = useState<string>('50000');
+  const [customAmount, setCustomAmount] = useState<string>('');
+  const [donationMessage, setDonationMessage] = useState<string>('');
+  const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
+  const [paymentMethod, setPaymentMethod] = useState<string>('GoPay');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
+  const [recentDonations, setRecentDonations] = useState<any[]>([]);
+  const [lastTx, setLastTx] = useState<any | null>(null);
+
+  const fetchRecentDonations = async () => {
+    try {
+      const res = await apiFetch('/api/data/kas');
+      const json = await res.json();
+      if (json.data) {
+        // Filter those logged as Sedekah/QRIS or related alms
+        const filtered = json.data.filter((item: any) => 
+          item.type === 'Masuk' && 
+          (item.message?.includes('Sedekah') || item.message?.includes('Infaq') || item.message?.includes('QRIS'))
+        ).slice(0, 10); // Show top 10
+        setRecentDonations(filtered);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecentDonations();
+  }, []);
+
+  // Simulating laser scan bar movement
+  useEffect(() => {
+    if (isScanning) {
+      const interval = setInterval(() => {
+        setScanLaserPos(prev => (prev >= 100 ? 0 : prev + 4));
+      }, 50);
+      return () => clearInterval(interval);
+    }
+  }, [isScanning]);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text.replace(/\s/g, '')); // Hapus spasi saat disalin
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleStartScan = () => {
+    setIsScanning(true);
+    // Simulate scanner detecting code in 2 seconds
+    setTimeout(() => {
+      setIsScanning(false);
+      // Auto scroll or set focus
+    }, 2000);
+  };
+
+  const handleDonateSubmit = async () => {
+    const finalAmount = customAmount ? parseInt(customAmount, 10) : parseInt(donationAmount, 10);
+    if (!finalAmount || finalAmount < 1000) {
+      alert('Jumlah donasi minimal adalah Rp 1.000');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await apiFetch('/api/sedekah', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-rt-id': localStorage.getItem('rtId') || 'rt01'
+        },
+        body: JSON.stringify({
+          name: isAnonymous ? 'Hamba Allah' : (user?.nama || 'Warga'),
+          amount: finalAmount,
+          message: donationMessage,
+          paymentMethod: paymentMethod
+        })
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        setLastTx({
+          id: json.item?.id || 'TX' + Math.floor(Math.random() * 90000 + 10000),
+          amount: finalAmount,
+          date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          paymentMethod,
+          name: isAnonymous ? 'Hamba Allah' : (user?.nama || 'Warga'),
+          message: donationMessage
+        });
+        setPaymentSuccess(true);
+        // Reset form
+        setCustomAmount('');
+        setDonationMessage('');
+        fetchRecentDonations();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Terjadi kesalahan saat memproses donasi.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menyambungkan ke server.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const bankAccounts = [
@@ -2748,100 +2849,458 @@ const MobileSedekah = ({ onBack, user }: { onBack: () => void; user?: any }) => 
           </svg>
           Kembali
         </button>
-        <h3 className="font-extrabold text-gray-900 text-xl tracking-tight">
-          Sedekah & Infaq
+        <h3 className="font-extrabold text-gray-900 text-xl tracking-tight flex items-center gap-2">
+          <span>Sedekah & Infaq</span>
+          <span className="text-rose-500 animate-pulse">❤️</span>
         </h3>
         <p className="text-gray-500 text-xs">Salurkan donasi terbaik Anda untuk operasional dan kemakmuran Masjid Al Ikhlas.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-        {/* Card QRIS */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center flex flex-col items-center justify-center relative overflow-hidden group">
-          {/* Latar Belakang Dekoratif */}
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-teal-50 rounded-full blur-3xl opacity-60"></div>
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-50 rounded-full blur-3xl opacity-60"></div>
-
-          <div className="flex items-center gap-2 mb-4 z-10">
-            <h4 className="font-extrabold text-gray-800 text-sm tracking-wide">Scan QRIS</h4>
-            <span className="bg-teal-100 text-teal-700 text-[9px] font-bold px-2 py-0.5 rounded-full">Otomatis</span>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* LEFT COLUMN: QRIS Scanner & Fast Donation Form */}
+        <div className="lg:col-span-7 space-y-6">
           
-          {/* Area QR Code (Stylized) */}
-          <div className="relative w-52 h-52 bg-white rounded-2xl p-3 shadow-sm border border-gray-100 mb-5 z-10 flex items-center justify-center">
-            {/* Sudut Frame Scanner */}
-            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-teal-500 rounded-tl-xl"></div>
-            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-teal-500 rounded-tr-xl"></div>
-            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-teal-500 rounded-bl-xl"></div>
-            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-teal-500 rounded-br-xl"></div>
-            
-            {/* Mock QR instance (Ganti dengan gambar QR asli menggunakan tag <img>) */}
-            <div className="bg-gray-50 border-2 border-dashed border-gray-200 w-full h-full flex flex-col items-center justify-center rounded-lg transition-transform group-hover:scale-[1.02]">
-              <svg className="w-10 h-10 mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-              </svg>
-              <span className="text-gray-400 font-mono text-[10px] font-semibold tracking-widest">QRIS CODE</span>
+          {/* Card QRIS Scanner / Interactive Hub */}
+          <div className="bg-white p-5 sm:p-6 rounded-3xl border border-gray-100 shadow-xs relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-teal-50 rounded-full blur-3xl opacity-60"></div>
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-50 rounded-full blur-3xl opacity-60"></div>
+
+            <div className="flex items-center justify-between gap-2 mb-4 z-10 relative">
+              <div className="flex items-center gap-2">
+                <h4 className="font-extrabold text-gray-800 text-sm tracking-wide">Pindai / Bayar QRIS</h4>
+                <span className="bg-emerald-100 text-emerald-700 text-[9px] font-bold px-2 py-0.5 rounded-full">QRIS Dinamis</span>
+              </div>
+              <span className="text-[10px] text-gray-400 font-bold">NMID: ID1234567890</span>
             </div>
-          </div>
 
-          <div className="z-10">
-            <p className="text-xs font-bold text-gray-800 mb-0.5">DKM MASJID AL IKHLAS</p>
-            <p className="text-[10px] text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded-md inline-block">NMID: ID1234567890</p>
-          </div>
-        </div>
+            {/* QRIS Layout Frame */}
+            <div className="flex flex-col items-center justify-center py-4 z-10 relative">
+              
+              {isScanning ? (
+                /* Interactive QRIS Camera Scanner Simulator */
+                <div className="relative w-52 h-52 bg-slate-950 rounded-2xl p-1 shadow-2xl border border-teal-500 mb-4 overflow-hidden flex flex-col items-center justify-center">
+                  {/* Glowing Scanner Target corners */}
+                  <div className="absolute top-2 left-2 w-5 h-5 border-t-2 border-l-2 border-teal-400 rounded-tl-md"></div>
+                  <div className="absolute top-2 right-2 w-5 h-5 border-t-2 border-r-2 border-teal-400 rounded-tr-md"></div>
+                  <div className="absolute bottom-2 left-2 w-5 h-5 border-b-2 border-l-2 border-teal-400 rounded-bl-md"></div>
+                  <div className="absolute bottom-2 right-2 w-5 h-5 border-b-2 border-r-2 border-teal-400 rounded-br-md"></div>
+                  
+                  {/* Moving scanning line */}
+                  <div 
+                    className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-teal-400 to-transparent shadow-[0_0_10px_2px_rgba(20,184,166,0.8)] z-20"
+                    style={{ top: `${scanLaserPos}%` }}
+                  ></div>
 
-        {/* Card Transfer Bank */}
-        <div className="flex flex-col gap-3">
-          <h4 className="font-bold text-gray-800 text-sm mb-1 px-1">Transfer Manual</h4>
-          
-          {bankAccounts.map((bank) => (
-            <div key={bank.id} className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  {/* Ikon Bank */}
-                  <div className={`w-10 h-10 ${bank.themeBg} ${bank.themeText} rounded-full flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  {/* Matrix digital abstract background */}
+                  <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#14b8a6_1px,transparent_1px)] [background-size:16px_16px] animate-[pulse_2s_infinite]"></div>
+                  
+                  {/* Scanning Status Text */}
+                  <div className="z-10 flex flex-col items-center gap-1.5">
+                    <svg className="w-10 h-10 text-teal-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 4H15" />
                     </svg>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-500 mb-1 font-medium">{bank.bankName}</p>
-                    <p className="font-extrabold text-gray-900 text-sm tracking-wide">{bank.accountNumber}</p>
-                    <p className={`text-[10px] font-bold ${bank.themeText} mt-1.5 inline-flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded`}>
-                      {bank.owner}
-                    </p>
+                    <span className="text-teal-400 font-mono text-[9px] font-bold tracking-widest uppercase">MENGHUBUNGKAN KAMERA...</span>
                   </div>
                 </div>
+              ) : (
+                /* Static Admin QRIS Display / Static QR Layout */
+                <div className="relative w-52 h-52 bg-white rounded-2xl p-2.5 shadow-md border border-gray-100 mb-4 flex items-center justify-center transition-transform hover:scale-[1.01] group">
+                  {/* Grid overlay corners */}
+                  <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-teal-500 rounded-tl-lg"></div>
+                  <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-teal-500 rounded-tr-lg"></div>
+                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-teal-500 rounded-bl-lg"></div>
+                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-teal-500 rounded-br-lg"></div>
 
-                {/* Tombol Salin */}
+                  {/* Clean SVG QR Code */}
+                  <svg className="w-full h-full text-gray-900" viewBox="0 0 100 100" fill="currentColor">
+                    {/* QR Code Anchor Blocks (Top-Left, Top-Right, Bottom-Left) */}
+                    <rect x="5" y="5" width="25" height="25" fill="#0f766e" rx="2" />
+                    <rect x="10" y="10" width="15" height="15" fill="white" rx="1" />
+                    <rect x="13" y="13" width="9" height="9" fill="#14b8a6" />
+
+                    <rect x="70" y="5" width="25" height="25" fill="#0f766e" rx="2" />
+                    <rect x="75" y="10" width="15" height="15" fill="white" rx="1" />
+                    <rect x="78" y="13" width="9" height="9" fill="#14b8a6" />
+
+                    <rect x="5" y="70" width="25" height="25" fill="#0f766e" rx="2" />
+                    <rect x="10" y="75" width="15" height="15" fill="white" rx="1" />
+                    <rect x="13" y="78" width="9" height="9" fill="#14b8a6" />
+
+                    {/* QR Code Scattered Pixel Blocks Simulation */}
+                    <rect x="35" y="10" width="5" height="5" />
+                    <rect x="45" y="5" width="10" height="5" />
+                    <rect x="40" y="15" width="5" height="10" />
+                    <rect x="50" y="20" width="5" height="5" />
+                    <rect x="60" y="10" width="5" height="15" />
+                    <rect x="35" y="30" width="10" height="5" />
+                    <rect x="50" y="30" width="5" height="10" />
+                    <rect x="10" y="35" width="5" height="10" />
+                    <rect x="25" y="40" width="5" height="5" />
+                    <rect x="5" y="50" width="10" height="5" />
+                    <rect x="20" y="55" width="5" height="10" />
+                    <rect x="35" y="45" width="15" height="5" />
+                    <rect x="45" y="55" width="5" height="5" />
+                    <rect x="55" y="40" width="10" height="10" />
+                    <rect x="70" y="35" width="5" height="15" />
+                    <rect x="80" y="45" width="15" height="5" />
+                    <rect x="90" y="35" width="5" height="5" />
+                    <rect x="35" y="65" width="5" height="10" />
+                    <rect x="45" y="70" width="10" height="5" />
+                    <rect x="40" y="80" width="15" height="5" />
+                    <rect x="50" y="90" width="5" height="5" />
+                    <rect x="65" y="60" width="5" height="15" />
+                    <rect x="60" y="80" width="5" height="10" />
+                    <rect x="75" y="65" width="15" height="5" />
+                    <rect x="85" y="75" width="5" height="15" />
+                    <rect x="70" y="85" width="10" height="5" />
+                    
+                    {/* Small QRIS style badge in center */}
+                    <rect x="38" y="38" width="24" height="24" fill="white" rx="3" stroke="#0f766e" strokeWidth="2" />
+                    <text x="50" y="52" fontSize="7" fontWeight="black" textAnchor="middle" fill="#0f766e" fontFamily="sans-serif">QRIS</text>
+                  </svg>
+                  
+                  {/* Subtle Scan Overlay Instruction on Hover */}
+                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl p-4">
+                    <span className="text-[10px] font-black text-white bg-teal-600 px-3 py-1.5 rounded-lg shadow-md tracking-wider">PINDAI INSTAN</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Scan Trigger Button */}
+              {!isScanning && (
                 <button
-                  onClick={() => handleCopy(bank.accountNumber, bank.id)}
-                  className={`px-3 py-2 text-[10px] font-bold rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0
-                    ${copiedId === bank.id 
-                      ? 'bg-green-500 text-white shadow-sm shadow-green-200' 
-                      : 'bg-gray-50 text-gray-600 hover:bg-teal-50 hover:text-teal-600 border border-gray-100'
-                    }`}
+                  onClick={handleStartScan}
+                  className="px-4 py-2 text-xs bg-teal-50 text-teal-700 hover:bg-teal-100 font-extrabold rounded-full transition flex items-center gap-1.5 shadow-sm hover:shadow-md cursor-pointer mb-2"
                 >
-                  {copiedId === bank.id ? (
-                    <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Tersalin
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      Salin
-                    </>
-                  )}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Gunakan Kamera Pindai
                 </button>
+              )}
+
+              <p className="text-xs font-bold text-gray-800 uppercase mt-2">DKM MASJID AL IKHLAS</p>
+              <p className="text-[10px] text-gray-500 mt-1 max-w-xs text-center leading-normal">
+                QRIS resmi rukun tetangga & masjid. Silakan pindai langsung dengan aplikasi pembayaran Anda atau gunakan formulir otomatis di bawah.
+              </p>
+            </div>
+          </div>
+
+          {/* Core Interactive Fast Donation Form */}
+          <div className="bg-white p-5 sm:p-6 rounded-3xl border border-gray-100 shadow-xs space-y-5">
+            <h4 className="font-extrabold text-gray-800 text-sm tracking-wide border-b border-gray-100 pb-3 flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+              Formulir Sedekah & Infaq Online
+            </h4>
+
+            {/* Donation Presets */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Pilih Nominal Infaq</label>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {['10000', '25000', '50000', '100000', '200000'].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => {
+                      setDonationAmount(amt);
+                      setCustomAmount('');
+                    }}
+                    className={`py-2 px-1 text-xs font-extrabold rounded-xl border transition-all text-center
+                      ${donationAmount === amt && !customAmount
+                        ? 'bg-teal-600 text-white border-teal-600 shadow-md shadow-teal-100'
+                        : 'bg-gray-50 text-gray-700 border-gray-100 hover:bg-gray-100 hover:border-gray-200'
+                      }`}
+                  >
+                    Rp {parseInt(amt, 10).toLocaleString('id-ID')}
+                  </button>
+                ))}
               </div>
             </div>
-          ))}
+
+            {/* Custom Amount Input */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Atau Masukkan Nominal Kustom</label>
+              <div className="relative rounded-2xl shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <span className="text-gray-400 font-extrabold text-xs">Rp</span>
+                </div>
+                <input
+                  type="number"
+                  placeholder="Atau isi nominal bebas di sini..."
+                  value={customAmount}
+                  onChange={(e) => {
+                    setCustomAmount(e.target.value);
+                    setDonationAmount('');
+                  }}
+                  className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-150 rounded-xl text-xs font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Anonymous Toggle */}
+            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-gray-800">Sembunyikan Identitas (Anonim)</p>
+                <p className="text-[10px] text-gray-500 mt-0.5">Tampilkan kontribusi Anda sebagai "Hamba Allah" di papan donatur.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={isAnonymous}
+                  onChange={(e) => setIsAnonymous(e.target.checked)}
+                  className="sr-only peer" 
+                />
+                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600"></div>
+              </label>
+            </div>
+
+            {/* Doa / Prayer message */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Tulis Niat Mulia / Doa Anda</label>
+              <textarea
+                rows={2}
+                placeholder="Tulis doa atau niat baik Anda (misal: Semoga barokah bagi keluarga, kelancaran rezeki, dll)..."
+                value={donationMessage}
+                onChange={(e) => setDonationMessage(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white"
+              />
+            </div>
+
+            {/* Payment channel selection */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Pilih Metode E-Wallet / Bank</label>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {['GoPay', 'OVO', 'Dana', 'ShopeePay', 'LinkAja'].map((method) => (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => setPaymentMethod(method)}
+                    className={`py-2 px-2 text-xs font-extrabold rounded-xl border transition-all text-center flex flex-col items-center justify-center gap-1
+                      ${paymentMethod === method
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-500 shadow-sm'
+                        : 'bg-white text-gray-700 border-gray-100 hover:bg-gray-50'
+                      }`}
+                  >
+                    {/* Tiny visual representation of branding */}
+                    <span className="w-2.5 h-2.5 rounded-full bg-teal-500 inline-block shrink-0"></span>
+                    <span>{method}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              onClick={handleDonateSubmit}
+              disabled={isSubmitting}
+              className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-black transition shadow-lg shadow-teal-100 active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              {isSubmitting ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 4H15" />
+                  </svg>
+                  MEMPROSES DONASI...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                  DONASI SEKARANG (Rp {(customAmount ? parseInt(customAmount, 10) : parseInt(donationAmount, 10) || 0).toLocaleString('id-ID')})
+                </>
+              )}
+            </button>
+          </div>
+
         </div>
+
+        {/* RIGHT COLUMN: Recent Donations feed & Manual bank Transfer */}
+        <div className="lg:col-span-5 space-y-6">
+          
+          {/* Recent Live Donors Feed */}
+          <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h4 className="font-extrabold text-gray-800 text-sm tracking-wide flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                Papan Donatur Masjid
+              </h4>
+              <span className="text-[9px] font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Aktif</span>
+            </div>
+
+            <div className="space-y-3.5 max-h-[320px] overflow-y-auto pr-1">
+              {recentDonations.length > 0 ? (
+                recentDonations.map((item, index) => (
+                  <div key={item.id || index} className="flex gap-3 items-start bg-gray-50/50 p-3 rounded-2xl border border-gray-100 hover:border-teal-200 transition-colors">
+                    {/* User Profile circle placeholder */}
+                    <div className="w-9 h-9 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                      {item.name ? item.name.substring(0, 2).toUpperCase() : 'HA'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <p className="font-extrabold text-xs text-gray-900 truncate">{item.name || 'Hamba Allah'}</p>
+                        <span className="font-mono font-black text-teal-600 text-xs shrink-0">
+                          +Rp {item.amount?.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      
+                      {/* Message prayer */}
+                      {item.message && (
+                        <p className="text-[10px] text-gray-500 italic mt-1 bg-white p-1.5 rounded-lg border border-gray-100 leading-normal font-medium">
+                          "{item.message.replace(/\[Sedekah QRIS - [a-zA-Z]+\]\s*/g, '')}"
+                        </p>
+                      )}
+
+                      <p className="text-[9px] text-gray-400 font-bold mt-1.5 font-mono">
+                        {new Date(item.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} • QRIS
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-12 text-center text-gray-400">
+                  <svg className="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-xs font-extrabold text-gray-400">Belum ada donasi hari ini</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Pahala terus mengalir bagi yang bersedekah pertama.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Manual Transfer Option */}
+          <div className="flex flex-col gap-3">
+            <h4 className="font-bold text-gray-800 text-sm mb-1 px-1">Transfer Bank Manual</h4>
+            
+            {bankAccounts.map((bank) => (
+              <div key={bank.id} className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    {/* Ikon Bank */}
+                    <div className={`w-10 h-10 ${bank.themeBg} ${bank.themeText} rounded-full flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 mb-1 font-medium">{bank.bankName}</p>
+                      <p className="font-extrabold text-gray-900 text-sm tracking-wide">{bank.accountNumber}</p>
+                      <p className={`text-[10px] font-bold ${bank.themeText} mt-1.5 inline-flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded`}>
+                        {bank.owner}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Tombol Salin */}
+                  <button
+                    onClick={() => handleCopy(bank.accountNumber, bank.id)}
+                    className={`px-3 py-2 text-[10px] font-bold rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0
+                      ${copiedId === bank.id 
+                        ? 'bg-green-500 text-white shadow-sm shadow-green-200' 
+                        : 'bg-gray-50 text-gray-600 hover:bg-teal-50 hover:text-teal-600 border border-gray-100'
+                      }`}
+                  >
+                    {copiedId === bank.id ? (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Tersalin
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Salin
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+        </div>
+
       </div>
+
+      {/* POPUP / MODAL PAYMENT SUCCESS RECEIPT */}
+      <AnimatePresence>
+        {paymentSuccess && lastTx && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPaymentSuccess(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
+            ></motion.div>
+
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-3xl border border-teal-100 shadow-2xl max-w-sm w-full relative z-10 p-6 space-y-5 text-center overflow-hidden"
+            >
+              {/* Confetti element */}
+              <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-500"></div>
+              
+              {/* Animated check circle */}
+              <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-emerald-600 shadow-inner">
+                <svg className="w-8 h-8 animate-[bounce_1s_ease-in-out_infinite]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+
+              <div>
+                <h3 className="font-black text-gray-900 text-lg">Infaq/Sedekah Diterima!</h3>
+                <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mt-1">Metode: {lastTx.paymentMethod}</p>
+              </div>
+
+              {/* Receipt Body */}
+              <div className="bg-gray-50 rounded-2xl p-4 text-left border border-gray-100 font-mono space-y-2.5">
+                <div className="flex justify-between text-[11px] text-gray-500">
+                  <span>No. Transaksi</span>
+                  <span className="font-bold text-gray-800">{lastTx.id}</span>
+                </div>
+                <div className="flex justify-between text-[11px] text-gray-500">
+                  <span>Donatur</span>
+                  <span className="font-bold text-gray-800">{lastTx.name}</span>
+                </div>
+                <div className="flex justify-between text-[11px] text-gray-500">
+                  <span>Tanggal</span>
+                  <span className="font-bold text-gray-800">{lastTx.date}</span>
+                </div>
+                {lastTx.message && (
+                  <div className="text-[10px] text-gray-400 border-t border-dashed border-gray-200 pt-2 text-center">
+                    <p className="font-sans italic text-gray-600">"{lastTx.message}"</p>
+                  </div>
+                )}
+                <div className="border-t border-dashed border-gray-200 pt-2.5 flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-gray-700">TOTAL DONASI</span>
+                  <span className="text-sm font-black text-teal-600">Rp {lastTx.amount.toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+
+              <div className="bg-emerald-50/50 p-3 rounded-2xl border border-emerald-100 text-[11px] text-emerald-800 font-bold leading-normal">
+                "Jazakumullahu khairan katsiran. Semoga infaq/sedekah Anda menjadi amal jariyah yang berlipat ganda."
+              </div>
+
+              <button
+                onClick={() => setPaymentSuccess(false)}
+                className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-black shadow-md transition-all active:scale-[0.98] cursor-pointer"
+              >
+                Kembali ke Alms
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };

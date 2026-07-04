@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, Plus, Filter, FileText, CheckCircle2, Clock, 
   AlertTriangle, Download, ArrowLeft, RefreshCw, PenTool, 
-  Check, MapPin, Smile, User2, Eye, Minimize2, CheckSquare, X, Calendar, FileCheck
+  Check, MapPin, Smile, User2, Eye, Minimize2, CheckSquare, X, Calendar, FileCheck, Trash2
 } from 'lucide-react';
 import { apiFetch } from '../apiInterceptor';
 
@@ -33,6 +33,33 @@ const loadImageAsBase64 = (url: string): Promise<string> => {
       resolve("");
     };
   });
+};
+
+const formatFullAddress = (alamat: string) => {
+  if (!alamat) return "-";
+  let cleaned = alamat.trim();
+  
+  if (!cleaned.toLowerCase().includes("wisma garden") && !cleaned.toLowerCase().includes("perum")) {
+    cleaned = "Perum. Wisma Garden " + cleaned;
+  }
+  
+  if (!cleaned.toLowerCase().includes("rt001/rw021") && !cleaned.toLowerCase().includes("rt 001") && !cleaned.toLowerCase().includes("rt.01") && !cleaned.toLowerCase().includes("rt/rw")) {
+    cleaned += " RT001/RW021";
+  }
+  if (!cleaned.toLowerCase().includes("kutajaya") && !cleaned.toLowerCase().includes("kelurahan")) {
+    if (cleaned.endsWith(",")) {
+      cleaned += " Kelurahan. Kutajaya";
+    } else {
+      cleaned += ", Kelurahan. Kutajaya";
+    }
+  }
+  if (!cleaned.toLowerCase().includes("pasarkemis") && !cleaned.toLowerCase().includes("kecamatan")) {
+    cleaned += " Kecamatan. Pasarkemis";
+  }
+  if (!cleaned.toLowerCase().includes("tangerang") && !cleaned.toLowerCase().includes("kabupaten")) {
+    cleaned += " Kabupaten Tangerang";
+  }
+  return cleaned;
 };
 
 // Desktop-scale optimized Signature Pad
@@ -210,6 +237,12 @@ export const WebSuratOnlinePage = ({
   const [formSignatureRt, setFormSignatureRt] = useState('');
   const [editingNomorSurat, setEditingNomorSurat] = useState('');
   const [isSignOpen, setIsSignOpen] = useState(false);
+  
+  // Cap/stamp fields
+  const [capX, setCapX] = useState(-5);
+  const [capY, setCapY] = useState(-5);
+  const [capSize, setCapSize] = useState(30);
+  const [useCap, setUseCap] = useState(true);
 
   const isAdminOrPengurus = user?.allowedMenus?.includes('Surat Online') || user?.role === 'developer';
   const canSeeAllHistory = user?.role === 'admin' || user?.role === 'developer';
@@ -402,6 +435,11 @@ export const WebSuratOnlinePage = ({
           status: 'selesai',
           nomorSurat: editingNomorSurat || selectedItem.nomorSurat,
           signatureKetuaRt: formSignatureRt,
+          hasCap: useCap,
+          capPositionX: capX,
+          capPositionY: capY,
+          capWidth: capSize,
+          capHeight: capSize,
           updaterName: user?.nama
         })
       });
@@ -411,14 +449,62 @@ export const WebSuratOnlinePage = ({
         setFormSignatureRt('');
         const updated = await res.json();
         // Update local items state
-        setData(prev => prev.map(item => item.id === selectedItem.id ? { ...item, status: 'selesai', nomorSurat: editingNomorSurat || item.nomorSurat, signatureKetuaRt: formSignatureRt } : item));
-        setSelectedItem(prev => ({ ...prev, status: 'selesai', nomorSurat: editingNomorSurat || prev.nomorSurat, signatureKetuaRt: formSignatureRt }));
+        setData(prev => prev.map(item => item.id === selectedItem.id ? { 
+          ...item, 
+          status: 'selesai', 
+          nomorSurat: editingNomorSurat || item.nomorSurat, 
+          signatureKetuaRt: formSignatureRt,
+          hasCap: useCap,
+          capPositionX: capX,
+          capPositionY: capY,
+          capWidth: capSize,
+          capHeight: capSize
+        } : item));
+        setSelectedItem(prev => ({ 
+          ...prev, 
+          status: 'selesai', 
+          nomorSurat: editingNomorSurat || prev.nomorSurat, 
+          signatureKetuaRt: formSignatureRt,
+          hasCap: useCap,
+          capPositionX: capX,
+          capPositionY: capY,
+          capWidth: capSize,
+          capHeight: capSize
+        }));
         fetchData();
       } else {
         alert('Gagal memverifikasi dokumen');
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleDeleteLetter = async (id: string) => {
+    if (confirm('Apakah Anda yakin ingin menghapus surat pengantar yang sudah selesai ini? Tindakan ini tidak dapat dibatalkan.')) {
+      try {
+        const res = await apiFetch(`/api/data/surat/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-role': user?.role || 'warga'
+          },
+          body: JSON.stringify({
+            updaterName: user?.nama
+          })
+        });
+        if (res.ok) {
+          alert('Surat pengantar berhasil dihapus.');
+          setSelectedItem(null);
+          fetchData();
+        } else {
+          const errData = await res.json();
+          alert(errData.error || 'Gagal menghapus surat pengantar.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Terjadi kesalahan saat menghapus surat pengantar.');
+      }
     }
   };
 
@@ -493,7 +579,7 @@ export const WebSuratOnlinePage = ({
         { label: "5. Agama", val: surat.agama },
         { label: "6. Pekerjaan", val: surat.pekerjaan },
         { label: "7. No. NIK KTP/KK", val: surat.noKtpKk },
-        { label: "8. Alamat Sekarang", val: surat.alamatSekarang },
+        { label: "8. Alamat Sekarang", val: formatFullAddress(surat.alamatSekarang) },
         { label: "9. Alamat Asal", val: surat.alamatAsal }
       ];
 
@@ -547,6 +633,21 @@ export const WebSuratOnlinePage = ({
       doc.text("Ketua RT 001", 155, sigBlockY + 5, { align: "center" });
       if (surat.signatureKetuaRt) {
         doc.addImage(surat.signatureKetuaRt, 'PNG', 135, sigBlockY + 9, 40, 20);
+        
+        if (surat.hasCap) {
+          try {
+            const capBase64 = await loadImageAsBase64("/caprt.png");
+            if (capBase64) {
+              const capX = 135 + (surat.capPositionX ?? -5);
+              const capY = (sigBlockY + 9) + (surat.capPositionY ?? -5);
+              const capW = surat.capWidth ?? 30;
+              const capH = surat.capHeight ?? 30;
+              doc.addImage(capBase64, 'PNG', capX, capY, capW, capH);
+            }
+          } catch (capErr) {
+            console.error("Error drawing stamp/cap on pdf:", capErr);
+          }
+        }
       }
       doc.setFont("helvetica", "normal");
       doc.text("( Ketua RT 001 )", 155, sigBlockY + 33, { align: "center" });
@@ -603,10 +704,11 @@ export const WebSuratOnlinePage = ({
   }, [data, canSeeAllHistory, user?.id]);
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 w-full h-full">
-      
-      {/* LEFT MODULE Panel: List Overviews */}
-      <div className="w-full xl:w-[420px] shrink-0 flex flex-col gap-4 bg-white border border-gray-100/80 rounded-2xl p-4 lg:p-5 shadow-xs">
+    <div className="space-y-6 w-full h-full pb-10">
+      <div className="flex flex-col xl:flex-row gap-6 w-full h-full">
+        
+        {/* LEFT MODULE Panel: List Overviews */}
+        <div className="w-full xl:w-[420px] shrink-0 flex flex-col gap-4 bg-white border border-gray-100/80 rounded-2xl p-4 lg:p-5 shadow-xs">
         
         {/* Module Header Title */}
         <div className="flex justify-between items-center">
@@ -866,7 +968,7 @@ export const WebSuratOnlinePage = ({
                     { label: "5. Agama", val: selectedItem.agama },
                     { label: "6. Pekerjaan", val: selectedItem.pekerjaan },
                     { label: "7. No. NIK KTP/KK", val: selectedItem.noKtpKk },
-                    { label: "8. Alamat Sekarang", val: selectedItem.alamatSekarang },
+                    { label: "8. Alamat Sekarang", val: formatFullAddress(selectedItem.alamatSekarang) },
                     { label: "9. Alamat Asal", val: selectedItem.alamatAsal }
                   ].map((field, idx) => (
                     <div key={idx} className="flex items-start">
@@ -926,12 +1028,28 @@ export const WebSuratOnlinePage = ({
                     {/* Ketua RT Digital Signature Representation */}
                     <div className="h-[50px] w-full flex items-center justify-center my-1 relative">
                       {selectedItem.signatureKetuaRt ? (
-                        <img 
-                          src={selectedItem.signatureKetuaRt} 
-                          alt="Ttd Ketua RT" 
-                          referrerPolicy="no-referrer"
-                          className="max-h-full max-w-full object-contain mix-blend-multiply" 
-                        />
+                        <div className="relative w-full h-full flex items-center justify-center">
+                          <img 
+                            src={selectedItem.signatureKetuaRt} 
+                            alt="Ttd Ketua RT" 
+                            referrerPolicy="no-referrer"
+                            className="max-h-full max-w-full object-contain mix-blend-multiply" 
+                          />
+                          {selectedItem.hasCap && (
+                            <img
+                              src="/caprt.png"
+                              alt="Cap RT"
+                              referrerPolicy="no-referrer"
+                              className="absolute mix-blend-multiply pointer-events-none"
+                              style={{
+                                width: `${(selectedItem.capWidth ?? 30) * 1.5}px`,
+                                height: `${(selectedItem.capHeight ?? 30) * 1.5}px`,
+                                left: `calc(50% - 30px + ${(selectedItem.capPositionX ?? -5) * 1.5}px)`,
+                                top: `calc(50% - 15px + ${(selectedItem.capPositionY ?? -5) * 1.5}px)`,
+                              }}
+                            />
+                          )}
+                        </div>
                       ) : (
                         <div className="text-[8.5px] text-amber-600/70 border border-amber-200/50 bg-amber-50 rounded px-2.5 py-1 select-none font-bold">
                           Menunggu Persetujuan RT
@@ -982,6 +1100,16 @@ export const WebSuratOnlinePage = ({
                     <Download className="w-4 h-4" /> Unduh Dokumen Resmi (PDF)
                   </button>
                 )}
+
+                {/* RT can delete finished letter */}
+                {selectedItem.status === 'selesai' && (user?.role === 'admin' || user?.role === 'developer') && (
+                  <button
+                    onClick={() => handleDeleteLetter(selectedItem.id)}
+                    className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl px-5 py-3 text-xs font-black transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer shadow-md shadow-rose-100 hover:shadow-lg"
+                  >
+                    <Trash2 className="w-4 h-4" /> Hapus Surat
+                  </button>
+                )}
               </div>
 
             </div>
@@ -1014,7 +1142,7 @@ export const WebSuratOnlinePage = ({
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white rounded-2xl border border-slate-100 shadow-2xl overflow-hidden max-w-md w-full z-10 relative p-6 space-y-5"
+              className="bg-white rounded-2xl border border-slate-100 shadow-2xl overflow-y-auto max-h-[92vh] max-w-md w-full z-10 relative p-6 space-y-5"
             >
               <div className="flex justify-between items-start">
                 <div>
@@ -1054,6 +1182,166 @@ export const WebSuratOnlinePage = ({
                 />
               </div>
 
+              {/* Interactive Stamp Customizer */}
+              {formSignatureRt && (
+                <div className="space-y-3.5 border-t border-slate-100 pt-4">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-black text-slate-750 flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse"></span>
+                      Atur Cap RT (Cap Basah)
+                    </label>
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={useCap}
+                        onChange={(e) => setUseCap(e.target.checked)}
+                        className="w-3.5 h-3.5 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
+                      />
+                      <span className="text-[11px] font-extrabold text-slate-650">Gunakan Cap</span>
+                    </label>
+                  </div>
+
+                  {useCap && (
+                    <>
+                      <p className="text-[9px] text-slate-400 font-bold leading-normal">
+                        Geser cap di bawah dengan cara menyeret (drag) langsung pada gambar atau gunakan slider kontrol untuk posisi yang presisi.
+                      </p>
+
+                      {/* Interactive Drag Frame */}
+                      <div className="relative w-full h-[150px] bg-slate-900/[0.02] border border-slate-200/80 rounded-xl overflow-hidden flex items-center justify-center select-none shadow-inner">
+                        <div className="absolute inset-0 flex flex-col justify-between p-2.5 pointer-events-none text-center">
+                          <span className="text-[9px] font-extrabold text-slate-300 uppercase tracking-widest">Preview Area TTD + Cap</span>
+                          <span className="text-[9px] font-black text-slate-300 border-t border-dashed border-slate-200 pt-1">MENGETAHUI KETUA RT 001</span>
+                        </div>
+
+                        {/* Signature & Stamp Group Wrapper */}
+                        <div className="relative w-[180px] h-[90px] border border-dashed border-slate-200/80 bg-white flex items-center justify-center">
+                          {/* Sign Base Image */}
+                          <img
+                            src={formSignatureRt}
+                            alt="Signature Preview"
+                            className="max-w-full max-h-full object-contain mix-blend-multiply opacity-80"
+                          />
+
+                          {/* Cap Overlaid Absolute Div */}
+                          <div
+                            className="absolute border border-dashed border-rose-500/50 rounded-full cursor-move group"
+                            style={{
+                              width: `${capSize * 2}px`,
+                              height: `${capSize * 2}px`,
+                              left: `calc(50% - ${capSize}px + ${capX * 2}px)`,
+                              top: `calc(50% - ${capSize}px + ${capY * 2}px)`,
+                              backgroundImage: 'url("/caprt.png")',
+                              backgroundSize: 'contain',
+                              backgroundPosition: 'center',
+                              backgroundRepeat: 'no-repeat',
+                            }}
+                            onMouseDown={(e) => {
+                              const startX = e.clientX;
+                              const startY = e.clientY;
+                              const initialX = capX;
+                              const initialY = capY;
+
+                              const handleMouseMove = (moveEvent: MouseEvent) => {
+                                const deltaX = (moveEvent.clientX - startX) / 2;
+                                const deltaY = (moveEvent.clientY - startY) / 2;
+                                setCapX(Math.max(-40, Math.min(40, Math.round(initialX + deltaX))));
+                                setCapY(Math.max(-30, Math.min(30, Math.round(initialY + deltaY))));
+                              };
+
+                              const handleMouseUp = () => {
+                                window.removeEventListener('mousemove', handleMouseMove);
+                                window.removeEventListener('mouseup', handleMouseUp);
+                              };
+
+                              window.addEventListener('mousemove', handleMouseMove);
+                              window.addEventListener('mouseup', handleMouseUp);
+                            }}
+                            onTouchStart={(e) => {
+                              if (e.touches.length === 0) return;
+                              const startX = e.touches[0].clientX;
+                              const startY = e.touches[0].clientY;
+                              const initialX = capX;
+                              const initialY = capY;
+
+                              const handleTouchMove = (moveEvent: TouchEvent) => {
+                                if (moveEvent.touches.length === 0) return;
+                                const deltaX = (moveEvent.touches[0].clientX - startX) / 2;
+                                const deltaY = (moveEvent.touches[0].clientY - startY) / 2;
+                                setCapX(Math.max(-40, Math.min(40, Math.round(initialX + deltaX))));
+                                setCapY(Math.max(-30, Math.min(30, Math.round(initialY + deltaY))));
+                              };
+
+                              const handleTouchEnd = () => {
+                                window.removeEventListener('touchmove', handleTouchMove);
+                                window.removeEventListener('touchend', handleTouchEnd);
+                              };
+
+                              window.addEventListener('touchmove', handleTouchMove);
+                              window.addEventListener('touchend', handleTouchEnd);
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-rose-500/5 group-hover:bg-rose-500/10 transition-colors flex items-center justify-center rounded-full">
+                              <span className="text-[8px] text-rose-550 font-black bg-white/90 px-1 py-0.5 rounded shadow-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                DRAG
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Accurate Fine-tuning Controls */}
+                      <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                            <span>Geser Kiri/Kanan (X)</span>
+                            <span className="font-mono text-teal-600">{capX} mm</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-40"
+                            max="40"
+                            value={capX}
+                            onChange={(e) => setCapX(Number(e.target.value))}
+                            className="w-full accent-teal-600 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                            <span>Geser Atas/Bawah (Y)</span>
+                            <span className="font-mono text-teal-600">{capY} mm</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-30"
+                            max="30"
+                            value={capY}
+                            onChange={(e) => setCapY(Number(e.target.value))}
+                            className="w-full accent-teal-600 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                            <span>Ukuran Diameter Cap</span>
+                            <span className="font-mono text-teal-600">{capSize} mm</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="15"
+                            max="50"
+                            value={capSize}
+                            onChange={(e) => setCapSize(Number(e.target.value))}
+                            className="w-full accent-teal-600 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* Quick checks warning */}
               <div className="p-3 bg-teal-50/50 rounded-xl border border-teal-100/30 flex items-start gap-2.5 text-[10px] font-semibold text-teal-700">
                 <CheckSquare className="w-4 h-4 text-teal-600 mt-0.5 shrink-0" />
@@ -1071,7 +1359,7 @@ export const WebSuratOnlinePage = ({
                 </button>
                 <button
                   onClick={handleRtApprove}
-                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="flex-1 py-3 bg-emerald-650 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   Setujui & Terbitkan Surat
                 </button>
@@ -1408,6 +1696,161 @@ export const WebSuratOnlinePage = ({
           </div>
         )}
       </AnimatePresence>
+
+      </div>
+
+      {/* Table of letters for Ketua RT and Sekretaris */}
+      {(user?.role === 'admin' || user?.role === 'sekretaris' || user?.role === 'developer') && (
+        <div className="bg-white border border-gray-150/60 rounded-2xl p-6 shadow-xs space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+            <div>
+              <h3 className="font-extrabold text-slate-800 text-base flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-teal-600" />
+                Daftar Seluruh Pengajuan Surat (Ketua RT & Sekretaris)
+              </h3>
+              <p className="text-[11px] text-gray-500 mt-1 font-semibold">
+                Pantau seluruh surat pengantar warga yang sedang diajukan maupun yang telah selesai ditandatangani.
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-teal-50 border border-teal-200 text-teal-700 font-extrabold px-3 py-1.5 rounded-full uppercase tracking-wider">
+                Akses Khusus Pengurus
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Table 1: Sedang Diajukan */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block animate-pulse"></span>
+                  Sedang Diajukan ({data.filter(d => d.status !== 'selesai').length})
+                </h4>
+              </div>
+              
+              <div className="overflow-x-auto border border-gray-100 rounded-xl no-scrollbar bg-slate-50/30">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-600 font-black uppercase text-[10px] tracking-wider border-b border-gray-150/60">
+                      <th className="p-3 pl-4">Warga / NIK</th>
+                      <th className="p-3">Keperluan</th>
+                      <th className="p-3 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium">
+                    {data.filter(d => d.status !== 'selesai').length > 0 ? (
+                      data.filter(d => d.status !== 'selesai').map((item) => (
+                        <tr key={item.id} className="hover:bg-amber-50/30 transition-colors">
+                          <td className="p-3 pl-4">
+                            <div className="font-extrabold text-slate-800">{item.nama || item.userName}</div>
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">{item.noKtpKk || '-'}</div>
+                          </td>
+                          <td className="p-3">
+                            <div className="text-slate-600 font-bold line-clamp-1">{item.mohonDibuatkan || item.keperluan || 'Surat Pengantar RT'}</div>
+                            <div className="text-[9px] text-slate-400 mt-0.5 font-semibold">
+                              {item.createdAt ? new Date(item.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                            </div>
+                          </td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => {
+                                setSelectedItem(item);
+                                setEditingNomorSurat(item.nomorSurat || '');
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }}
+                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[10px] rounded-lg transition-colors shadow-2xs cursor-pointer"
+                            >
+                              Tinjau & Ttd
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="p-8 text-center text-slate-450 font-bold italic">
+                          Tidak ada surat yang sedang diajukan
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Table 2: Selesai Dibuatkan */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                  Selesai Dibuatkan ({data.filter(d => d.status === 'selesai').length})
+                </h4>
+              </div>
+
+              <div className="overflow-x-auto border border-gray-100 rounded-xl no-scrollbar bg-slate-50/30">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-600 font-black uppercase text-[10px] tracking-wider border-b border-gray-150/60">
+                      <th className="p-3 pl-4">No. Surat / Nama</th>
+                      <th className="p-3">Keperluan</th>
+                      <th className="p-3 text-right">Berkas</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium">
+                    {data.filter(d => d.status === 'selesai').length > 0 ? (
+                      data.filter(d => d.status === 'selesai').map((item) => (
+                        <tr key={item.id} className="hover:bg-emerald-50/30 transition-colors">
+                          <td className="p-3 pl-4">
+                            <div className="text-[10px] bg-emerald-50 border border-emerald-100 text-emerald-700 font-black px-1.5 py-0.5 rounded inline-block mb-1 font-mono font-bold">
+                              {item.nomorSurat || 'Selesai'}
+                            </div>
+                            <div className="font-extrabold text-slate-800">{item.nama || item.userName}</div>
+                          </td>
+                          <td className="p-3">
+                            <div className="text-slate-600 font-bold line-clamp-1">{item.mohonDibuatkan || item.keperluan || 'Surat Pengantar RT'}</div>
+                            <div className="text-[9px] text-slate-400 mt-0.5 font-semibold">
+                              Selesai: {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : item.createdAt ? new Date(item.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                            </div>
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => {
+                                  setSelectedItem(item);
+                                  setEditingNomorSurat(item.nomorSurat || '');
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
+                                className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-[10px] rounded-lg transition-colors cursor-pointer"
+                                title="Tampilkan Preview"
+                              >
+                                Tinjau
+                              </button>
+                              <button
+                                onClick={() => handleDownloadPDF(item)}
+                                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] rounded-lg transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
+                                title="Unduh PDF Resmi"
+                              >
+                                <Download className="w-3 h-3" /> PDF
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="p-8 text-center text-slate-450 font-bold italic">
+                          Belum ada surat yang selesai dibuatkan
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
