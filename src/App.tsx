@@ -1,6 +1,7 @@
 import { apiFetch } from './apiInterceptor';
-import React, { useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ReactSortable } from 'react-sortablejs';
+import { AnimatePresence, motion, Reorder } from 'motion/react';
 import { MobileDataWarga } from './MobileDataWarga';
 import { MobileSuratPengantar } from './MobileSuratPengantar';
 import { MobileLaporRT } from './MobileLaporRT';
@@ -1727,6 +1728,15 @@ const MobileProfile = ({ user }: { user: any }) => {
 
 const MobileQuickActions = ({ onActionClick, visibleMenus = [] }: { onActionClick: (action: string) => void, visibleMenus?: string[] }) => {
   const [showAll, setShowAll] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  
+  const [savedOrder, setSavedOrder] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('layanan_warga_order');
+      if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return [];
+  });
 
   // Setup variasi animasi framer-motion
   const containerVariants = {
@@ -1758,64 +1768,113 @@ const MobileQuickActions = ({ onActionClick, visibleMenus = [] }: { onActionClic
     'Voting': 'Voting'
   };
 
-  const filteredActions = quickActions.filter(action => {
-    const webMenu = mobileToWebMap[action.name];
-    if (!webMenu) return true;
-    return visibleMenus.includes(webMenu);
-  });
+  const filteredActions = useMemo(() => {
+    let actions = quickActions.filter(action => {
+      const webMenu = mobileToWebMap[action.name];
+      if (!webMenu) return true;
+      return visibleMenus.includes(webMenu);
+    });
 
-  const displayedActions = showAll ? filteredActions : filteredActions.slice(0, 8);
+    if (savedOrder.length > 0) {
+      actions.sort((a, b) => {
+        const idxA = savedOrder.indexOf(a.name);
+        const idxB = savedOrder.indexOf(b.name);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return 0;
+      });
+    }
+    return actions;
+  }, [visibleMenus, savedOrder]);
+
+  const [displayedActions, setDisplayedActions] = useState<any[]>(
+    showAll || isEditMode ? filteredActions : filteredActions.slice(0, 8)
+  );
+
+  useEffect(() => {
+    setDisplayedActions(showAll || isEditMode ? filteredActions : filteredActions.slice(0, 8));
+  }, [showAll, isEditMode, filteredActions]);
+
+  const handleSetList = (newList: any[]) => {
+    setDisplayedActions(newList);
+    if (isEditMode) {
+      const newOrder = newList.map((item: any) => item.name);
+      setSavedOrder(newOrder);
+      localStorage.setItem('layanan_warga_order', JSON.stringify(newOrder));
+    }
+  };
 
   return (
     <section className="px-5 mb-8">
       <div className="flex justify-between items-center mb-3">
         <h3 className="font-extrabold text-gray-800 text-sm">Layanan Warga</h3>
-        {filteredActions.length > 8 && (
+        <div className="flex items-center gap-2">
           <span 
-            onClick={() => setShowAll(!showAll)}
-            className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full cursor-pointer active:scale-95 transition-transform"
+            onClick={() => setIsEditMode(!isEditMode)}
+            className={`text-[10px] font-bold px-2.5 py-1 rounded-full cursor-pointer active:scale-95 transition-colors ${isEditMode ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'}`}
           >
-            {showAll ? 'Sembunyikan' : 'Lihat Semua'}
+            {isEditMode ? 'Selesai Edit' : 'Edit Posisi'}
           </span>
-        )}
+          {filteredActions.length > 8 && !isEditMode && (
+            <span 
+              onClick={() => setShowAll(!showAll)}
+              className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full cursor-pointer active:scale-95 transition-transform"
+            >
+              {showAll ? 'Sembunyikan' : 'Lihat Semua'}
+            </span>
+          )}
+        </div>
       </div>
       
       <motion.div 
         variants={containerVariants} 
         initial="hidden" 
         animate="show" 
-        className="grid grid-cols-4 gap-y-5 gap-x-3 bg-white p-5 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100"
+        className="bg-white p-5 rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100"
       >
-        {displayedActions.map((action, index) => (
-          <motion.button 
-            key={index} 
-            variants={itemVariants}
-            whileTap={{ scale: 0.85 }} // Mengecil saat ditekan
-            onClick={() => {
-              const act = action as any;
-              if (act.url) {
-                window.open(act.url, '_blank');
-              } else {
-                onActionClick(act.name);
-              }
-            }} 
-            className="flex flex-col items-center text-center gap-2.5 group outline-none"
-          >
-            {/* Box Ikon Modern */}
-            <div className={`p-3.5 w-14 h-14 flex items-center justify-center rounded-[1.1rem] bg-gradient-to-br ${action.color} text-white shadow-md ${action.shadow} group-hover:shadow-lg transition-all relative overflow-hidden`}>
-              {/* Efek kilauan cahaya (Shine effect) */}
-              <div className="absolute top-0 -left-[100%] w-1/2 h-full bg-white/30 transform -skew-x-12 group-hover:left-[200%] transition-all duration-700 ease-in-out"></div>
+        <ReactSortable 
+          list={displayedActions} 
+          setList={handleSetList}
+          disabled={!isEditMode}
+          animation={200}
+          className="grid grid-cols-4 gap-y-5 gap-x-3"
+        >
+          {displayedActions.map((action, index) => (
+            <motion.button 
+              key={action.name} 
+              variants={itemVariants}
+              whileTap={!isEditMode ? { scale: 0.85 } : undefined}
+              onClick={(e) => {
+                if (isEditMode) {
+                  e.preventDefault();
+                  return;
+                }
+                const act = action as any;
+                if (act.url) {
+                  window.open(act.url, '_blank');
+                } else {
+                  onActionClick(act.name);
+                }
+              }} 
+              className={`flex flex-col items-center text-center gap-2.5 group outline-none ${isEditMode ? 'cursor-move' : ''}`}
+            >
+              {/* Box Ikon Modern */}
+              <div className={`p-3.5 w-14 h-14 flex items-center justify-center rounded-[1.1rem] bg-gradient-to-br ${action.color} text-white shadow-md ${action.shadow} group-hover:shadow-lg transition-all relative overflow-hidden ${isEditMode ? 'animate-pulse ring-2 ring-orange-300 ring-offset-2' : ''}`}>
+                {/* Efek kilauan cahaya (Shine effect) */}
+                {!isEditMode && <div className="absolute top-0 -left-[100%] w-1/2 h-full bg-white/30 transform -skew-x-12 group-hover:left-[200%] transition-all duration-700 ease-in-out"></div>}
+                
+                {/* Ikon */}
+                <action.icon className="w-6 h-6 relative z-10 drop-shadow-sm" />
+              </div>
               
-              {/* Ikon */}
-              <action.icon className="w-6 h-6 relative z-10 drop-shadow-sm" />
-            </div>
-            
-            {/* Teks Label */}
-            <span className="text-[10px] font-extrabold text-slate-600 leading-tight group-hover:text-teal-600 transition-colors">
-              {action.name}
-            </span>
-          </motion.button>
-        ))}
+              {/* Teks Label */}
+              <span className={`text-[10px] font-extrabold leading-tight transition-colors ${isEditMode ? 'text-orange-600' : 'text-slate-600 group-hover:text-teal-600'}`}>
+                {action.name}
+              </span>
+            </motion.button>
+          ))}
+        </ReactSortable>
       </motion.div>
     </section>
   );
