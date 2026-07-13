@@ -2,14 +2,9 @@ const cache = new Map<string, { data: string, timestamp: number }>();
 const inflight = new Map<string, Promise<Response>>();
 const CACHE_TTL = 5 * 60 * 1000;
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ais-dev-4cyexyaiz2lrevpvgr7rkp-47019996628.asia-east1.run.app';
-
 export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const isGet = !init || !init.method || init.method.toUpperCase() === 'GET';
-  let url = typeof input === 'string' ? input : input.toString();
-  if (url.startsWith('/')) {
-    url = `${API_BASE_URL}${url}`;
-  }
+  const url = typeof input === 'string' ? input : input.toString();
 
   // Clear cache on mutations (POST, PUT, DELETE)
   if (!isGet) {

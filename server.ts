@@ -1,5 +1,4 @@
 import express from "express";
-import cors from "cors";
 import "express-async-errors";
 import fs from "fs";
 import path from "path";
@@ -44,7 +43,6 @@ const PORT = 3000;
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
-app.use(cors());
 
 // Apply rate limiting to all requests
 app.use("/api/", apiLimiter);
