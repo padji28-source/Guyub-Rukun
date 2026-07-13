@@ -62,6 +62,11 @@ function authMiddleware(req: express.Request, res: express.Response, next: expre
   if (publicRoutes.includes(pathName) || pathName.startsWith("/api/tangerang-logo-proxy") || pathName.startsWith("/api/stream")) {
     return next();
   }
+
+  // Allow public GET requests to view events and media highlights
+  if (req.method === "GET" && (pathName === "/api/data/acara" || pathName === "/api/data/media")) {
+    return next();
+  }
   
   const authHeader = req.headers['authorization'];
   let token = "";
@@ -150,8 +155,11 @@ const IuranSchema = new mongoose.Schema({
   status: { type: String, required: true }, // 'verifikasi', 'lunas', 'butuh_konfirmasi'
   rtId: { type: String, required: true },
   createdAt: { type: String, required: true },
-  proofUrl: { type: String }
-}, { timestamps: true });
+  proofUrl: { type: String },
+  userId: { type: String },
+  bulan: { type: String },
+  buktiUrl: { type: String }
+}, { timestamps: true, strict: false });
 const IuranModel: mongoose.Model<any> = mongoose.models.Iuran || mongoose.model("Iuran", IuranSchema);
 
 // 3. Kas Schema
@@ -1107,6 +1115,22 @@ app.put("/api/profile", async (req, res) => {
 });
 
 // --- CITIZEN DATA & APPROVAL MANAGEMENT ---
+app.get("/api/warga/:id", async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  try {
+    await connectDB();
+    const user = await UserModel.findOne({ id: req.params.id, rtId }).lean();
+    if (user) {
+      res.json({ user });
+    } else {
+      res.status(404).json({ error: "Warga tidak ditemukan" });
+    }
+  } catch (error) {
+    console.error("Gagal mengambil rincian warga:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 app.get("/api/warga", async (req, res) => {
   const rtId = req.headers['x-rt-id'] as string || 'rt01';
   const page = parseInt(req.query.page as string) || 1;
@@ -1314,6 +1338,66 @@ app.post("/api/broadcast", enforceRoles(['admin', 'pengurus', 'sekretaris', 'ben
   await logAudit(rtId, updaterName || 'Admin', "BROADCAST", `Mengirimkan pengumuman broadcast: ${title || 'No Title'}`, null, { title, message });
   await addNotification(rtId, title || "📢 Pengumuman RT", message, updaterName || 'Admin', "broadcast");
   res.json({ success: true, message: "Pesan broadcast berhasil dikirim ke semua warga" });
+});
+
+// --- IURAN AUTOMATIC REMINDERS ---
+app.post("/api/iuran/remind", enforceRoles(['admin', 'pengurus', 'sekretaris', 'bendahara', 'developer']), async (req, res) => {
+  const rtId = req.headers['x-rt-id'] as string || 'rt01';
+  const { bulan, tahun, jenis, messageTemplate } = req.body;
+  
+  if (!bulan || !tahun) {
+    return res.status(400).json({ error: "Bulan dan tahun harus diisi" });
+  }
+  
+  const period = `${bulan} ${tahun}`;
+  const targetJenis = jenis || "Iuran Wajib";
+  
+  try {
+    // 1. Get all warga in this RT (approved only)
+    const wargaList = await UserModel.find({ rtId, isApproved: true }).lean();
+    
+    // 2. Get all iuran records for this RT, period and jenis
+    const paidRecords = await IuranModel.find({ 
+      rtId, 
+      bulan: period, 
+      jenis: targetJenis 
+    }).lean();
+    
+    // 3. Filter warga who haven't paid or have status "belum dibayar"
+    const unpaidWarga: any[] = [];
+    const remindedNames: string[] = [];
+    
+    for (const user of wargaList) {
+      // Skip admin/developer/bendahara roles for reminders
+      if (['admin', 'bendahara', 'developer'].includes(user.role)) {
+        continue;
+      }
+      
+      const record = paidRecords.find(r => r.userId === user.id);
+      if (!record || record.status === 'belum dibayar') {
+        unpaidWarga.push(user);
+        
+        // Customize template or use default
+        const finalMessage = messageTemplate 
+          ? messageTemplate.replace(/{nama}/g, user.nama).replace(/{bulan}/g, period).replace(/{jenis}/g, targetJenis)
+          : `Halo ${user.nama}, Anda belum melakukan pembayaran ${targetJenis} untuk periode ${period}. Silakan lakukan pembayaran segera. Terima kasih.`;
+          
+        await addNotification(rtId, `Pengingat ${targetJenis}`, finalMessage, 'Sistem', 'iuran', record?.id || 'unpaid');
+        remindedNames.push(user.nama);
+      }
+    }
+    
+    await logAudit(rtId, (req.headers['x-user-role'] as string) || 'Admin', "REMIND_IURAN", `Mengirim pengingat iuran ${targetJenis} periode ${period} kepada ${unpaidWarga.length} warga.`, null, { period, jenis: targetJenis });
+    
+    res.json({ 
+      success: true, 
+      count: unpaidWarga.length, 
+      reminded: remindedNames 
+    });
+  } catch (error: any) {
+    console.error("Error sending iuran reminders:", error);
+    res.status(500).json({ error: "Gagal mengirimkan pengingat iuran" });
+  }
 });
 
 // --- COMPATIBLE APP_DATA / MULTI-MODULE ENDPOINTS ---

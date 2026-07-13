@@ -1,8 +1,9 @@
 import { apiFetch } from './apiInterceptor';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ReactSortable } from 'react-sortablejs';
 import { AnimatePresence, motion, Reorder } from 'motion/react';
 import { MobileDataWarga } from './MobileDataWarga';
+import { MobileScanQR } from './MobileScanQR';
 import { MobileSuratPengantar } from './MobileSuratPengantar';
 import { MobileLaporRT } from './MobileLaporRT';
 import { MobileLaporan } from './MobileLaporan';
@@ -59,6 +60,7 @@ import { WebDashboardRtView } from './components/WebDashboardRtView';
 import { WebInventarisPage } from './components/WebInventarisPage';
 import { WebNotulenPage } from './components/WebNotulenPage';
 import { WebMenuAccessPage } from './components/WebMenuAccessPage';
+import { LandingPage } from './components/LandingPage';
 
 // --- Modern Icons Set ---
 export const icons = {
@@ -220,12 +222,22 @@ export const icons = {
     <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
     </svg>
+  ),
+  qr: (props: any) => (
+    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+      <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+      <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+      <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+      <rect x="7" y="7" width="10" height="10" rx="1.5" />
+      <path d="M10 10h4v4h-4z" />
+    </svg>
   )
 };
 
 // --- Logo Komunitas Modern ---
 // Menggunakan desain elegan dan bentuk rumah/orang abstrak bersatu (Tanpa Background)
-const LogoCommunityIcon = ({ size = '32', colorAccent = themeColors.accent, colorPrimary = themeColors.primary }) => (
+export const LogoCommunityIcon = ({ size = '32', colorAccent = themeColors.accent, colorPrimary = themeColors.primary }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
     <g id="people">
       {/* Left person */}
@@ -273,20 +285,44 @@ const themeColors = {
 const fontStyle = '"Plus Jakarta Sans", sans-serif';
 
 // --- Web UI Components (Dashboard Admin) ---
-const WebSidebar = ({ activeTab, onTabChange, visibleMenus = [] }: { activeTab: string, onTabChange: (tab: string) => void, visibleMenus?: string[] }) => (
-  <aside className="w-20 lg:w-[16rem] h-screen bg-white border-r border-gray-100 flex flex-col p-4 lg:p-6 fixed left-0 top-0 transition-all duration-300 z-50">
-    <div className="flex items-center mb-10 gap-2.5 justify-center lg:justify-start">
+const WebSidebar = ({ 
+  activeTab, 
+  onTabChange, 
+  visibleMenus = [],
+  isCollapsed
+}: { 
+  activeTab: string, 
+  onTabChange: (tab: string) => void, 
+  visibleMenus?: string[],
+  isCollapsed: boolean
+}) => (
+  <motion.aside 
+    animate={{ width: isCollapsed ? '5rem' : '16rem' }}
+    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+    className="h-screen bg-white border-r border-gray-100 flex flex-col p-4 lg:p-6 fixed left-0 top-0 z-50 overflow-hidden shadow-sm"
+  >
+    <div className="flex items-center mb-10 gap-2.5 justify-start">
       <div className="bg-gradient-to-br from-teal-500 to-emerald-600 p-1.5 rounded-xl shadow-sm border border-teal-400/30 shrink-0">
-        {/* Memastikan warna logo di dalam box menjadi putih agar kontras */}
         <LogoCommunityIcon size="20" colorAccent="#ffffff" colorPrimary="#ffffff" />
       </div>
-      <div className="hidden lg:flex flex-col">
-        <span className="text-base font-extrabold leading-none tracking-tight text-gray-800" style={{ fontFamily: fontStyle }}>
-          GUYUB <span className="text-teal-600">RUKUN</span>
-        </span>
-        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Aplikasi Warga</span>
-      </div>
+      <AnimatePresence mode="popLayout">
+        {!isCollapsed && (
+          <motion.div 
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.15 }}
+            className="flex flex-col whitespace-nowrap"
+          >
+            <span className="text-base font-extrabold leading-none tracking-tight text-gray-800" style={{ fontFamily: fontStyle }}>
+              GUYUB <span className="text-teal-600">RUKUN</span>
+            </span>
+            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Aplikasi Warga</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+    
     <nav className="flex-grow space-y-2 overflow-y-auto w-full no-scrollbar">
       {[
         { name: 'Dashboard', icon: icons.dashboard },
@@ -307,25 +343,74 @@ const WebSidebar = ({ activeTab, onTabChange, visibleMenus = [] }: { activeTab: 
         { name: 'Pengaturan', icon: icons.pengaturan },
         { name: 'Akses Menu', icon: icons.pengaturan },
       ].filter(item => visibleMenus.includes(item.name))
-       .map((item) => (
-        <button 
-          key={item.name} 
-          onClick={() => onTabChange(item.name)}
-          title={item.name}
-          className={`w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl text-sm font-medium transition-colors ${activeTab === item.name ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:bg-gray-50'}`}>
-          <item.icon className={`w-6 h-6 lg:w-5 lg:h-5 shrink-0 ${activeTab === item.name ? 'text-teal-600' : 'text-gray-400'}`} />
-          <span className="hidden lg:inline">{item.name}</span>
-        </button>
-      ))}
+       .map((item) => {
+         const isActive = activeTab === item.name;
+         return (
+           <button 
+             key={item.name} 
+             onClick={() => onTabChange(item.name)}
+             title={item.name}
+             className={`w-full flex items-center justify-start gap-3 p-3 rounded-xl text-sm font-medium transition-colors ${isActive ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:bg-gray-50'}`}
+           >
+             <item.icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-teal-600' : 'text-gray-400'}`} />
+             <AnimatePresence mode="popLayout">
+               {!isCollapsed && (
+                 <motion.span 
+                   initial={{ opacity: 0, x: -10 }}
+                   animate={{ opacity: 1, x: 0 }}
+                   exit={{ opacity: 0, x: -10 }}
+                   transition={{ duration: 0.15 }}
+                   className="whitespace-nowrap text-left"
+                 >
+                   {item.name}
+                 </motion.span>
+               )}
+             </AnimatePresence>
+           </button>
+         );
+       })}
     </nav>
-    <div className="hidden lg:flex w-full mt-auto items-center justify-center h-24 p-2 bg-gray-50 rounded-lg overflow-hidden relative">
-      <IllustrationFamilyGroup/>
+    
+    <div className="w-full mt-auto flex items-center justify-center">
+      <AnimatePresence mode="popLayout">
+        {!isCollapsed && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.15 }}
+            className="w-full h-24 p-2 bg-gray-50 rounded-lg overflow-hidden relative flex items-center justify-center"
+          >
+            <IllustrationFamilyGroup/>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
-  </aside>
+  </motion.aside>
 );
 
 // --- 1. UPDATE: WebHeader ---
-const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNotifications, onNotificationClick, onOpenBroadcast }: { user?: any; onLogout?: () => void; onUpdateUser?: (data: any) => void; notifications?: any[]; onShowNotifications?: () => void; onNotificationClick?: (n: any) => void; onOpenBroadcast?: () => void; }) => {
+const WebHeader = ({ 
+  user, 
+  onLogout, 
+  onUpdateUser, 
+  notifications = [], 
+  onShowNotifications, 
+  onNotificationClick, 
+  onOpenBroadcast,
+  isCollapsed,
+  onToggleCollapse
+}: { 
+  user?: any; 
+  onLogout?: () => void; 
+  onUpdateUser?: (data: any) => void; 
+  notifications?: any[]; 
+  onShowNotifications?: () => void; 
+  onNotificationClick?: (n: any) => void; 
+  onOpenBroadcast?: () => void; 
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+}) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   
@@ -333,18 +418,32 @@ const WebHeader = ({ user, onLogout, onUpdateUser, notifications = [], onShowNot
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-gray-100/50 shadow-sm ml-20 lg:ml-[16rem] transition-all duration-300">
+      <header className={`sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-gray-100/50 shadow-sm transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-20 lg:ml-[16rem]'}`}>
         <div className="flex items-center justify-between py-3 px-6 lg:px-8">
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex flex-col"
-          >
-            <h1 className="text-xl lg:text-2xl font-extrabold text-gray-800 tracking-tight" style={{ fontFamily: fontStyle }}>
-              Halo, <span className="text-teal-600">{user?.nama || 'Admin'}</span>! 👋
-            </h1>
-            <p className="hidden md:block text-xs text-gray-500 font-medium mt-0.5">Pusat Kendali Guyub Rukun RT 01</p>
-          </motion.div>
+          <div className="flex items-center gap-4">
+            {/* Toggle Button for Sidebar */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={onToggleCollapse}
+              className="p-2.5 bg-slate-50 border border-slate-100 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors shadow-sm cursor-pointer shrink-0"
+              title={isCollapsed ? "Buka Sidebar" : "Sembunyikan Sidebar"}
+            >
+              <svg className="w-5 h-5 transition-transform duration-300" style={{ transform: isCollapsed ? 'rotate(180deg)' : 'none' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              </svg>
+            </motion.button>
+
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex flex-col"
+            >
+              <h1 className="text-xl lg:text-2xl font-extrabold text-gray-800 tracking-tight" style={{ fontFamily: fontStyle }}>
+                Halo, <span className="text-teal-600">{user?.nama || 'Admin'}</span>! 👋
+              </h1>
+              <p className="hidden md:block text-xs text-gray-500 font-medium mt-0.5">Pusat Kendali Guyub Rukun RT 01</p>
+            </motion.div>
+          </div>
 
           <div className="flex items-center gap-4 lg:gap-6">
             {/* Notification Bell */}
@@ -481,7 +580,7 @@ const WebStatsCards = () => {
   const [showKasDetail, setShowKasDetail] = useState(false);
   
   // Tambahkan state ini untuk kontrol menyembunyikan saldo di Web
-  const [isMasked, setIsMasked] = useState(false);
+  const [isMasked, setIsMasked] = useState(true);
 
   useEffect(() => {
     // ... (Biarkan kode useEffect kamu sebelumnya apa adanya) ...
@@ -1696,13 +1795,17 @@ const MobileHeader = ({ notifications, onShowNotifications }: { notifications: a
   );
 };
 
-const MobileProfile = ({ user }: { user: any }) => {
+const MobileProfile = ({ user, onClick }: { user: any; onClick?: () => void }) => {
   const shortName = user?.nama ? user.nama.split(' ').slice(0, 2).join(' ') : 'Warga';
   // Use a fallback so it matches original data visually if unavailable
   const displayAlamat = user?.alamat || 'Jl. Bahagia No. 12, Kompleks Rukun';
   
   return (
-  <section className="relative px-5 py-6 bg-gradient-to-br from-[#f0fbf8] to-[#e4f6ef] flex items-center justify-between gap-3 rounded-b-[2rem] mb-6 overflow-hidden border-b border-teal-100/50 shadow-sm">
+  <motion.section 
+    whileTap={onClick ? { scale: 0.98 } : undefined}
+    onClick={onClick}
+    className={`relative px-5 py-6 bg-gradient-to-br from-[#f0fbf8] to-[#e4f6ef] flex items-center justify-between gap-3 rounded-b-[2rem] mb-6 overflow-hidden border-b border-teal-100/50 shadow-sm ${onClick ? 'cursor-pointer' : ''}`}
+  >
     <div className="absolute top-0 right-0 w-32 h-32 bg-teal-200/20 rounded-full translate-x-12 -translate-y-12 blur-2xl"></div>
     <div className="absolute bottom-0 left-0 w-24 h-24 bg-emerald-200/30 rounded-full -translate-x-8 translate-y-8 blur-xl"></div>
     
@@ -1722,7 +1825,7 @@ const MobileProfile = ({ user }: { user: any }) => {
       </div>
       <div className="absolute bottom-0 right-0 w-[14px] h-[14px] bg-[#02df8f] rounded-full border-2 border-[#e4f6ef]"></div>
     </div>
-  </section>
+  </motion.section>
   );
 };
 
@@ -1880,28 +1983,23 @@ const MobileQuickActions = ({ onActionClick, visibleMenus = [] }: { onActionClic
   );
 };
 
-// --- UPDATE: MobileEvents (Widget Beranda) ---
+// --- UPDATE: MobileEvents Split (Widget Beranda) ---
 let cachedMediaList: any[] | null = null;
 let cachedBackendEvents: any[] | null = null;
 
-const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => void }) => {
+const MobileHomeCalendar = ({ onActionClick }: { onActionClick: (action: string) => void }) => {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState<number | null>(today.getDate());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
-
-  const [mediaList, setMediaList] = useState<any[]>(cachedMediaList || []);
-  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [backendEvents, setBackendEvents] = useState<any[]>(cachedBackendEvents || []);
-  const [loadingMedia, setLoadingMedia] = useState(!cachedMediaList);
 
   const [reminders, setReminders] = useState<string[]>(() => {
     const saved = localStorage.getItem('event_reminders');
     return saved ? JSON.parse(saved) : [];
   });
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('event_reminders', JSON.stringify(reminders));
@@ -1918,38 +2016,11 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
   }, []);
 
   useEffect(() => {
-    setLoadingMedia(!cachedMediaList);
-    apiFetch('/api/data/media').then(r => r.json()).then(json => {
-      let list = [];
-      if (json.data && json.data.length > 0) {
-        list = json.data.slice(-5).reverse();
-      } else {
-        list = [{
-          imageUrl: "https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=600&q=80",
-          title: "Kerja Bakti Sambut Ramadhan",
-          uploaderName: "Admin RT",
-          desc: "Keseruan warga RT 01 bergotong royong."
-        }];
-      }
-      cachedMediaList = list;
-      setMediaList(list);
-    }).catch(console.error).finally(() => setLoadingMedia(false));
-
     apiFetch('/api/data/acara').then(r => r.json()).then(json => {
       cachedBackendEvents = json.data || [];
       setBackendEvents(cachedBackendEvents);
     }).catch(console.error);
   }, []);
-
-  useEffect(() => {
-    if (mediaList.length <= 1) return;
-    const interval = setInterval(() => {
-      setActiveMediaIndex(prev => (prev + 1) % mediaList.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [mediaList.length]);
-
-  const currentMedia = mediaList[activeMediaIndex] || null;
 
   // Calendar Logic
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -1969,77 +2040,9 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
   });
 
   return (
-    <section className="px-5 mb-8 space-y-6">
-      {/* 1. Mobile Media Slider (Modern Story Style) */}
-      <motion.div 
-        whileTap={{ scale: 0.98 }}
-        className="bg-slate-900 rounded-[2rem] shadow-xl overflow-hidden relative group cursor-pointer aspect-[4/3] w-full"
-        onClick={() => onActionClick('Media')}
-      >
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeMediaIndex}
-            initial={{ opacity: 0, scale: 1.05 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="absolute inset-0 w-full h-full"
-          >
-            {loadingMedia ? (
-               <div className="w-full h-full bg-slate-200 animate-pulse"></div>
-            ) : currentMedia && (
-              <img src={currentMedia.imageUrl} alt={currentMedia.title} className="w-full h-full object-cover" />
-            )}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Progress Bars ala Instagram Story */}
-        {mediaList.length > 1 && !loadingMedia && (
-          <div className="absolute top-4 left-4 right-4 flex gap-1.5 z-20">
-            {mediaList.map((_, idx) => (
-              <div key={idx} className="h-1 bg-white/30 rounded-full flex-1 overflow-hidden backdrop-blur-sm">
-                {idx === activeMediaIndex && (
-                  <motion.div 
-                    initial={{ width: 0 }} 
-                    animate={{ width: "100%" }} 
-                    transition={{ duration: 5, ease: "linear" }} 
-                    className="h-full bg-white rounded-full"
-                  />
-                )}
-                {idx < activeMediaIndex && <div className="h-full bg-white rounded-full" />}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent flex flex-col justify-end p-5 text-white z-10">
-          <div className="flex justify-between items-end w-full">
-            <div className="flex-grow pr-2">
-              <span className="px-2.5 py-1 mb-2 bg-teal-500/80 backdrop-blur-md text-[9px] font-extrabold rounded-md inline-block uppercase tracking-wider shadow-sm">Sorotan Warga</span>
-              {loadingMedia ? (
-                 <>
-                    <div className="h-5 w-3/4 bg-white/30 animate-pulse rounded mb-2"></div>
-                    <div className="h-3 w-1/2 bg-white/20 animate-pulse rounded"></div>
-                 </>
-              ) : (
-                 <>
-                    <h4 className="text-lg font-black leading-tight drop-shadow-md mb-1">{currentMedia?.title}</h4>
-                    <p className="text-[10px] text-slate-200 font-medium line-clamp-2 drop-shadow">{currentMedia?.desc || `Oleh: ${currentMedia?.uploaderName}`}</p>
-                 </>
-              )}
-            </div>
-            
-            {!loadingMedia && currentMedia && (
-              <a href={currentMedia.imageUrl} download={currentMedia.title || 'foto'} onClick={(e) => e.stopPropagation()} target="_blank" rel="noopener noreferrer" className="bg-white/20 hover:bg-white/40 text-white p-3 rounded-full backdrop-blur-md transition-all shadow-lg active:scale-90 flex-shrink-0" title="Unduh">
-                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-              </a>
-            )}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* 2. Mobile Calendar Widget */}
-      <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 p-6 relative">
+    <section className="px-5 mb-5">
+      {/* Mobile Calendar Widget */}
+      <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 p-6 relative text-left">
         <div className="flex justify-between items-center mb-6">
            <div className="flex flex-col">
              <div className="flex items-center gap-2">
@@ -2115,7 +2118,7 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
                  </AnimatePresence>
                </div>
              </div>
-             <p className="text-[10px] text-slate-400 font-extrabold mt-1.5 uppercase tracking-[0.2em]">Jadwal RT</p>
+             <p className="text-[10px] text-slate-400 font-extrabold mt-1.5 uppercase tracking-[0.2em]">Agenda Warga & Kegiatan</p>
            </div>
            
            <motion.button 
@@ -2217,47 +2220,164 @@ const MobileEvents = ({ onActionClick }: { onActionClick: (action: string) => vo
   );
 };
 
-const MobileBottomNav = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (tab: string) => void }) => (
-  <motion.nav 
-    initial={{ y: 50 }} 
-    animate={{ y: 0 }} 
-    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-    // Efek glassmorphism tebal di bagian bawah
-    className="flex justify-around items-center px-2 py-2 pb-6 bg-white/90 backdrop-blur-xl border-t border-gray-100/50 fixed bottom-0 left-0 right-0 z-50 w-full shadow-[0_-10px_40px_rgba(0,0,0,0.05)]"
-  >
-    {mobileNavItems.map((item) => {
-      const isActive = activeTab === item.name;
-      
-      return (
-        <motion.button 
-          key={item.name} 
-          whileTap={{ scale: 0.85 }}
-          onClick={() => onTabChange(item.name)}
-          className={`relative flex flex-col items-center gap-1 transition-all p-2.5 rounded-2xl w-16 ${isActive ? 'text-teal-600' : 'text-slate-400 hover:text-slate-500'}`}
-        >
-          {/* Active Indicator Melayang (Framer Motion Layout Animation) */}
-          {isActive && (
-            <motion.div 
-              layoutId="bottomNavIndicator" 
-              className="absolute inset-0 bg-teal-50 rounded-2xl -z-10" 
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            />
-          )}
-          
+const MobileMediaSlider = ({ onActionClick }: { onActionClick: (action: string) => void }) => {
+  const [mediaList, setMediaList] = useState<any[]>(cachedMediaList || []);
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [loadingMedia, setLoadingMedia] = useState(!cachedMediaList);
+
+  useEffect(() => {
+    setLoadingMedia(!cachedMediaList);
+    apiFetch('/api/data/media').then(r => r.json()).then(json => {
+      let list = [];
+      if (json.data && json.data.length > 0) {
+        list = json.data.slice(-5).reverse();
+      } else {
+        list = [{
+          imageUrl: "https://images.unsplash.com/photo-1593113511332-15f5ea6c4dcd?auto=format&fit=crop&w=600&q=80",
+          title: "Kerja Bakti Sambut Ramadhan",
+          uploaderName: "Admin RT",
+          desc: "Keseruan warga RT 01 bergotong royong."
+        }];
+      }
+      cachedMediaList = list;
+      setMediaList(list);
+    }).catch(console.error).finally(() => setLoadingMedia(false));
+  }, []);
+
+  useEffect(() => {
+    if (mediaList.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveMediaIndex(prev => (prev + 1) % mediaList.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [mediaList.length]);
+
+  const currentMedia = mediaList[activeMediaIndex] || null;
+
+  return (
+    <section className="px-5 mb-8">
+      <motion.div 
+        whileTap={{ scale: 0.98 }}
+        className="bg-slate-900 rounded-[2rem] shadow-xl overflow-hidden relative group cursor-pointer aspect-[4/3] w-full"
+        onClick={() => onActionClick('Media')}
+      >
+        <AnimatePresence mode="wait">
           <motion.div
-             animate={isActive ? { y: -2 } : { y: 0 }}
-             transition={{ type: "spring", stiffness: 300 }}
+            key={activeMediaIndex}
+            initial={{ opacity: 0, scale: 1.05 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="absolute inset-0 w-full h-full"
           >
-             <item.icon className={`w-6 h-6 ${isActive ? 'drop-shadow-sm' : ''}`} />
+            {loadingMedia ? (
+               <div className="w-full h-full bg-slate-200 animate-pulse"></div>
+            ) : currentMedia && (
+              <img src={currentMedia.imageUrl} alt={currentMedia.title} className="w-full h-full object-cover" />
+            )}
           </motion.div>
-          <span className={`text-[10px] ${isActive ? 'font-extrabold' : 'font-semibold'}`}>
-            {item.name}
-          </span>
-        </motion.button>
-      );
-    })}
-  </motion.nav>
-);
+        </AnimatePresence>
+
+        {mediaList.length > 1 && !loadingMedia && (
+          <div className="absolute top-4 left-4 right-4 flex gap-1.5 z-20">
+            {mediaList.map((_, idx) => (
+              <div key={idx} className="h-1 bg-white/30 rounded-full flex-1 overflow-hidden backdrop-blur-sm">
+                {idx === activeMediaIndex && (
+                  <motion.div 
+                    initial={{ width: 0 }} 
+                    animate={{ width: "100%" }} 
+                    transition={{ duration: 5, ease: "linear" }} 
+                    className="h-full bg-white rounded-full"
+                  />
+                )}
+                {idx < activeMediaIndex && <div className="h-full bg-white rounded-full" />}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent flex flex-col justify-end p-5 text-white z-10 text-left">
+          <div className="flex justify-between items-end w-full">
+            <div className="flex-grow pr-2">
+              <span className="px-2.5 py-1 mb-2 bg-teal-500/80 backdrop-blur-md text-[9px] font-extrabold rounded-md inline-block uppercase tracking-wider shadow-sm">Sorotan Warga</span>
+              {loadingMedia ? (
+                 <>
+                    <div className="h-5 w-3/4 bg-white/30 animate-pulse rounded mb-2"></div>
+                    <div className="h-3 w-1/2 bg-white/20 animate-pulse rounded"></div>
+                 </>
+              ) : (
+                 <>
+                    <h4 className="text-lg font-black leading-tight drop-shadow-md mb-1">{currentMedia?.title}</h4>
+                    <p className="text-[10px] text-slate-200 font-medium line-clamp-2 drop-shadow">{currentMedia?.desc || `Oleh: ${currentMedia?.uploaderName}`}</p>
+                 </>
+              )}
+            </div>
+            
+            {!loadingMedia && currentMedia && (
+              <a href={currentMedia.imageUrl} download={currentMedia.title || 'foto'} onClick={(e) => e.stopPropagation()} target="_blank" rel="noopener noreferrer" className="bg-white/20 hover:bg-white/40 text-white p-3 rounded-full backdrop-blur-md transition-all shadow-lg active:scale-90 flex-shrink-0" title="Unduh">
+                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              </a>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </section>
+  );
+};
+
+const MobileBottomNav = ({ activeTab, onTabChange, user }: { activeTab: string, onTabChange: (tab: string) => void, user: any }) => {
+  const isEligible = user?.role === 'admin' || user?.role === 'sekretaris' || user?.role === 'bendahara';
+  
+  const navItems = [
+    { name: 'Beranda', icon: icons.home },
+    { name: 'Acara', icon: icons.events },
+    ...(isEligible ? [{ name: 'Scan QR', icon: icons.qr }] : []),
+    { name: 'Laporan', icon: icons.laporan },
+    { name: 'Profil', icon: icons.profil },
+  ];
+
+  return (
+    <motion.nav 
+      initial={{ y: 50 }} 
+      animate={{ y: 0 }} 
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      // Efek glassmorphism tebal di bagian bawah
+      className="flex justify-around items-center px-1 py-2 pb-6 bg-white/90 backdrop-blur-xl border-t border-gray-100/50 fixed bottom-0 left-0 right-0 z-50 w-full shadow-[0_-10px_40px_rgba(0,0,0,0.05)]"
+    >
+      {navItems.map((item) => {
+        const isActive = activeTab === item.name;
+        
+        return (
+          <motion.button 
+            key={item.name} 
+            whileTap={{ scale: 0.85 }}
+            onClick={() => onTabChange(item.name)}
+            className={`relative flex flex-col items-center gap-1 transition-all p-2 rounded-2xl w-[68px] ${isActive ? 'text-teal-600' : 'text-slate-400 hover:text-slate-500'}`}
+          >
+            {/* Active Indicator Melayang (Framer Motion Layout Animation) */}
+            {isActive && (
+              <motion.div 
+                layoutId="bottomNavIndicator" 
+                className="absolute inset-0 bg-teal-50 rounded-2xl -z-10" 
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              />
+            )}
+            
+            <motion.div
+               animate={isActive ? { y: -2 } : { y: 0 }}
+               transition={{ type: "spring", stiffness: 300 }}
+            >
+               <item.icon className={`w-5.5 h-5.5 ${isActive ? 'drop-shadow-sm' : ''}`} />
+            </motion.div>
+            <span className={`text-[9px] ${isActive ? 'font-extrabold' : 'font-semibold'} whitespace-nowrap`}>
+              {item.name}
+            </span>
+          </motion.button>
+        );
+      })}
+    </motion.nav>
+  );
+};
 
 import { MobileMedia } from './MobileMedia';
 
@@ -2319,7 +2439,7 @@ const MobileSaldoCard = () => {
   const [loading, setLoading] = useState(!cachedSaldoResult);
   
   // State untuk menyembunyikan saldo
-  const [isMasked, setIsMasked] = useState(false);
+  const [isMasked, setIsMasked] = useState(true);
 
   useEffect(() => {
     setLoading(!cachedSaldoResult);
@@ -2710,6 +2830,72 @@ const MobileProfilPage = ({ user, onLogout, onUpdateUser }: { user: any; onLogou
       {/* Konten Data Profil (Kartu Melayang) */}
       <div className="relative z-10 px-5 w-full mt-8">
         
+        {/* KARTU WARGA DIGITAL PREMIUM WITH QR CODE & SHARE SHORTCUT */}
+        <div className="mb-6 bg-gradient-to-br from-slate-900 via-slate-800 to-teal-950 p-6 rounded-3xl shadow-xl relative overflow-hidden text-white border border-slate-700/50">
+          {/* Subtle design shapes */}
+          <div className="absolute top-0 right-0 w-40 h-40 bg-teal-500/10 rounded-full translate-x-12 -translate-y-12 blur-2xl"></div>
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/10 rounded-full -translate-x-12 translate-y-12 blur-2xl"></div>
+          
+          <div className="flex justify-between items-start">
+            <div>
+              <span className="text-[9px] font-extrabold tracking-widest text-teal-400 uppercase">KARTU WARGA DIGITAL</span>
+              <h3 className="text-lg font-black tracking-tight mt-1 truncate max-w-[180px]">{profile.name}</h3>
+              <p className="text-[10px] font-bold text-slate-400 mt-0.5">ID: {(user?.id || 'RT01-WARGA').substring(0, 12).toUpperCase()}</p>
+            </div>
+            {/* RT Logo */}
+            <div className="bg-white/10 p-2 rounded-xl border border-white/10 shrink-0">
+              <LogoCommunityIcon size="16" colorAccent="#2dd4bf" colorPrimary="#ffffff" />
+            </div>
+          </div>
+
+          <div className="mt-6 flex gap-4 items-center bg-white/5 border border-white/10 p-3.5 rounded-2xl">
+            {/* QR Code Container */}
+            <div className="bg-white p-2 rounded-xl shrink-0 shadow-md">
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=72x72&data=${encodeURIComponent(JSON.stringify({ id: user?.id, nama: profile.name, alamat: profile.address, status: profile.role }))}`}
+                alt="QR Code Warga" 
+                className="w-[72px] h-[72px] object-contain"
+              />
+            </div>
+            <div className="flex-grow min-w-0">
+              <p className="text-[9px] font-bold text-teal-400 uppercase tracking-wider">Verifikasi Warga</p>
+              <p className="text-[11px] font-extrabold text-slate-200 mt-1 truncate">{profile.address || 'Alamat RT 01'}</p>
+              <p className="text-[10px] font-medium text-slate-400 mt-0.5">Status: <span className="text-emerald-400 font-bold">{profile.role || 'Warga Tetap'}</span></p>
+              
+              {/* Share QR Code Button */}
+              <button 
+                onClick={async () => {
+                  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify({ id: user?.id, nama: profile.name, alamat: profile.address }))}`;
+                  if (navigator.share) {
+                    try {
+                      await navigator.share({
+                        title: 'Kartu Warga Digital',
+                        text: `Kartu Warga RT 01 atas nama ${profile.name}`,
+                        url: qrUrl
+                      });
+                      setSuccessMsg('✅ Tautan kartu berhasil dibagikan!');
+                    } catch (e) {
+                      // fallback
+                      navigator.clipboard.writeText(qrUrl);
+                      setSuccessMsg('📋 Link QR Code disalin ke clipboard!');
+                    }
+                  } else {
+                    navigator.clipboard.writeText(qrUrl);
+                    setSuccessMsg('📋 Link QR Code disalin ke clipboard!');
+                  }
+                  setTimeout(() => setSuccessMsg(''), 3000);
+                }}
+                className="mt-2.5 px-3 py-1.5 bg-teal-500 hover:bg-teal-400 text-slate-950 text-[10px] font-black rounded-lg transition-colors flex items-center gap-1 shadow-sm active:scale-95"
+              >
+                <svg className="w-3 h-3 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8.684 10.742l4.135-2.068m0 0a3 3 0 10-4.135-2.068m4.135 2.068v4.135M15.316 13.258l-4.135-2.068m0 0a3 3 0 114.135-2.068" />
+                </svg>
+                Bagikan QR Code
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Tombol Aksi Cepat */}
         <div className="flex gap-3 mb-6">
            <button onClick={() => setIsEditing(true)} className="flex-1 py-3.5 bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-teal-600 font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors border border-slate-100">
@@ -3439,6 +3625,24 @@ const BroadcastModalView = ({ onClose, onSuccess, user }: { onClose: () => void,
 function MainApp({ user: originalUser, onLogout, onUpdateUser }: { user: any; onLogout: () => void; onUpdateUser: (updatedData: any) => void }) {
   const [activeWebTab, setActiveWebTab] = useState('Dashboard');
   const [activeMobileTab, setActiveMobileTab] = useState('Beranda');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('sidebar_collapsed') === 'true';
+    } catch(e) {
+      return false;
+    }
+  });
+
+  const handleToggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('sidebar_collapsed', String(next));
+      } catch(e) {}
+      return next;
+    });
+  };
+
   const [showNotifications, setShowNotifications] = useState(false);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -3618,7 +3822,7 @@ function MainApp({ user: originalUser, onLogout, onUpdateUser }: { user: any; on
       {/* --- DESKTOP ADMIN VIEW --- */}
       {!isMobile ? (
       <div className="hidden md:flex relative z-10 w-full h-full">
-        <WebSidebar activeTab={activeWebTab} onTabChange={setActiveWebTab} visibleMenus={visibleMenus} />
+        <WebSidebar activeTab={activeWebTab} onTabChange={setActiveWebTab} visibleMenus={visibleMenus} isCollapsed={sidebarCollapsed} />
         <div className="flex flex-col flex-grow w-full h-full overflow-hidden">
           <WebHeader 
             user={user} 
@@ -3627,6 +3831,8 @@ function MainApp({ user: originalUser, onLogout, onUpdateUser }: { user: any; on
             notifications={notifications} 
             onShowNotifications={handleShowNotifications} 
             onOpenBroadcast={() => setShowBroadcastModal(true)}
+            isCollapsed={sidebarCollapsed}
+            onToggleCollapse={handleToggleSidebar}
             onNotificationClick={(n) => {
                console.log(`Dibuat/Diupdate oleh: ${n.updaterName || 'Sistem'}\n\nModul: ${n.resource || 'Umum'}\n\n${n.message}`);
                if (n.resource) {
@@ -3639,7 +3845,7 @@ function MainApp({ user: originalUser, onLogout, onUpdateUser }: { user: any; on
                }
             }}
           />
-          <main className="flex-grow p-4 lg:p-8 overflow-y-auto ml-20 lg:ml-[16rem] transition-all duration-300" style={{ backgroundColor: themeColors.neutral.bg }}>
+          <main className={`flex-grow p-4 lg:p-8 overflow-y-auto transition-all duration-300 ${sidebarCollapsed ? 'ml-20' : 'ml-20 lg:ml-[16rem]'}`} style={{ backgroundColor: themeColors.neutral.bg }}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeWebTab}
@@ -3697,15 +3903,15 @@ function MainApp({ user: originalUser, onLogout, onUpdateUser }: { user: any; on
       <div className="flex md:hidden relative z-20 w-full h-full bg-white flex-col overflow-hidden">
         {/* --- MOBILE USER VIEW --- */}
         <MobileHeader notifications={notifications} onShowNotifications={handleShowNotifications} />
-        <MobileProfile user={user} />
+        <MobileProfile user={user} onClick={() => setActiveMobileTab('Profil')} />
         <div className="flex-grow overflow-hidden bg-white relative">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeMobileTab}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+              initial={activeMobileTab === 'Profil' ? { opacity: 0, y: "100%" } : { opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              exit={activeMobileTab === 'Profil' ? { opacity: 0, y: "100%" } : { opacity: 0, x: -20 }}
+              transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
               className="h-full overflow-y-auto pb-24 relative"
             >
               {activeMobileTab === 'Profil' ? (
@@ -3802,13 +4008,15 @@ function MainApp({ user: originalUser, onLogout, onUpdateUser }: { user: any; on
                         </div>
                       )}
                       <MobileQuickActions onActionClick={setActiveMobileTab} visibleMenus={visibleMenus}/>
+                      <MobileHomeCalendar onActionClick={setActiveMobileTab} />
+                      <MobileMediaSlider onActionClick={setActiveMobileTab} />
                       <MobileUMKMAds />
-                      <MobileEvents onActionClick={setActiveMobileTab} />
                     </>
                   )}
 
                   {activeMobileTab === 'Voting' && <MobileVoting currentUser={user} onBack={() => setActiveMobileTab('Beranda')} />}
                   {activeMobileTab === 'Acara' && <MobileAcaraPage currentUser={user} />}
+                  {activeMobileTab === 'Scan QR' && <MobileScanQR onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
                   {activeMobileTab === 'Laporan' && <MobileLaporan onBack={() => setActiveMobileTab('Beranda')} currentUser={user} />}
                   {activeMobileTab === 'Surat' || activeMobileTab === 'Surat Pengantar' ? (
                     <MobileSuratPengantar 
@@ -3854,7 +4062,7 @@ function MainApp({ user: originalUser, onLogout, onUpdateUser }: { user: any; on
                   )}
 
                   {/* Fallback for unrecognized tabs */}
-                  {!['Beranda', 'Acara', 'Laporan', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu', 'Inventaris', 'Smart RT AI', 'Notulen Rapat'].includes(activeMobileTab) && (
+                  {!['Beranda', 'Acara', 'Scan QR', 'Laporan', 'Surat', 'Surat Pengantar', 'Iuran', 'Kas', 'Sedekah', 'UMKM Warga', 'UMKM', 'Lapor RT', 'Data Warga', 'Media', 'Darurat', 'Dokumen', 'Tamu', 'Inventaris', 'Smart RT AI', 'Notulen Rapat'].includes(activeMobileTab) && (
                     <div className="flex flex-col items-center justify-center h-full opacity-50 py-20">
                       <icons.dashboard className="w-12 h-12 text-gray-300 mb-3" />
                       <h2 className="text-lg font-semibold text-gray-500">Halaman {activeMobileTab}</h2>
@@ -3867,7 +4075,7 @@ function MainApp({ user: originalUser, onLogout, onUpdateUser }: { user: any; on
             </motion.div>
           </AnimatePresence>
         </div>
-        <MobileBottomNav activeTab={activeMobileTab} onTabChange={setActiveMobileTab} />
+        <MobileBottomNav activeTab={activeMobileTab} onTabChange={setActiveMobileTab} user={user} />
         
         {showNotifications && (
           <div className="absolute inset-0 bg-black/50 z-50 flex justify-end flex-col">
@@ -4106,6 +4314,22 @@ export default function App() {
   const [selectedRt, setSelectedRt] = useState<string>(() => localStorage.getItem('selected_rt') || '');
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
   const [showSplash, setShowSplash] = useState(false);
+  const [showAuthFlow, setShowAuthFlow] = useState(false);
+  const [inactivityAlert, setInactivityAlert] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleUpdateUser = (updatedData: any) => {
     const newUser = { ...user, ...updatedData };
@@ -4210,7 +4434,7 @@ export default function App() {
     return () => clearInterval(timer);
   }, [globalEvents]);
 
-  const handleLogout = async () => {
+  const handleLogout = async (isAuto = false) => {
     if (user?.id) {
       try {
         await apiFetch('/api/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: user.id }) });
@@ -4218,7 +4442,52 @@ export default function App() {
     }
     setUser(null);
     localStorage.removeItem('auth_user');
+    if (isAuto === true) {
+      setInactivityAlert(true);
+    }
   };
+
+  // Auto-logout after 30 minutes of inactivity
+  const logoutTimerRef = useRef<any>(null);
+  const handleLogoutRef = useRef<any>(null);
+  
+  useEffect(() => {
+    handleLogoutRef.current = handleLogout;
+  }, [handleLogout]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes
+
+    const resetTimer = () => {
+      if (logoutTimerRef.current) {
+        clearTimeout(logoutTimerRef.current);
+      }
+      logoutTimerRef.current = setTimeout(() => {
+        if (handleLogoutRef.current) {
+          handleLogoutRef.current(true);
+        }
+      }, INACTIVITY_LIMIT);
+    };
+
+    // Initialize timer
+    resetTimer();
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      window.addEventListener(event, resetTimer);
+    });
+
+    return () => {
+      if (logoutTimerRef.current) {
+        clearTimeout(logoutTimerRef.current);
+      }
+      events.forEach(event => {
+        window.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [user?.id]);
 
   return (
     <>
@@ -4257,10 +4526,57 @@ export default function App() {
             </button>
           </motion.div>
         )}
+        {inactivityAlert && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-teal-100 flex flex-col items-center text-center"
+            >
+              <div className="w-16 h-16 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center mb-4">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m0-8V5m0 16a9 9 0 110-18 9 9 0 010 18z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-black text-slate-800 tracking-tight">Sesi Berakhir</h3>
+              <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                Anda telah otomatis keluar karena tidak ada aktivitas selama 30 menit. Silakan masuk kembali untuk melanjutkan.
+              </p>
+              <button
+                onClick={() => setInactivityAlert(false)}
+                className="mt-6 w-full py-3.5 bg-teal-600 hover:bg-teal-500 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-teal-100 transition-all active:scale-95 uppercase tracking-wider"
+              >
+                Masuk Kembali
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
       <AnimatePresence mode="wait">
         {showSplash ? (
           <SplashScreen key="splash" onFinish={() => setShowSplash(false)} />
+      ) : !user && !showAuthFlow && !isMobile ? (
+        <motion.div
+          key="landing"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full min-h-screen"
+        >
+          <LandingPage 
+            onEnterPortal={(mode) => {
+              setAuthView(mode);
+              setShowAuthFlow(true);
+            }}
+          />
+        </motion.div>
       ) : (
         !selectedRt ? (
           <motion.div
@@ -4269,8 +4585,16 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.05 }}
             transition={{ duration: 0.4 }}
-            className="w-full min-h-screen flex items-center justify-center bg-gray-50 p-4"
+            className="w-full min-h-screen flex items-center justify-center bg-gray-50 p-4 relative"
           >
+            {!isMobile && (
+              <button 
+                onClick={() => setShowAuthFlow(false)}
+                className="absolute top-6 left-6 text-sm font-bold text-teal-600 hover:text-teal-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-teal-100 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+              >
+                ← Kembali ke Beranda
+              </button>
+            )}
             <RtSelection onSelectRt={handleSelectRt} />
           </motion.div>
         ) : !user ? (
@@ -4281,15 +4605,32 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="w-full min-h-screen flex items-center justify-center bg-gray-50 p-4 relative"
+              className="w-full min-h-screen flex flex-col items-center justify-start bg-gray-50 p-4 pt-16 md:pt-4 md:justify-center overflow-y-auto relative pb-12"
             >
-              <button 
-                onClick={() => handleSelectRt('')}
-                className="absolute top-6 left-6 text-sm font-bold text-teal-600 hover:text-teal-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-teal-100 flex items-center gap-2"
-              >
-                ← Ganti RT
-              </button>
-              <Login onLogin={handleLogin} onNavRegister={() => setAuthView('register')} />
+              <div className="absolute top-4 left-4 flex gap-3 z-50">
+                <button 
+                  onClick={() => handleSelectRt('')}
+                  className="text-sm font-bold text-slate-600 hover:text-slate-800 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+                >
+                  ← Ganti RT
+                </button>
+                {!isMobile && (
+                  <button 
+                    onClick={() => setShowAuthFlow(false)}
+                    className="text-sm font-bold text-teal-600 hover:text-teal-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-teal-100 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+                  >
+                    🏠 Beranda Utama
+                  </button>
+                )}
+              </div>
+              <div className="w-full max-w-md space-y-6 mt-10 md:mt-0">
+                <Login onLogin={handleLogin} onNavRegister={() => setAuthView('register')} />
+                {isMobile && (
+                  <div className="pt-2">
+                    <MobileHomeCalendar onActionClick={() => {}} />
+                  </div>
+                )}
+              </div>
             </motion.div>
           ) : (
              <motion.div
@@ -4298,15 +4639,32 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="w-full min-h-screen flex items-center justify-center bg-gray-50 p-4 py-8 relative"
+              className="w-full min-h-screen flex flex-col items-center justify-start bg-gray-50 p-4 pt-16 md:pt-4 md:justify-center overflow-y-auto relative pb-12"
             >
-              <button 
-                onClick={() => handleSelectRt('')}
-                className="absolute top-6 left-6 text-sm font-bold text-teal-600 hover:text-teal-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-teal-100 flex items-center gap-2"
-              >
-                ← Ganti RT
-              </button>
-              <Register onRegister={handleLogin} onNavLogin={() => setAuthView('login')} />
+              <div className="absolute top-4 left-4 flex gap-3 z-50">
+                <button 
+                  onClick={() => handleSelectRt('')}
+                  className="text-sm font-bold text-slate-600 hover:text-slate-800 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+                >
+                  ← Ganti RT
+                </button>
+                {!isMobile && (
+                  <button 
+                    onClick={() => setShowAuthFlow(false)}
+                    className="text-sm font-bold text-teal-600 hover:text-teal-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-teal-100 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+                  >
+                    🏠 Beranda Utama
+                  </button>
+                )}
+              </div>
+              <div className="w-full max-w-md space-y-6 mt-10 md:mt-0">
+                <Register onRegister={handleLogin} onNavLogin={() => setAuthView('login')} />
+                {isMobile && (
+                  <div className="pt-2">
+                    <MobileHomeCalendar onActionClick={() => {}} />
+                  </div>
+                )}
+              </div>
             </motion.div>
           )
         ) : (

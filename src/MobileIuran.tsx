@@ -10,7 +10,8 @@ const Icons = {
   clock: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
   alert: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
   search: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
-  upload: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+  upload: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>,
+  bell: (props: any) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
 };
 
 let cachedIuranData: any[] | null = null;
@@ -50,6 +51,15 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
   const [showBayarForm, setShowBayarForm] = useState(false);
   const [buktiBase64, setBuktiBase64] = useState('');
   const [viewBuktiUrl, setViewBuktiUrl] = useState<string | null>(null);
+
+  // Reminders states
+  const [showRemindForm, setShowRemindForm] = useState(false);
+  const [remindBulan, setRemindBulan] = useState('Januari');
+  const [remindTahun, setRemindTahun] = useState(new Date().getFullYear().toString());
+  const [remindJenis, setRemindJenis] = useState('Iuran Wajib');
+  const [remindTemplate, setRemindTemplate] = useState('Halo {nama}, Anda belum melakukan pembayaran {jenis} untuk periode {bulan}. Silakan lakukan pembayaran segera. Terima kasih.');
+  const [remindLoading, setRemindLoading] = useState(false);
+  const [remindResult, setRemindResult] = useState<{ success: boolean, count: number, reminded: string[] } | null>(null);
 
   const isAdminOrBendahara = ['admin', 'developer', 'bendahara'].includes(currentUser?.role);
   
@@ -95,6 +105,43 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
       }
     } catch(e) { console.error(e); }
     setLoading(false);
+  };
+
+  const handleSendReminders = async () => {
+    setRemindLoading(true);
+    setRemindResult(null);
+    try {
+      const res = await apiFetch('/api/iuran/remind', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-rt-id': currentUser?.rtId || 'rt01',
+          'x-user-role': currentUser?.role || 'admin'
+        },
+        body: JSON.stringify({
+          bulan: remindBulan,
+          tahun: remindTahun,
+          jenis: remindJenis,
+          messageTemplate: remindTemplate
+        })
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setRemindResult({
+          success: true,
+          count: json.count,
+          reminded: json.reminded || []
+        });
+        // refresh list
+        fetchData();
+      } else {
+        alert(json.error || 'Gagal mengirim pengingat');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Terjadi kesalahan jaringan');
+    }
+    setRemindLoading(false);
   };
 
   useEffect(() => {
@@ -411,20 +458,113 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
 
       {/* ADMIN CONTROLS */}
       {isAdminOrBendahara && (
+        <div className="flex gap-3 mb-6">
+          {!showTambahIuran && !showRemindForm ? (
+            <>
+              <button 
+                onClick={() => setShowTambahIuran(true)} 
+                className="flex-1 bg-slate-850 text-white font-extrabold text-[11px] py-4 rounded-2xl shadow-md hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+              >
+                <span className="text-sm font-extrabold leading-none">+</span> Buat Tagihan
+              </button>
+              <button 
+                onClick={() => { setShowRemindForm(true); setRemindResult(null); }} 
+                className="flex-1 bg-teal-600 text-white font-extrabold text-[11px] py-4 rounded-2xl shadow-md hover:bg-teal-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <Icons.bell className="w-4 h-4 shrink-0 text-teal-100" /> Kirim Pengingat
+              </button>
+            </>
+          ) : null}
+        </div>
+      )}
+
+      {/* REMINDER FORM */}
+      {isAdminOrBendahara && showRemindForm && (
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6"
+        >
+          <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-3">
+            <h4 className="font-extrabold text-slate-800 text-sm">Form Pengingat Iuran Otomatis</h4>
+            <button 
+              type="button" 
+              onClick={() => { setShowRemindForm(false); setRemindResult(null); }} 
+              className="w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-650 rounded-full hover:bg-slate-200 transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">Bulan Tagihan</label>
+                <select value={remindBulan} onChange={e => setRemindBulan(e.target.value)} className="w-full mt-1 p-3 text-xs font-bold bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none">
+                  {['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">Tahun</label>
+                <select value={remindTahun} onChange={e => setRemindTahun(e.target.value)} className="w-full mt-1 p-3 text-xs font-bold bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none">
+                  {['2024','2025','2026','2027'].map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">Jenis Iuran</label>
+              <select value={remindJenis} onChange={e => setRemindJenis(e.target.value)} className="w-full mt-1 p-3 text-xs font-bold bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none">
+                <option value="Iuran Wajib">Iuran Wajib (Kas RT)</option>
+                <option value="Iuran Keamanan">Iuran Keamanan</option>
+                <option value="Iuran Kebersihan">Iuran Kebersihan</option>
+                <option value="Dana Sosial">Dana Sosial / Infaq</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">Template Pesan</label>
+              <textarea 
+                value={remindTemplate} 
+                onChange={e => setRemindTemplate(e.target.value)} 
+                rows={3} 
+                placeholder="Gunakan {nama}, {bulan}, {jenis} sebagai placeholder..."
+                className="w-full mt-1 p-3 text-xs font-bold bg-slate-50 border border-slate-100 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 rounded-xl outline-none"
+              />
+              <p className="text-[9px] text-slate-400 font-medium mt-1">Sistem akan otomatis mengganti tag `{'{nama}'}`, `{'{bulan}'}` dan `{'{jenis}'}`.</p>
+            </div>
+
+            {remindResult && (
+              <div className="p-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-xs font-bold space-y-1">
+                <p>✅ Pengingat Berhasil Dikirim!</p>
+                <p className="font-medium text-[11px] text-emerald-600">Total: {remindResult.count} warga belum bayar yang telah diingatkan.</p>
+                {remindResult.reminded.length > 0 && (
+                  <p className="text-[10px] font-medium text-slate-500 truncate">Penerima: {remindResult.reminded.join(', ')}</p>
+                )}
+              </div>
+            )}
+
+            <button 
+              type="button" 
+              onClick={handleSendReminders} 
+              disabled={remindLoading}
+              className="w-full py-3.5 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl text-xs font-extrabold shadow-md flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              {remindLoading ? 'Memproses...' : '🔔 Kirim Pengingat Ke Semua Warga'}
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ADD TAGIHAN FORM */}
+      {isAdminOrBendahara && showTambahIuran && (
         <AnimatePresence mode="wait">
-          {!showTambahIuran ? (
-            <motion.button 
-              key="btn-tambah" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setShowTambahIuran(true)} 
-              className="w-full mb-6 bg-slate-800 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-md hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
-            >
-              <span className="text-lg leading-none">+</span> Buatkan Tagihan Iuran
-            </motion.button>
-          ) : (
-            <motion.form 
-              key="form-tambah" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-              onSubmit={handleTambahAdmin} className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6 relative overflow-hidden"
-            >
+          <motion.form 
+            key="form-tambah" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+            onSubmit={handleTambahAdmin} className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 mb-6 relative overflow-hidden"
+          >
               <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-3">
                 <h4 className="font-extrabold text-slate-800 text-sm">Form Tagihan Warga</h4>
                 <button 
@@ -482,9 +622,8 @@ export const MobileIuran = ({ onBack, currentUser }: { onBack: () => void, curre
                 <button type="submit" disabled={loading} className="w-full py-3.5 bg-teal-600 text-white rounded-xl text-sm font-extrabold shadow-md hover:bg-teal-700 transition-all active:scale-[0.98]">{loading ? 'Menyimpan...' : 'Simpan Iuran'}</button>
               </div>
             </motion.form>
-          )}
-        </AnimatePresence>
-      )}
+          </AnimatePresence>
+        )}
 
       {/* FILTER & SEARCH */}
       <div className="mb-5 flex flex-col gap-3">
