@@ -4625,11 +4625,6 @@ export default function App() {
               </div>
               <div className="w-full max-w-md space-y-6 mt-10 md:mt-0">
                 <Login onLogin={handleLogin} onNavRegister={() => setAuthView('register')} />
-                {isMobile && (
-                  <div className="pt-2">
-                    <MobileHomeCalendar onActionClick={() => {}} />
-                  </div>
-                )}
               </div>
             </motion.div>
           ) : (
@@ -4659,11 +4654,6 @@ export default function App() {
               </div>
               <div className="w-full max-w-md space-y-6 mt-10 md:mt-0">
                 <Register onRegister={handleLogin} onNavLogin={() => setAuthView('login')} />
-                {isMobile && (
-                  <div className="pt-2">
-                    <MobileHomeCalendar onActionClick={() => {}} />
-                  </div>
-                )}
               </div>
             </motion.div>
           )
