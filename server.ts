@@ -108,6 +108,21 @@ const SystemDataSchema = new mongoose.Schema({
 }, { strict: false });
 const SystemDataModel: mongoose.Model<any> = mongoose.models.SystemData || mongoose.model("SystemData", SystemDataSchema);
 
+app.use(async (req, res, next) => {
+  if (req.path.startsWith("/api/")) {
+    try {
+      await connectDB();
+    } catch (dbError: any) {
+      console.error("Database Connection Middleware Error:", dbError);
+      return res.status(500).json({
+        error: "Koneksi database gagal. Jika Anda menggunakan Vercel, pastikan variabel MONGODB_URI telah dikonfigurasi dengan benar di Pengaturan Proyek Vercel Anda.",
+        details: dbError instanceof Error ? dbError.message : String(dbError)
+      });
+    }
+  }
+  next();
+});
+
 // ==========================================
 // POINT 3: DEDICATED GRANULAR COLLECTION SCHEMAS
 // ==========================================
@@ -507,10 +522,14 @@ async function migrateLegacyDataIfAny(rtId: string) {
 
 // Global DB Connection marker
 let isDbConnected = false;
+let isSeeded = false;
 
 async function connectDB() {
   if (mongoose.connection && mongoose.connection.readyState === 1) {
     isDbConnected = true;
+    if (!isSeeded) {
+      await ensureSeeded();
+    }
     return;
   }
   if (mongoose.connection && mongoose.connection.readyState === 2) {
@@ -523,8 +542,11 @@ async function connectDB() {
     });
     isDbConnected = true;
     console.log("Connected securely to MongoDB database system.");
+    await ensureSeeded();
   } catch (err) {
+    isDbConnected = false;
     console.error("MongoDB connection exception:", err);
+    throw new Error("Koneksi database gagal. Pastikan variabel lingkungan MONGODB_URI telah dikonfigurasi dengan benar di hosting Anda.");
   }
 }
 
@@ -788,6 +810,22 @@ async function initDb(rtId: string = '') {
 
   } catch (e: any) {
     console.error("DB Initialization Error:", e);
+  }
+}
+
+async function ensureSeeded() {
+  if (isSeeded) return;
+  try {
+    const userCount = await UserModel.countDocuments();
+    if (userCount === 0) {
+      console.log("[Seeding] Database is empty. Seeding default users and configurations...");
+      await initDb('rt01');
+      await initDb('rt02');
+      await initDb('rt03');
+    }
+    isSeeded = true;
+  } catch (e) {
+    console.error("Failed to seed database during connection:", e);
   }
 }
 
